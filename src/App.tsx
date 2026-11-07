@@ -639,7 +639,7 @@ export function App() {
               </div>
 
               <p className="text-slate-300/90 text-xs leading-relaxed max-w-xl">
-                Sistem Monitoring &amp; Rekapitulasi Digital Berkas Formulir Model C-Hasil 5 Jenis Pemilihan Umum 2024 terintegrasi Google Drive dan Cloud Firestore secara real-time di seluruh 7 Kecamatan se-Kabupaten Sekadau.
+                Sistem Monitoring dan Rekapitulasi Berkas Formulir Model C-Hasil 5 Jenis Pemilihan Umum 2024 di lingkungan Komisi Pemilihan Umum Kabupaten Sekadau.
               </p>
 
               <div className="pt-2 border-t border-red-900/40 grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-400 text-[11px]">
@@ -654,7 +654,7 @@ export function App() {
                   <Building2 className="h-4 w-4 text-kpu-gold shrink-0 mt-0.5" />
                   <span>
                     <strong className="text-slate-200">Cakupan Wilayah:</strong><br />
-                    7 Kecamatan, 87 Desa, 698 TPS se-Kabupaten Sekadau
+                    {globalStats.totalKecamatan} Kecamatan, {globalStats.totalDesa} Desa/Kelurahan, {globalStats.totalTPS} TPS se-Kabupaten Sekadau
                   </span>
                 </div>
               </div>
