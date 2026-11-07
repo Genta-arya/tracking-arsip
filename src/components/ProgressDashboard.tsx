@@ -11,19 +11,11 @@ import {
   FileText,
   BarChart3,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
+import { TrendChart3D } from '@/components/TrendChart3D';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -463,179 +455,16 @@ export function ProgressDashboard({
         </motion.div>
       </motion.div>
 
-      {/* 2. Section Chart Line: Tren Upload Berkas Scan per Hari di Bulan Ini */}
-      <Card className="shadow-xs border border-slate-200 bg-white overflow-hidden">
-        <CardHeader className="bg-slate-50/70 border-b border-slate-200 p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-red-100 text-kpu-maroon">
-                  <TrendingUp className="h-4 w-4" />
-                </div>
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Tren Pemindaian & Unggah Berkas Scan Harian
-                </CardTitle>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Grafik total penambahan arsip berkas C-Hasil yang masuk ke Google Drive setiap harinya
-              </p>
-            </div>
-
-            {/* Filter Rentang Chart dengan Animated Active Pill */}
-            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs self-start sm:self-auto relative">
-              {(
-                [
-                  { key: 'THIS_MONTH', label: 'Bulan Ini' },
-                  { key: 'LAST_30', label: '30 Hari Terakhir' },
-                  { key: 'ALL', label: 'Semua Riwayat' },
-                ] as const
-              ).map(({ key, label }) => {
-                const isActive = chartRange === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setChartRange(key)}
-                    className={`relative px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                      isActive ? 'text-white' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeChartRangePill"
-                        className="absolute inset-0 bg-kpu-maroon rounded-md shadow-2xs"
-                        transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-                      />
-                    )}
-                    <span className="relative z-10">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-4 sm:p-6 space-y-6">
-          {/* Quick Stats Banner dengan Animated Numbers */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Upload Hari Ini
-              </span>
-              <p className="text-lg sm:text-xl font-black text-slate-800">
-                <AnimatedCounter value={uploadStats.todayUploads} />{' '}
-                <span className="text-xs font-medium text-slate-500">berkas</span>
-              </p>
-            </div>
-
-            <div className="space-y-0.5 border-l border-slate-200 pl-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Puncak Tertinggi
-              </span>
-              <p className="text-lg sm:text-xl font-black text-emerald-600">
-                <AnimatedCounter value={uploadStats.peakUpload} />{' '}
-                <span className="text-xs font-medium text-slate-500">berkas</span>
-              </p>
-              <p className="text-[10px] text-slate-500 font-medium">({uploadStats.peakDate})</p>
-            </div>
-
-            <div className="space-y-0.5 border-l border-slate-200 pl-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Rata-rata Upload
-              </span>
-              <p className="text-lg sm:text-xl font-black text-kpu-maroon">
-                <AnimatedCounter value={uploadStats.averagePerDay} />{' '}
-                <span className="text-xs font-medium text-slate-500">berkas/hari</span>
-              </p>
-            </div>
-
-            <div className="space-y-0.5 border-l border-slate-200 pl-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Total Arsip di Drive
-              </span>
-              <p className="text-lg sm:text-xl font-black text-slate-900">
-                <AnimatedCounter value={stats.totalFilesCollected} />{' '}
-                <span className="text-xs font-medium text-slate-500">file</span>
-              </p>
-              <p className="text-[10px] text-slate-500 font-medium">
-                ({stats.validFilesCount} sah • {stats.anomalyFilesCount} anomali)
-              </p>
-            </div>
-          </div>
-
-          {/* Line & Area Chart Recharts */}
-          <div className="w-full h-72 sm:h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyUploadData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorUpload" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#800000" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#800000" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="colorKumulatif" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#d97706" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#d97706" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: '#64748b' }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#cbd5e1' }}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748b' }}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1.5 border border-slate-700">
-                          <p className="font-bold text-amber-300">{label}</p>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-slate-300">Upload Hari Ini:</span>
-                            <span className="font-bold text-white">{payload[0]?.value} berkas</span>
-                          </div>
-                          {payload[1] && (
-                            <div className="flex items-center justify-between gap-4 border-t border-slate-700/60 pt-1">
-                              <span className="text-amber-200">Total Terkumpul:</span>
-                              <span className="font-bold text-amber-300">{payload[1]?.value} berkas</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="harian"
-                  name="Upload Harian"
-                  stroke="#800000"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorUpload)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="kumulatif"
-                  name="Total Kumulatif"
-                  stroke="#d97706"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  fillOpacity={1}
-                  fill="url(#colorKumulatif)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D) */}
+      <TrendChart3D
+        dailyUploadData={dailyUploadData}
+        uploadStats={uploadStats}
+        totalFilesCollected={stats.totalFilesCollected}
+        validFilesCount={stats.validFilesCount}
+        anomalyFilesCount={stats.anomalyFilesCount}
+        chartRange={chartRange}
+        onRangeChange={setChartRange}
+      />
 
       {/* 3. Dua Kolom: Peringkat 7 Kecamatan & Kelengkapan 5 Jenis Surat Suara */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
