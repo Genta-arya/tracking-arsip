@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Play, Layers, Maximize2, Minus } from 'lucide-react';
+import { RefreshCw, Play, Layers, Maximize2, Minus, CheckCircle2, Clock, FolderOpen, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
@@ -33,6 +33,15 @@ export function DriveSyncModal({
   const [scanProgress, setScanProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'info' | 'error' | 'success'>('info');
+  const [completedKecamatans, setCompletedKecamatans] = useState<string[]>([]);
+
+  // Hitung berkas yang sudah tersimpan di Firestore lokal untuk tiap kecamatan
+  const getKecamatanSyncedFileCount = (kecName: string) => {
+    const records = currentRawData.filter(
+      (r) => r.kecamatan.toLowerCase() === kecName.toLowerCase()
+    );
+    return records.reduce((acc, r) => acc + (r.files?.length || 0), 0);
+  };
 
   // Ambil daftar folder kecamatan saat modal dibuka
   const handleLoadKecamatanList = async () => {
@@ -130,6 +139,7 @@ export function DriveSyncModal({
       const updated = [...otherKecData, ...scannedKecData];
 
       onSyncComplete(updated);
+      setCompletedKecamatans((prev) => Array.from(new Set([...prev, kec.name])));
 
       if (firestoreError) {
         setStatusMessage(
@@ -158,6 +168,7 @@ export function DriveSyncModal({
     setIsScanning(true);
     setScanProgress(0);
     setStatusType('info');
+    setCompletedKecamatans([]);
     let combinedData = [...currentRawData];
     const firestoreErrors: string[] = [];
 
@@ -209,6 +220,7 @@ export function DriveSyncModal({
           (r) => r.kecamatan.toLowerCase() !== kec.name.toLowerCase()
         );
         combinedData.push(...scannedKecData);
+        setCompletedKecamatans((prev) => Array.from(new Set([...prev, kec.name])));
       } catch (err: any) {
         console.error(`Gagal memindai ${kec.name}:`, err);
       }
@@ -233,18 +245,24 @@ export function DriveSyncModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent onClose={onClose} className="max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col p-0 rounded-xl sm:rounded-2xl">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-kpu-darkMaroon to-kpu-maroon text-white p-4 sm:p-5 rounded-t-xl sm:rounded-t-2xl pr-16 relative">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white/10 shrink-0">
-                <Layers className="h-5 w-5 text-kpu-gold" />
-              </div>
+        <DialogContent onClose={onClose} className="max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col p-0 rounded-2xl sm:rounded-3xl border border-white/40 shadow-2xl overflow-hidden [perspective:1400px]">
+          {/* Header 3D Holographic Bar */}
+          <div className="bg-gradient-to-r from-kpu-darkMaroon via-kpu-maroon to-kpu-darkMaroon text-white p-4 sm:p-5 pr-16 relative shadow-md">
+            {/* Top 3D Specular Highlight Line */}
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/60 via-white/80 to-transparent pointer-events-none z-30" />
+
+            <div className="flex items-center gap-3 relative z-20">
+              <motion.div
+                whileHover={{ scale: 1.1, rotateZ: 8 }}
+                className="p-2.5 rounded-2xl bg-gradient-to-b from-white/20 to-white/5 border border-white/30 shadow-[0_4px_12px_rgba(0,0,0,0.3)] shrink-0"
+              >
+                <Layers className="h-5 w-5 text-kpu-gold drop-shadow-xs" />
+              </motion.div>
               <div>
-                <DialogTitle className="text-base sm:text-lg font-bold text-white leading-tight">
+                <DialogTitle className="text-base sm:text-lg font-black text-white leading-tight tracking-tight drop-shadow-xs">
                   Sinkronisasi Pemindaian Google Drive
                 </DialogTitle>
-                <DialogDescription className="text-[11px] sm:text-xs text-rose-200 mt-0.5">
+                <DialogDescription className="text-[11px] sm:text-xs text-rose-200 mt-0.5 font-medium">
                   Pindai per kecamatan atau seluruh kecamatan untuk memperbarui data
                 </DialogDescription>
               </div>
@@ -252,15 +270,17 @@ export function DriveSyncModal({
 
             {/* Tombol Minimize di Header saat proses scan sedang aktif */}
             {isScanning && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={onClose}
-                className="absolute right-12 top-4 z-20 rounded-full p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer"
+                className="absolute right-12 top-4 z-20 rounded-full p-2 bg-white/10 hover:bg-white/25 border border-white/20 text-white transition-colors cursor-pointer shadow-sm"
                 title="Minimalkan ke latar belakang"
               >
                 <Minus className="h-4 w-4" />
                 <span className="sr-only">Minimalkan</span>
-              </button>
+              </motion.button>
             )}
           </div>
 
@@ -326,62 +346,158 @@ export function DriveSyncModal({
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <span className="font-bold text-slate-800 text-xs">
+            <div className="space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <span className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
                   Daftar {kecamatanFolders.length} Folder Kecamatan Terdeteksi:
                 </span>
-                <Button
-                  variant="gold"
-                  size="sm"
+                
+                {/* 3D Push-Button Pindai Semua Sekaligus */}
+                <motion.button
+                  whileHover={!isScanning ? { scale: 1.03 } : {}}
+                  whileTap={!isScanning ? { scale: 0.96, y: 2 } : {}}
+                  type="button"
                   onClick={handleScanAllKecamatan}
                   disabled={isScanning}
-                  className="bg-kpu-gold text-kpu-darkMaroon font-bold text-xs h-8 w-full sm:w-auto justify-center"
+                  className="relative h-8 px-4 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 shadow-[0_3px_0_#b45309,0_6px_12px_rgba(245,158,11,0.3)] active:shadow-[0_1px_0_#b45309] border-t border-amber-200/90 flex items-center justify-center gap-1.5 transition-all overflow-hidden cursor-pointer disabled:opacity-50 w-full sm:w-auto"
                 >
-                  <RefreshCw className={`h-3 w-3 mr-1 ${isScanning ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isScanning ? 'animate-spin' : ''}`} />
                   <span>Pindai Semua Sekaligus</span>
-                </Button>
+                </motion.button>
               </div>
 
-              {/* List Folder Kecamatan */}
-              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
-                {kecamatanFolders.map((kec) => (
-                  <div
-                    key={kec.id}
-                    className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50 transition"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-900 truncate text-xs sm:text-sm">{kec.name}</p>
-                      <p className="text-[10px] text-slate-400 font-mono truncate">ID: {kec.id}</p>
-                    </div>
+              {/* List 7 Folder Kecamatan 3D Micro-Cards */}
+              <div className="space-y-2.5 [perspective:1000px]">
+                {kecamatanFolders.map((kec) => {
+                  const isCurrentlyScanning = currentScanningKec === kec.name;
+                  const isCompleted = completedKecamatans.includes(kec.name);
+                  const isQueued = isScanning && !isCompleted && !isCurrentlyScanning;
+                  const syncedFileCount = getKecamatanSyncedFileCount(kec.name);
+                  const isAlreadyInCloud = !isScanning && !isCompleted && syncedFileCount > 0;
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleScanSingleKecamatan(kec)}
-                      disabled={isScanning}
-                      className="text-xs h-7 px-2.5 shrink-0 border-slate-300 hover:border-kpu-maroon hover:text-kpu-maroon"
+                  return (
+                    <motion.div
+                      key={kec.id}
+                      whileHover={{ y: -2, scale: 1.008 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      className={`p-3 sm:p-3.5 rounded-2xl border transition-all duration-300 relative overflow-hidden flex items-center justify-between gap-3 ${
+                        isCurrentlyScanning
+                          ? 'bg-amber-50/95 border-amber-400 border-l-[6px] border-l-amber-500 ring-2 ring-amber-400/60 shadow-[0_8px_22px_rgba(245,158,11,0.25)]'
+                          : isCompleted
+                          ? 'bg-emerald-50/80 border-emerald-300 border-l-[6px] border-l-emerald-600 shadow-[0_6px_18px_rgba(16,185,129,0.18)]'
+                          : 'bg-white border-slate-200/90 border-l-[5px] border-l-slate-300 hover:border-l-kpu-maroon shadow-[0_3px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)]'
+                      }`}
                     >
-                      <RefreshCw
-                        className={`h-3 w-3 mr-1 ${
-                          currentScanningKec === kec.name ? 'animate-spin' : ''
-                        }`}
-                      />
-                      <span>Pindai Ini Saja</span>
-                    </Button>
-                  </div>
-                ))}
+                      {/* Top Specular Bevel Line */}
+                      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent pointer-events-none" />
+
+                      {/* Info Kecamatan & Status */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* 3D Icon Badge */}
+                        <div
+                          className={`p-2.5 rounded-xl shrink-0 shadow-sm border ${
+                            isCurrentlyScanning
+                              ? 'bg-amber-200/90 text-amber-950 border-amber-300'
+                              : isCompleted
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {isCurrentlyScanning ? (
+                            <RefreshCw className="h-4 w-4 animate-spin text-amber-800" />
+                          ) : isCompleted ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          ) : (
+                            <FolderOpen className="h-4 w-4 text-slate-600" />
+                          )}
+                        </div>
+
+                        {/* Text Details */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-black text-slate-900 text-xs sm:text-sm tracking-tight truncate">
+                              {kec.name}
+                            </h4>
+
+                            {/* Status Badges saat progress */}
+                            {isCurrentlyScanning && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-200 text-amber-950 border border-amber-300 shadow-2xs animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping" />
+                                SEDANG MEMINDAI...
+                              </span>
+                            )}
+                            {isCompleted && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                SELESAI DIPINDAI
+                              </span>
+                            )}
+                            {isQueued && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                <Clock className="h-2.5 w-2.5 text-slate-400" />
+                                Menunggu Antrean
+                              </span>
+                            )}
+                            {isAlreadyInCloud && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <ShieldCheck className="h-2.5 w-2.5 text-emerald-600" />
+                                Tersimpan di Cloud
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5 truncate">
+                            <span>ID: {kec.id}</span>
+                            {syncedFileCount > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-slate-600 font-sans font-semibold">
+                                  {syncedFileCount} Berkas Terdata
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3D Tactile Push-Button Pindai Ini Saja */}
+                      <motion.button
+                        whileHover={!isScanning ? { scale: 1.05 } : {}}
+                        whileTap={!isScanning ? { scale: 0.95, y: 1 } : {}}
+                        type="button"
+                        onClick={() => handleScanSingleKecamatan(kec)}
+                        disabled={isScanning}
+                        className={`text-xs h-7 px-3 rounded-xl shrink-0 font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs border ${
+                          isCurrentlyScanning
+                            ? 'bg-amber-300 text-amber-950 border-amber-400 shadow-inner opacity-90'
+                            : isCompleted
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
+                            : 'bg-slate-100 hover:bg-white text-slate-700 border-slate-300 hover:border-kpu-maroon hover:text-kpu-maroon hover:shadow-[0_2px_6px_rgba(102,3,0,0.15)] active:translate-y-0.5'
+                        } disabled:opacity-60 disabled:cursor-not-allowed`}
+                      >
+                        <RefreshCw
+                          className={`h-3 w-3 shrink-0 ${isCurrentlyScanning ? 'animate-spin' : ''}`}
+                        />
+                        <span>{isCompleted ? 'Pindai Ulang' : 'Pindai Ini Saja'}</span>
+                      </motion.button>
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl sm:rounded-b-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {/* Footer 3D Action Deck */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50/90 rounded-b-2xl sm:rounded-b-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 backdrop-blur-xs">
           <div className="text-[11px] text-slate-500 font-medium truncate">
             {isScanning ? (
-              <span className="flex items-center gap-1.5 text-amber-800 font-bold truncate">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+              <span className="flex items-center gap-1.5 text-amber-900 font-extrabold truncate">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
+                </span>
                 Pemindaian sedang berjalan... Anda dapat menutup modal ini kapan saja.
               </span>
             ) : (
@@ -389,18 +505,19 @@ export function DriveSyncModal({
             )}
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.96, y: 1 }}
+            type="button"
             onClick={onClose}
-            className={`text-xs h-8 px-4 shrink-0 cursor-pointer ${
+            className={`text-xs h-8 px-4 rounded-xl shrink-0 font-black cursor-pointer transition-all border ${
               isScanning
-                ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300 font-bold shadow-xs'
-                : ''
+                ? 'bg-gradient-to-b from-amber-200 via-amber-300 to-amber-400 text-amber-950 border-amber-300 shadow-[0_2px_0_#b45309,0_4px_10px_rgba(245,158,11,0.25)]'
+                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
             }`}
           >
             {isScanning ? 'Minimalkan (Tetap Berjalan)' : 'Tutup'}
-          </Button>
+          </motion.button>
         </div>
       </DialogContent>
     </Dialog>
