@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Play, Layers } from 'lucide-react';
+import { RefreshCw, Play, Layers, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
 import { saveKecamatanScanToFirestore, fetchAllFileOverrides } from '@/services/firebase';
 import { RawTpsData, AppConfig } from '@/types';
+import { Scan3DAnimation } from '@/components/Scan3DAnimation';
 
 interface DriveSyncModalProps {
   open: boolean;
@@ -226,6 +227,38 @@ export function DriveSyncModal({
     }
   };
 
+  // Demo simulasi animasi 3D optical scanner
+  const handleSimulateScanDemo = () => {
+    if (isScanning) return;
+    setIsScanning(true);
+    setCurrentScanningKec('Sekadau Hilir');
+    setScanProgress(12);
+    setStatusMessage('Memulai pemindaian optik berkas Model C-Hasil...');
+    setStatusType('info');
+
+    const demoSteps = [
+      { progress: 30, msg: 'Membaca folder Kecamatan Sekadau Hilir di Google Drive...' },
+      { progress: 58, msg: 'Memindai 204 TPS & analisis berkas PPWP, DPR, DPD, DPRD...' },
+      { progress: 80, msg: 'Validasi kelengkapan 5 jenis pemilihan & deteksi anomali...' },
+      { progress: 95, msg: 'Menyinkronkan data pemindaian ke Cloud Firestore realtime...' },
+      { progress: 100, msg: 'Selesai! Seluruh data formulir C-Hasil berhasil disinkronkan.' },
+    ];
+
+    demoSteps.forEach((step, idx) => {
+      setTimeout(() => {
+        setScanProgress(step.progress);
+        setStatusMessage(step.msg);
+        if (idx === demoSteps.length - 1) {
+          setTimeout(() => {
+            setIsScanning(false);
+            setCurrentScanningKec(null);
+            setStatusType('success');
+          }, 1400);
+        }
+      }, (idx + 1) * 1200);
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent onClose={onClose} className="max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col p-0 rounded-xl sm:rounded-2xl">
@@ -271,38 +304,22 @@ export function DriveSyncModal({
             )}
           </AnimatePresence>
 
-          {/* Progress Bar jika sedang scan dengan AnimatePresence */}
+          {/* 3D Laser Optical Scanner Animation dengan AnimatePresence */}
           <AnimatePresence>
             {isScanning && (
               <motion.div
-                key="scanning-progress"
-                initial={{ opacity: 0, scale: 0.96, height: 0 }}
-                animate={{ opacity: 1, scale: 1, height: 'auto' }}
-                exit={{ opacity: 0, scale: 0.96, height: 0 }}
-                transition={{ duration: 0.25 }}
-                className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2 overflow-hidden"
+                key="scanning-progress-3d"
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="overflow-hidden mb-2"
               >
-                <div className="flex items-center justify-between text-xs font-bold text-amber-900">
-                  <span className="flex items-center gap-2">
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    Sedang Memindai: {currentScanningKec}
-                  </span>
-                  <span>{scanProgress}%</span>
-                </div>
-                <div className="w-full h-2.5 rounded-full bg-amber-100 overflow-hidden relative shadow-inner">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${scanProgress}%` }}
-                    transition={{ duration: 0.4 }}
-                    className="h-full rounded-full bg-gradient-to-r from-kpu-orange to-kpu-gold relative overflow-hidden"
-                  >
-                    <motion.div
-                      animate={{ x: ['-100%', '250%'] }}
-                      transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-2/3 -skew-x-12"
-                    />
-                  </motion.div>
-                </div>
+                <Scan3DAnimation
+                  progress={scanProgress}
+                  currentKecamatan={currentScanningKec}
+                  statusMessage={statusMessage}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -375,8 +392,19 @@ export function DriveSyncModal({
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl sm:rounded-b-2xl flex justify-end">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={isScanning} className="w-full sm:w-auto text-xs">
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl sm:rounded-b-2xl flex items-center justify-between gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSimulateScanDemo}
+            disabled={isScanning}
+            className="text-[11px] text-cyan-800 hover:text-cyan-950 hover:bg-cyan-50 border border-cyan-200/80 flex items-center gap-1.5 font-bold h-8 px-3"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+            <span>Tes Animasi 3D Scanner</span>
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isScanning} className="w-full sm:w-auto text-xs h-8">
             Tutup
           </Button>
         </div>
