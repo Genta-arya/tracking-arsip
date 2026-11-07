@@ -11,6 +11,7 @@ import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
 import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
 import { AuthGate } from '@/components/AuthGate';
+import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { MOCK_DESA_MAP } from '@/data/mockSekadauData';
 import {
@@ -425,22 +426,9 @@ export function App() {
     setIsBypassedDemo(false);
   };
 
-  // Tampilan Loading Memeriksa Sandi
+  // Tampilan Loading Memeriksa Sandi (Cinematic Splash Screen)
   if (isAuthChecking) {
-    return (
-      <div className="min-h-screen bg-kpu-darkMaroon flex flex-col items-center justify-center p-4">
-        <div className="h-16 w-16 rounded-2xl bg-white p-2 flex items-center justify-center mb-4 shadow-xl border border-white/20 animate-pulse overflow-hidden">
-          <img
-            src="/kpu-logo.png"
-            alt="Logo KPU"
-            className="h-full w-full object-contain"
-          />
-        </div>
-        <p className="text-sm font-semibold text-rose-100 tracking-wide">
-          Memeriksa Status Keamanan...
-        </p>
-      </div>
-    );
+    return <AppSplashScreen message="Memeriksa Status Keamanan..." />;
   }
 
   // Tampilan Layar Kunci / Sandi (AuthGate)
