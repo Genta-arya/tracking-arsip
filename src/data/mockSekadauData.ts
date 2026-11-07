@@ -15,33 +15,36 @@ export const MOCK_DESA_MAP: Record<string, string[]> = {
     'Belitang Satu',
     'Belitang Dua',
     'Maboh Permai',
-    'Menua Pela',
+    'Menua Prama',
     'Nanga Ansar',
     'Padak',
     'Setuntung',
   ],
   'Belitang Hilir': [
+    'Empajak',
     'Entabuk',
     'Kumpang Bis',
-    'Menunggal',
+    'Menawai Tekam',
     'Merbang',
     'Semadu',
-    'Sepadu',
-    'Sungai Ayak Satu',
     'Sungai Ayak Dua',
+    'Sungai Ayak Satu',
     'Tapang Pulau',
   ],
   'Belitang Hulu': [
     'Balai Sepuak',
     'Batuk Mulau',
-    'Kerapa Sepana',
-    'Mengkadau Permai',
+    'Bukit Rambat',
+    'Ijuk',
+    'Kumpang Ilong',
+    'Mengaret',
     'Pakit Mulau',
     'Sebetung',
-    'Sekar Putih',
+    'Seburuk Satu',
     'Sungai Antu Hulu',
-    'Sungai Tamara',
+    'Sungai Tapah',
     'Tabuk Hulu',
+    'Terduk Dampak',
   ],
   'Nanga Mahap': [
     'Batu Pahat',
@@ -59,7 +62,10 @@ export const MOCK_DESA_MAP: Record<string, string[]> = {
     'Tembesuk',
   ],
   'Nanga Taman': [
+    'Lubuk Tajau',
     'Meragun',
+    'Nanga Engkulun',
+    'Nanga Kiungkang',
     'Nanga Koman',
     'Nanga Mentukak',
     'Nanga Mongko',
@@ -67,10 +73,10 @@ export const MOCK_DESA_MAP: Record<string, string[]> = {
     'Pantok',
     'Rirang Jati',
     'Senangak',
+    'Sungai Lawak',
     'Tapang Tingang',
   ],
   'Sekadau Hilir': [
-    'Beringkai Raya',
     'Bokak Sebumbun',
     'Engkersik',
     'Ensalang',
@@ -82,12 +88,12 @@ export const MOCK_DESA_MAP: Record<string, string[]> = {
     'Seberang Kapuas',
     'Selalong',
     'Semabi',
-    'Sempulau Indah',
     'Seraras',
     'Sungai Kunyit',
     'Sungai Ringin',
     'Tanjung',
     'Tapang Semadak',
+    'Timpuk',
   ],
   'Sekadau Hulu': [
     'Boti',
@@ -101,22 +107,128 @@ export const MOCK_DESA_MAP: Record<string, string[]> = {
     'Rawak Hulu',
     'Sekonau',
     'Setawar',
-    'Sungai Samban',
+    'Sungai Sambang',
     'Sunsong',
+    'Tapang Perodah',
     'Tinting Boyok',
   ],
 };
 
+// Alokasi TPS per Desa resmi KPU Kabupaten Sekadau (Total: 698 TPS di 87 Desa)
+export const OFFICIAL_DESA_TPS_COUNTS: Record<string, Record<string, number>> = {
+  'Belitang': {
+    'Belitang Satu': 7,
+    'Belitang Dua': 6,
+    'Maboh Permai': 6,
+    'Menua Prama': 6,
+    'Nanga Ansar': 6,
+    'Padak': 6,
+    'Setuntung': 6,
+  },
+  'Belitang Hilir': {
+    'Sungai Ayak Satu': 10,
+    'Sungai Ayak Dua': 10,
+    'Empajak': 9,
+    'Entabuk': 9,
+    'Kumpang Bis': 9,
+    'Menawai Tekam': 9,
+    'Merbang': 9,
+    'Semadu': 9,
+    'Tapang Pulau': 9,
+  },
+  'Belitang Hulu': {
+    'Balai Sepuak': 7,
+    'Batuk Mulau': 7,
+    'Bukit Rambat': 6,
+    'Ijuk': 6,
+    'Kumpang Ilong': 6,
+    'Mengaret': 6,
+    'Pakit Mulau': 6,
+    'Sebetung': 6,
+    'Seburuk Satu': 6,
+    'Sungai Antu Hulu': 6,
+    'Sungai Tapah': 6,
+    'Tabuk Hulu': 6,
+    'Terduk Dampak': 6,
+  },
+  'Nanga Mahap': {
+    'Batu Pahat': 8,
+    'Cenayan': 8,
+    'Karang Betung': 8,
+    'Landau Apin': 8,
+    'Landau Kumpai': 8,
+    'Lembah Beringin': 8,
+    'Nanga Mahap': 7,
+    'Nanga Suri': 7,
+    'Sebabas': 7,
+    'Tamang': 7,
+    'Teluk Kebau': 7,
+    'Tembaga': 7,
+    'Tembesuk': 7,
+  },
+  'Nanga Taman': {
+    'Lubuk Tajau': 7,
+    'Meragun': 7,
+    'Nanga Engkulun': 7,
+    'Nanga Kiungkang': 7,
+    'Nanga Koman': 7,
+    'Nanga Mentukak': 7,
+    'Nanga Mongko': 7,
+    'Nanga Taman': 7,
+    'Pantok': 7,
+    'Rirang Jati': 7,
+    'Senangak': 7,
+    'Sungai Lawak': 7,
+    'Tapang Tingang': 7,
+  },
+  'Sekadau Hilir': {
+    'Mungguk': 26,
+    'Sungai Ringin': 22,
+    'Tanjung': 15,
+    'Seberang Kapuas': 12,
+    'Bokak Sebumbun': 12,
+    'Engkersik': 11,
+    'Gonis Tekam': 11,
+    'Tapang Semadak': 11,
+    'Seraras': 11,
+    'Landau Kodah': 10,
+    'Peniti': 10,
+    'Selalong': 10,
+    'Semabi': 10,
+    'Timpuk': 9,
+    'Merapi': 9,
+    'Ensalang': 8,
+    'Sungai Kunyit': 7,
+  },
+  'Sekadau Hulu': {
+    'Rawak Hilir': 7,
+    'Rawak Hulu': 7,
+    'Boti': 7,
+    'Cupang Gading': 7,
+    'Mondi': 7,
+    'Nanga Biaban': 7,
+    'Nanga Menterap': 7,
+    'Nanga Pemubuh': 7,
+    'Perongkan': 7,
+    'Sekonau': 7,
+    'Setawar': 6,
+    'Sungai Sambang': 6,
+    'Sunsong': 6,
+    'Tapang Perodah': 6,
+    'Tinting Boyok': 6,
+  },
+};
+
 /**
- * Generator data simulasi realistis untuk 7 Kecamatan KPU Sekadau
+ * Generator data simulasi realistis untuk 7 Kecamatan & 87 Desa KPU Sekadau (Tepat 698 TPS)
  */
 export function generateMockSekadauData(): RawTpsData[] {
   const data: RawTpsData[] = [];
 
   Object.entries(MOCK_DESA_MAP).forEach(([kecamatan, desaList]) => {
     desaList.forEach((desa) => {
-      // Setiap desa memiliki antara 2 s/d 6 TPS
-      const tpsCount = desa === 'Mungguk' || desa === 'Sungai Ringin' ? 7 : (desa.length % 3) + 3;
+      // Ambil alokasi TPS spesifik untuk desa ini
+      const tpsCount = OFFICIAL_DESA_TPS_COUNTS[kecamatan]?.[desa] || 5;
 
       for (let t = 1; t <= tpsCount; t++) {
         const tpsFolderName = `TPS ${t}`;
@@ -217,4 +329,3 @@ export function generateMockSekadauData(): RawTpsData[] {
 
   return data;
 }
-
