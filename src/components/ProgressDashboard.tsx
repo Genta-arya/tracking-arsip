@@ -7,9 +7,6 @@ import {
   CheckCircle2,
   FileCheck,
   FolderOpen,
-  ArrowRight,
-  FileText,
-  BarChart3,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +14,8 @@ import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
 import { MobileStackCards3D } from '@/components/MobileStackCards3D';
+import { KecamatanRanking3D } from '@/components/KecamatanRanking3D';
+import { ElectionBreakdown3D } from '@/components/ElectionBreakdown3D';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -471,202 +470,20 @@ export function ProgressDashboard({
         onRangeChange={setChartRange}
       />
 
-      {/* 3. Dua Kolom: Peringkat 7 Kecamatan & Kelengkapan 5 Jenis Surat Suara */}
+      {/* 3. Dua Kolom: Peringkat 7 Kecamatan & Kelengkapan 5 Jenis Surat Suara (3D Command Decks) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Kolom Kiri: Peringkat Progres 7 Kecamatan */}
-        <Card className="shadow-xs border border-slate-200 bg-white">
-          <CardHeader className="bg-slate-50/70 border-b border-slate-200 p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800">
-                  <BarChart3 className="h-4 w-4" />
-                </div>
-                <CardTitle className="text-sm font-bold text-slate-900">
-                  Peringkat Progres 7 Kecamatan
-                </CardTitle>
-              </div>
-              <span className="text-[11px] font-semibold text-slate-500">
-                Berdasarkan % TPS Lengkap
-              </span>
-            </div>
-          </CardHeader>
+        {/* Kolom Kiri: Peringkat Progres 7 Kecamatan (3D Micro-Cards) */}
+        <KecamatanRanking3D
+          sortedKecamatans={sortedKecamatans}
+          onNavigateToRekap={onNavigateToRekap}
+        />
 
-          <CardContent className="p-4 sm:p-5 space-y-3">
-            {sortedKecamatans.map((kec, index) => {
-              const rankColor =
-                index === 0
-                  ? 'bg-amber-400 text-amber-950 font-black'
-                  : index === 1
-                  ? 'bg-slate-200 text-slate-800 font-bold'
-                  : index === 2
-                  ? 'bg-amber-700 text-amber-100 font-bold'
-                  : 'bg-slate-100 text-slate-600 font-semibold';
-
-              return (
-                <motion.div
-                  key={kec.name}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 + 0.15, duration: 0.25 }}
-                  whileHover={{ scale: 1.012, x: 3, transition: { duration: 0.15 } }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => onNavigateToRekap({ kecamatan: kec.name, desa: 'ALL' })}
-                  className="p-3 rounded-xl border border-slate-100 hover:border-kpu-maroon/40 bg-slate-50/50 hover:bg-white transition cursor-pointer group shadow-2xs"
-                  title={`Klik untuk melihat rekapitulasi data TPS Kecamatan ${kec.name}`}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${rankColor}`}>
-                        {index + 1}
-                      </span>
-                      <span className="font-bold text-xs text-slate-800 group-hover:text-kpu-maroon transition truncate">
-                        {kec.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
-                        ({kec.totalDesa} Desa • {kec.totalTPS} TPS)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                        <AnimatedCounter value={kec.totalFiles} /> berkas (
-                        <AnimatedCounter value={kec.percentage} decimals={1} suffix="%" />)
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-kpu-maroon group-hover:translate-x-0.5 transition" />
-                    </div>
-                  </div>
-
-                  {/* Animated Progress Bar dengan Laser Shimmer */}
-                  <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden relative shadow-inner">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, Math.max(0, kec.percentage))}%` }}
-                      transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: index * 0.05 + 0.2 }}
-                      className={`h-full rounded-full relative overflow-hidden ${
-                        kec.percentage >= 100
-                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
-                          : kec.percentage >= 50
-                          ? 'bg-gradient-to-r from-amber-600 to-amber-400'
-                          : 'bg-gradient-to-r from-rose-600 to-rose-400'
-                      }`}
-                    >
-                      <motion.div
-                        animate={{ x: ['-100%', '250%'] }}
-                        transition={{ repeat: Infinity, duration: 2.2, ease: 'linear', delay: index * 0.15 }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-2/3 -skew-x-12"
-                      />
-                    </motion.div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5 flex-wrap gap-1">
-                    <span>
-                      <strong className="text-slate-800 font-bold">
-                        <AnimatedCounter value={kec.totalFiles} />
-                      </strong> berkas scan • {kec.completedTPS} dari {kec.totalTPS} TPS lengkap (5/5)
-                    </span>
-                    {kec.anomalyTPS > 0 && (
-                      <span className="text-rose-600 font-semibold">
-                        ⚠️ {kec.anomalyTPS} TPS Anomali
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Kolom Kanan: Distribusi Kelengkapan 5 Jenis Surat Suara */}
-        <Card className="shadow-xs border border-slate-200 bg-white">
-          <CardHeader className="bg-slate-50/70 border-b border-slate-200 p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-blue-100 text-blue-800">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <CardTitle className="text-sm font-bold text-slate-900">
-                  Kelengkapan 5 Jenis Pemilihan
-                </CardTitle>
-              </div>
-              <span className="text-[11px] font-semibold text-slate-500">
-                Target: {stats.totalTPS} TPS
-              </span>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-4 sm:p-5 space-y-4">
-            {electionBreakdown.map((item, idx) => {
-              return (
-                <motion.div
-                  key={item.key}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + idx * 0.06, duration: 0.35 }}
-                  whileHover={{ y: -3, scale: 1.01, transition: { duration: 0.15 } }}
-                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 space-y-2 hover:border-slate-200 hover:bg-white hover:shadow-sm transition-all"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800">{item.label}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/80 font-bold text-slate-600">
-                        {item.code}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-black text-slate-900">
-                        <AnimatedCounter value={item.percentage} decimals={1} suffix="%" />
-                      </span>
-                      <span className="text-[11px] text-slate-500 ml-1">
-                        (<AnimatedCounter value={item.collected} />/{item.total})
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Animated Progress Bar dengan Laser Shimmer */}
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden relative shadow-inner border border-slate-200/40">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, Math.max(0, item.percentage))}%` }}
-                      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 + idx * 0.07 }}
-                      className="h-full rounded-full bg-gradient-to-r from-kpu-maroon via-red-600 to-kpu-orange relative overflow-hidden"
-                    >
-                      <motion.div
-                        animate={{ x: ['-100%', '250%'] }}
-                        transition={{ repeat: Infinity, duration: 2.4, ease: 'linear', delay: idx * 0.2 }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-2/3 -skew-x-12"
-                      />
-                    </motion.div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
-                    <span className="font-medium text-slate-600">
-                      <strong className="text-slate-800 font-bold">
-                        <AnimatedCounter value={item.collected} />
-                      </strong> berkas terkumpul
-                    </span>
-                    {item.missing > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onNavigateToRekap({
-                            missingElection: item.key,
-                            status: 'ALL',
-                          })
-                        }
-                        className="text-rose-600 hover:text-rose-700 font-bold underline cursor-pointer"
-                      >
-                        Kurang {item.missing} TPS &rarr;
-                      </button>
-                    ) : (
-                      <span className="text-emerald-600 font-bold">✓ 100% Lengkap</span>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </CardContent>
-        </Card>
+        {/* Kolom Kanan: Distribusi Kelengkapan 5 Jenis Surat Suara (3D Ballot Cards) */}
+        <ElectionBreakdown3D
+          items={electionBreakdown}
+          totalTPS={stats.totalTPS}
+          onNavigateToRekap={onNavigateToRekap}
+        />
       </div>
 
       {/* 4. Leaderboard Pengunggah Berkas (Monitoring Staf Pengunggah di Drive) */}
