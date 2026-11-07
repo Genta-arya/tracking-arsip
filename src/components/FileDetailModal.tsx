@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ExternalLink,
   AlertTriangle,
@@ -27,12 +28,19 @@ interface FileDetailModalProps {
 }
 
 export function FileDetailModal({
-  record,
+  record: propRecord,
   open,
   onClose,
   isDemoMode = false,
   currentUserEmail = null,
 }: FileDetailModalProps) {
+  // Simpan record terakhir untuk mendukung animasi keluar (exit animation) AnimatePresence
+  const lastRecordRef = useRef<TPSRecord | null>(null);
+  if (propRecord) {
+    lastRecordRef.current = propRecord;
+  }
+  const record = propRecord || lastRecordRef.current;
+
   const isAdminTeknis = currentUserEmail?.toLowerCase() === 'teknis.kpusekadau@gmail.com';
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [selectedElection, setSelectedElection] = useState<string>('PPWP');
@@ -423,92 +431,100 @@ export function FileDetailModal({
                         </div>
                       </div>
 
-                      {/* Panel Form Inline Edit Status (Hanya Tampil Jika Tombol Perbarui Status Diklik) */}
-                      {editingFileId === file.id && (
-                        <div className="mt-2 pt-2.5 border-t border-slate-200 space-y-2 bg-slate-50/90 p-3 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-[11px] text-slate-800">
-                              🛠️ Tetapkan Kategori Pemilihan / Perbaiki Status Berkas:
-                            </span>
-                            {saveSuccessMsg && (
-                              <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                                <Check className="h-3.5 w-3.5" />
-                                {saveSuccessMsg}
+                      {/* Panel Form Inline Edit Status dengan AnimatePresence */}
+                      <AnimatePresence>
+                        {editingFileId === file.id && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0, y: -6 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
+                            exit={{ opacity: 0, height: 0, y: -6 }}
+                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                            className="mt-2 pt-2.5 border-t border-slate-200 space-y-2 bg-slate-50/90 p-3 rounded-lg overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[11px] text-slate-800">
+                                🛠️ Tetapkan Kategori Pemilihan / Perbaiki Status Berkas:
                               </span>
-                            )}
-                            {saveErrorMsg && (
-                              <span className="text-[11px] font-bold text-rose-600">
-                                {saveErrorMsg}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
-                                Kategori Jenis Pemilihan:
-                              </label>
-                              <select
-                                value={selectedElection}
-                                onChange={(e) => setSelectedElection(e.target.value)}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:ring-1 focus:ring-kpu-maroon"
-                              >
-                                <option value="PPWP">1. Presiden & Wakil Presiden (PPWP)</option>
-                                <option value="DPR_RI">2. DPR Republik Indonesia (DPR RI)</option>
-                                <option value="DPD">3. DPD Republik Indonesia (DPD)</option>
-                                <option value="DPRD_PROV">4. DPRD Provinsi Kalimantan Barat</option>
-                                <option value="DPRD_KAB">5. DPRD Kabupaten Sekadau</option>
-                                <option value="RESET">🔄 Kembalikan ke Semula (Reset)</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
-                                Catatan Perbaikan:
-                              </label>
-                              <input
-                                type="text"
-                                value={resolutionNote}
-                                onChange={(e) => setResolutionNote(e.target.value)}
-                                placeholder="Misal: Sudah diperbaiki di Drive"
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 focus:ring-1 focus:ring-kpu-maroon"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-end gap-2 pt-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingFileId(null)}
-                              disabled={isSaving}
-                              className="h-7 text-xs"
-                            >
-                              Batal
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => handleSaveStatus(file)}
-                              disabled={isSaving}
-                              className="h-7 text-xs bg-kpu-maroon hover:bg-kpu-darkMaroon text-white font-bold shadow-xs"
-                            >
-                              {isSaving ? (
-                                <>
-                                  <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
-                                  <span>Menyimpan ke Cloud...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Save className="h-3 w-3 mr-1.5" />
-                                  <span>Simpan Status ke Cloud</span>
-                                </>
+                              {saveSuccessMsg && (
+                                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                                  <Check className="h-3.5 w-3.5" />
+                                  {saveSuccessMsg}
+                                </span>
                               )}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                              {saveErrorMsg && (
+                                <span className="text-[11px] font-bold text-rose-600">
+                                  {saveErrorMsg}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                                  Kategori Jenis Pemilihan:
+                                </label>
+                                <select
+                                  value={selectedElection}
+                                  onChange={(e) => setSelectedElection(e.target.value)}
+                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:ring-1 focus:ring-kpu-maroon"
+                                >
+                                  <option value="PPWP">1. Presiden & Wakil Presiden (PPWP)</option>
+                                  <option value="DPR_RI">2. DPR Republik Indonesia (DPR RI)</option>
+                                  <option value="DPD">3. DPD Republik Indonesia (DPD)</option>
+                                  <option value="DPRD_PROV">4. DPRD Provinsi Kalimantan Barat</option>
+                                  <option value="DPRD_KAB">5. DPRD Kabupaten Sekadau</option>
+                                  <option value="RESET">🔄 Kembalikan ke Semula (Reset)</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                                  Catatan Perbaikan:
+                                </label>
+                                <input
+                                  type="text"
+                                  value={resolutionNote}
+                                  onChange={(e) => setResolutionNote(e.target.value)}
+                                  placeholder="Misal: Sudah diperbaiki di Drive"
+                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 focus:ring-1 focus:ring-kpu-maroon"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingFileId(null)}
+                                disabled={isSaving}
+                                className="h-7 text-xs cursor-pointer"
+                              >
+                                Batal
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleSaveStatus(file)}
+                                disabled={isSaving}
+                                className="h-7 text-xs bg-kpu-maroon hover:bg-kpu-darkMaroon text-white font-bold shadow-xs cursor-pointer"
+                              >
+                                {isSaving ? (
+                                  <>
+                                    <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
+                                    <span>Menyimpan ke Cloud...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="h-3 w-3 mr-1.5" />
+                                    <span>Simpan Status ke Cloud</span>
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })

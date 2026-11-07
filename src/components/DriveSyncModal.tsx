@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Play, Layers } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
 import { saveKecamatanScanToFirestore, fetchAllFileOverrides } from '@/services/firebase';
 import { RawTpsData, AppConfig } from '@/types';
@@ -249,34 +249,63 @@ export function DriveSyncModal({
         {/* Content */}
         <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
           
-          {/* Status Alert */}
-          {statusMessage && (
-            <div
-              className={`p-3 rounded-xl border font-medium ${
-                statusType === 'error'
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : statusType === 'success'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-slate-100 border-slate-200 text-slate-800'
-              }`}
-            >
-              {statusMessage}
-            </div>
-          )}
+          {/* Status Alert dengan AnimatePresence */}
+          <AnimatePresence mode="wait">
+            {statusMessage && (
+              <motion.div
+                key={statusMessage}
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className={`p-3 rounded-xl border font-medium overflow-hidden ${
+                  statusType === 'error'
+                    ? 'bg-rose-50 border-rose-200 text-rose-800'
+                    : statusType === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-slate-100 border-slate-200 text-slate-800'
+                }`}
+              >
+                {statusMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Progress Bar jika sedang scan */}
-          {isScanning && (
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-amber-900">
-                <span className="flex items-center gap-2">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  Sedang Memindai: {currentScanningKec}
-                </span>
-                <span>{scanProgress}%</span>
-              </div>
-              <Progress value={scanProgress} indicatorColor="bg-kpu-orange" className="h-2" />
-            </div>
-          )}
+          {/* Progress Bar jika sedang scan dengan AnimatePresence */}
+          <AnimatePresence>
+            {isScanning && (
+              <motion.div
+                key="scanning-progress"
+                initial={{ opacity: 0, scale: 0.96, height: 0 }}
+                animate={{ opacity: 1, scale: 1, height: 'auto' }}
+                exit={{ opacity: 0, scale: 0.96, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2 overflow-hidden"
+              >
+                <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    Sedang Memindai: {currentScanningKec}
+                  </span>
+                  <span>{scanProgress}%</span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-amber-100 overflow-hidden relative shadow-inner">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${scanProgress}%` }}
+                    transition={{ duration: 0.4 }}
+                    className="h-full rounded-full bg-gradient-to-r from-kpu-orange to-kpu-gold relative overflow-hidden"
+                  >
+                    <motion.div
+                      animate={{ x: ['-100%', '250%'] }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-2/3 -skew-x-12"
+                    />
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Tombol Ambil Daftar Folder Kecamatan */}
           {kecamatanFolders.length === 0 ? (
