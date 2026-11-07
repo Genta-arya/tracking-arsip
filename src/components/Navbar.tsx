@@ -49,7 +49,7 @@ export function Navbar({
               </Badge>
             </div>
             <p className="text-[11px] sm:text-xs text-rose-200/90 font-medium mt-0.5 truncate">
-              Komisi Pemilihan Umum Kabupaten Sekadau • Kalimantan Barat
+              Komisi Pemilihan Umum Kabupaten Sekadau
             </p>
           </div>
         </div>
