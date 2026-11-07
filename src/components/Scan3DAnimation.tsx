@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Layers,
-  HardDrive,
-  Cloud,
-  FileCheck,
+  FolderOpen,
+  FileText,
+  CheckCheck,
   ShieldCheck,
   Scan,
   Award,
@@ -59,14 +59,14 @@ export function Scan3DAnimation({
           </span>
           <span className="font-mono font-bold tracking-wider text-kpu-lightGold uppercase flex items-center gap-1.5">
             <Scan className="w-3.5 h-3.5 text-kpu-gold animate-pulse" />
-            3D Laser Scanner Berkas C-Hasil KPU
+            Pemindaian Berkas Model C-Hasil KPU
           </span>
         </div>
 
         <div className="flex items-center gap-2 font-mono">
           <span className="hidden sm:inline text-amber-200/60 text-[10px]">PEMILU 2024 • SEKADAU</span>
           <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-kpu-maroon to-kpu-darkMaroon border border-kpu-gold/50 text-kpu-lightGold font-bold text-[9px] shadow-sm">
-            ● SCANNING AKTIF
+            ● PEMINDAIAN AKTIF
           </span>
         </div>
       </div>
@@ -95,10 +95,12 @@ export function Scan3DAnimation({
         >
           {/* Header Berkas C-Hasil Resmi KPU */}
           <div className="flex items-center justify-between pb-1.5 border-b-2 border-kpu-maroon">
-            <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded bg-kpu-maroon text-kpu-lightGold border border-kpu-gold flex items-center justify-center text-[7.5px] font-black shadow-xs">
-                KPU
-              </div>
+            <div className="flex items-center gap-2">
+              <img
+                src="https://chasil.tracking.kpu-sekadau.my.id/kpu-logo.png"
+                alt="Logo KPU"
+                className="w-5 h-5 object-contain shrink-0 drop-shadow-xs"
+              />
               <div className="flex flex-col leading-tight">
                 <span className="text-[8px] font-black tracking-tight text-kpu-darkMaroon uppercase">
                   KOMISI PEMILIHAN UMUM
@@ -190,7 +192,7 @@ export function Scan3DAnimation({
             {/* Reticle Target Tengah */}
             <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-kpu-darkMaroon border border-kpu-gold text-kpu-lightGold text-[6.5px] font-mono tracking-widest uppercase shadow-md flex items-center gap-1 whitespace-nowrap">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-kpu-gold animate-ping" />
-              LASER OPTIK C-HASIL
+              PEMERIKSAAN BERKAS
             </div>
           </motion.div>
         </motion.div>
@@ -211,7 +213,7 @@ export function Scan3DAnimation({
           className="absolute bottom-3 right-3 sm:right-6 z-20 pointer-events-none hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-kpu-darkMaroon/90 border border-kpu-orange/60 backdrop-blur-md shadow-lg text-[9px] text-amber-200 font-mono"
         >
           <ShieldCheck className="w-3.5 h-3.5 text-kpu-gold" />
-          <span>SINKRONISASI FIRESTORE CLOUD</span>
+          <span>SINKRONISASI DATA DRIVE</span>
         </motion.div>
       </div>
 
@@ -261,29 +263,41 @@ export function Scan3DAnimation({
           </motion.div>
         </div>
 
-        {/* Pesan Status Terminal & Stepper KPU */}
+        {/* Pesan Status Terminal & Stepper Ikon KPU */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-[11px] font-mono">
           <div className="flex items-center gap-2 text-amber-100 truncate">
             <span className="text-kpu-gold animate-pulse font-black text-sm">&gt;</span>
             <span className="truncate">{statusMessage || 'Menyiapkan pemindaian berkas scan C-Hasil...'}</span>
           </div>
 
-          {/* Stepper Status KPU */}
-          <div className="flex items-center gap-2 shrink-0 text-[10px] text-amber-200/60">
-            <div className={`flex items-center gap-1 ${progress >= 15 ? 'text-kpu-lightGold font-bold' : ''}`}>
-              <HardDrive className="w-3 h-3 text-kpu-gold" />
-              <span>Drive</span>
-            </div>
-            <span className="text-kpu-gold/60">→</span>
-            <div className={`flex items-center gap-1 ${progress >= 70 ? 'text-kpu-gold font-bold' : ''}`}>
-              <FileCheck className="w-3 h-3 text-kpu-orange" />
-              <span>C-Hasil</span>
-            </div>
-            <span className="text-kpu-gold/60">→</span>
-            <div className={`flex items-center gap-1 ${progress >= 95 ? 'text-kpu-lightGold font-bold' : ''}`}>
-              <Cloud className="w-3 h-3 text-emerald-400" />
-              <span>Firestore</span>
-            </div>
+          {/* Indikator Status Ikon Tanpa Teks Teknis */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-kpu-darkMaroon/80 px-2.5 py-1 rounded-full border border-kpu-gold/30">
+            <span
+              title="Folder Terbaca"
+              className={`p-1 rounded-full transition-colors ${
+                progress >= 15 ? 'bg-kpu-maroon text-kpu-gold shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <FolderOpen className="w-3 h-3" />
+            </span>
+            <span className="text-kpu-gold/40 text-[9px]">›</span>
+            <span
+              title="Formulir Terverifikasi"
+              className={`p-1 rounded-full transition-colors ${
+                progress >= 70 ? 'bg-kpu-maroon text-kpu-gold shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <FileText className="w-3 h-3" />
+            </span>
+            <span className="text-kpu-gold/40 text-[9px]">›</span>
+            <span
+              title="Arsip Tersimpan"
+              className={`p-1 rounded-full transition-colors ${
+                progress >= 95 ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/50 shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <CheckCheck className="w-3 h-3" />
+            </span>
           </div>
         </div>
       </div>

@@ -401,7 +401,7 @@ export function DriveSyncModal({
             className="text-[11px] text-kpu-darkMaroon hover:text-white hover:bg-kpu-maroon border border-kpu-gold/70 bg-amber-50/80 flex items-center gap-1.5 font-bold h-8 px-3 transition-colors shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-kpu-gold fill-kpu-gold" />
-            <span>Tes Animasi 3D Scanner KPU</span>
+            <span>Tes Animasi Pemindaian KPU</span>
           </Button>
 
           <Button variant="outline" size="sm" onClick={onClose} disabled={isScanning} className="w-full sm:w-auto text-xs h-8">
