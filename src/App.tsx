@@ -457,73 +457,81 @@ export function App() {
       {/* 2. Main Dashboard Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
         
-        {/* Navigasi 2 Tab Utama (Model Garis Bawah / Underline) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200">
-          {/* Tab Bar dengan Indikator Garis Bawah */}
-          <div className="w-full sm:w-auto grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-8 -mb-px">
+        {/* Navigasi 2 Tab Utama - 3D Segmented Floating Command Deck */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100/90 border border-slate-200/90 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(255,255,255,0.8)] backdrop-blur-md">
+          {/* 3D Segmented Tab Switcher */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 w-full sm:w-auto">
             {/* TAB 1: PROGRES */}
             <button
               type="button"
               onClick={() => setActiveTab('progress')}
-              className={`relative flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-colors duration-150 ${
+              className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'progress'
-                  ? 'text-kpu-maroon font-bold'
-                  : 'text-slate-500 hover:text-slate-800 font-medium'
+                  ? 'text-white'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'progress' ? 'text-kpu-maroon' : 'text-slate-400'}`} />
-              <span className="whitespace-nowrap">Progres</span>
-              <span
-                className={`ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold shrink-0 transition ${
-                  activeTab === 'progress'
-                    ? 'bg-red-100 text-kpu-maroon'
-                    : 'bg-slate-100 text-slate-500'
-                }`}
-              >
-                <AnimatedCounter value={globalStats.completionPercentage} decimals={1} suffix="%" />
-              </span>
               {activeTab === 'progress' && (
                 <motion.div
-                  layoutId="activeTabUnderline"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-kpu-maroon rounded-full"
-                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  layoutId="active3DTabDeck"
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-kpu-maroon via-red-900 to-kpu-maroon shadow-[0_6px_18px_rgba(102,3,0,0.35),0_2px_4px_rgba(0,0,0,0.1)] border-t border-red-500/50"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                 />
               )}
+              <span className="relative z-10 flex items-center gap-2">
+                <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'progress' ? 'text-amber-300' : 'text-slate-500'}`} />
+                <span className="whitespace-nowrap font-black">Progres</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-colors shadow-2xs ${
+                    activeTab === 'progress'
+                      ? 'bg-amber-400 text-amber-950 border border-amber-300/80'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <AnimatedCounter value={globalStats.completionPercentage} decimals={1} suffix="%" />
+                </span>
+              </span>
             </button>
 
             {/* TAB 2: REKAPITULASI */}
             <button
               type="button"
               onClick={() => setActiveTab('rekapitulasi')}
-              className={`relative flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-colors duration-150 cursor-pointer ${
+              className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'rekapitulasi'
-                  ? 'text-kpu-maroon font-bold'
-                  : 'text-slate-500 hover:text-slate-800 font-medium'
+                  ? 'text-white'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Table className={`h-4 w-4 shrink-0 ${activeTab === 'rekapitulasi' ? 'text-kpu-maroon' : 'text-slate-400'}`} />
-              <span className="whitespace-nowrap">Rekapitulasi</span>
-              <span
-                className={`ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold shrink-0 transition ${
-                  activeTab === 'rekapitulasi'
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-slate-100 text-slate-500'
-                }`}
-              >
-                <AnimatedCounter value={processedRecords.length} /> TPS
-              </span>
               {activeTab === 'rekapitulasi' && (
                 <motion.div
-                  layoutId="activeTabUnderline"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-kpu-maroon rounded-full"
-                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  layoutId="active3DTabDeck"
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-kpu-maroon via-red-900 to-kpu-maroon shadow-[0_6px_18px_rgba(102,3,0,0.35),0_2px_4px_rgba(0,0,0,0.1)] border-t border-red-500/50"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                 />
               )}
+              <span className="relative z-10 flex items-center gap-2">
+                <Table className={`h-4 w-4 shrink-0 ${activeTab === 'rekapitulasi' ? 'text-amber-300' : 'text-slate-500'}`} />
+                <span className="whitespace-nowrap font-black">Rekapitulasi</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-colors shadow-2xs ${
+                    activeTab === 'rekapitulasi'
+                      ? 'bg-amber-400 text-amber-950 border border-amber-300/80'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <AnimatedCounter value={processedRecords.length} /> TPS
+                </span>
+              </span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500 font-medium pb-2 sm:pb-3 px-1 sm:px-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
+          {/* 3D Floating Status Badge di Kanan Tab */}
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/90 border border-slate-200/90 shadow-2xs text-[11px] sm:text-xs text-slate-700 font-bold self-start sm:self-auto">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+            </span>
             <span>Sistem Monitoring C-Hasil • 7 Kecamatan</span>
           </div>
         </div>
