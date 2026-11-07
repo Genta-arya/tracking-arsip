@@ -26,17 +26,18 @@ interface LastMovedInfo {
 
 /**
  * Komponen 3D Stack Card Khusus Tampilan Mobile (< sm)
- * Dilengkapi animasi fisik alami: kartu depan meluncur ke samping,
- * berpindah ke lapisan z-index paling bawah, lalu masuk ke belakang tumpukan.
+ * Susunan dibuat berantakan/tersebar alami (fanned-out card stack) layaknya
+ * kartu fisik yang ditumpuk di atas meja, lengkap dengan animasi count-up
+ * yang berputar ulang setiap kali kartu berganti.
  */
 export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lastMoved, setLastMoved] = useState<LastMovedInfo | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
-  // Motion value untuk gesture drag real-time
+  // Motion value untuk gesture drag real-time pada kartu depan
   const dragX = useMotionValue(0);
-  const rotate = useTransform(dragX, [-180, 180], [-14, 14]);
+  const rotate = useTransform(dragX, [-180, 180], [-16, 16]);
   const opacity = useTransform(dragX, [-220, -100, 0, 100, 220], [0.6, 0.95, 1, 0.95, 0.6]);
 
   const cards = [
@@ -45,7 +46,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
       title: 'TOTAL WILAYAH & TPS',
       value: stats.totalTPS,
       unit: 'TPS',
-      subtitle: `${stats.totalKecamatan} Kecamatan • ${stats.totalDesa || 87} Desa/Kel.`,
+      subtitle: `${stats.totalKecamatan} Kecamatan • 87 Desa/Kel.`,
       icon: FolderOpen,
       borderColor: 'border-l-kpu-maroon',
       glowColor: 'rgba(102, 3, 0, 0.25)',
@@ -141,8 +142,8 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
   };
 
   const handleDragEnd = (_: any, info: any) => {
-    const threshold = 45;
-    const velocityThreshold = 280;
+    const threshold = 40;
+    const velocityThreshold = 250;
 
     if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
       handleNext();
@@ -152,9 +153,9 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
   };
 
   return (
-    <div className="w-full [perspective:1200px] select-none pt-1 pb-2">
-      {/* Area Tumpukan Kartu 3D (3D Card Stack Container) */}
-      <div className="relative h-[184px] w-full flex items-center justify-center">
+    <div className="w-full [perspective:1200px] select-none pt-2 pb-3 px-2">
+      {/* Area Tumpukan Kartu 3D Fanned-Out (3D Card Stack Container) */}
+      <div className="relative h-[208px] w-full flex items-center justify-center">
         {cards.map((card, index) => {
           // Hitung jarak posisi dari kartu yang aktif (0 = paling depan, 1 = di belakangnya, dst.)
           const diff = (index - currentIndex + cards.length) % cards.length;
@@ -181,19 +182,19 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
                   opacity: 1,
                 }}
                 animate={{
-                  x: [startX, exitX, exitX, 0],
-                  y: [0, -6, 32, 32],
-                  scale: [1, 1.02, 0.82, 0.82],
-                  rotate: [sign * 6, sign * 14, sign * 3, 0],
+                  x: [startX, exitX, exitX, 8],
+                  y: [0, -6, 42, 42],
+                  scale: [1, 1.02, 0.94, 0.94],
+                  rotate: [sign * 6, sign * 14, sign * 4, 3],
                   zIndex: [35, 35, 5, 5],
-                  opacity: [1, 1, 0.6, 0.4],
+                  opacity: [1, 1, 0.7, 0.6],
                 }}
                 transition={{
                   duration: 0.62,
                   times: [0, 0.38, 0.48, 1],
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className={`absolute top-0 inset-x-0 h-[152px] rounded-2xl bg-white border border-slate-200/90 border-l-[5px] ${card.borderColor} shadow-[0_12px_28px_-6px_rgba(0,0,0,0.12),0_6px_10px_-4px_rgba(0,0,0,0.06)] p-4 flex flex-col justify-between overflow-hidden pointer-events-none`}
+                className={`absolute top-0 inset-x-0 h-[152px] rounded-2xl bg-white border border-slate-200/90 border-l-[5px] ${card.borderColor} shadow-[0_12px_28px_-6px_rgba(0,0,0,0.14),0_6px_10px_-4px_rgba(0,0,0,0.08)] p-4 flex flex-col justify-between overflow-hidden pointer-events-none`}
               >
                 {/* Glow Corner */}
                 <div
@@ -212,6 +213,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
                     </p>
                     <div className="flex items-baseline gap-2">
                       <AnimatedCounter
+                        key={`${card.id}-${currentIndex}`}
                         value={card.value}
                         decimals={card.isPercentage ? 1 : 0}
                         suffix={card.isPercentage ? '%' : ''}
@@ -241,7 +243,8 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
             );
           }
 
-          // Transformasi standar untuk kartu lainnya dalam tumpukan
+          // Transformasi Fanned-Out: Sudut rotasi dan pergeseran X/Y dibuat jelas terbuka & berantakan alami
+          let targetX = 0;
           let targetY = 0;
           let targetScale = 1;
           let targetZIndex = 30;
@@ -249,29 +252,37 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
           let targetRotate = 0;
 
           if (diff === 0) {
+            // Kartu Paling Depan
+            targetX = 0;
             targetY = 0;
             targetScale = 1;
             targetZIndex = 30;
             targetOpacity = 1;
             targetRotate = 0;
           } else if (diff === 1) {
-            targetY = 12;
-            targetScale = 0.94;
+            // Kartu ke-2: Miring ke KANAN + geser ke kanan agar sudut & aksen warna jelas terlihat menyembul
+            targetX = 14;
+            targetY = 16;
+            targetScale = 0.98;
             targetZIndex = 20;
-            targetOpacity = 0.88;
-            targetRotate = 2;
+            targetOpacity = 0.94;
+            targetRotate = 5.5;
           } else if (diff === 2) {
-            targetY = 22;
-            targetScale = 0.88;
+            // Kartu ke-3: Miring ke KIRI + geser ke kiri agar sudut kiri menyembul berlawanan
+            targetX = -14;
+            targetY = 30;
+            targetScale = 0.96;
             targetZIndex = 10;
-            targetOpacity = 0.65;
-            targetRotate = -2;
+            targetOpacity = 0.82;
+            targetRotate = -5;
           } else {
-            targetY = 32;
-            targetScale = 0.82;
+            // Kartu ke-4 (Paling Bawah): Berada di bawah agak ke kanan dengan sudut sedikit miring
+            targetX = 8;
+            targetY = 42;
+            targetScale = 0.94;
             targetZIndex = 5;
-            targetOpacity = 0.4;
-            targetRotate = 0;
+            targetOpacity = 0.65;
+            targetRotate = 3;
           }
 
           return (
@@ -279,21 +290,23 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
               key={card.id}
               style={{
                 zIndex: targetZIndex,
-                x: isTop ? dragX : 0,
-                rotate: isTop ? rotate : targetRotate,
+                x: isTop ? dragX : undefined,
+                rotate: isTop ? rotate : undefined,
                 opacity: isTop ? opacity : targetOpacity,
               }}
               animate={{
+                x: isTop ? 0 : targetX,
                 y: targetY,
                 scale: targetScale,
-                transition: { type: 'spring', stiffness: 360, damping: 28 },
+                rotate: isTop ? 0 : targetRotate,
+                transition: { type: 'spring', stiffness: 340, damping: 26 },
               }}
               drag={isTop && !isBusy ? 'x' : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.8}
               onDragEnd={isTop ? handleDragEnd : undefined}
               whileTap={isTop && !isBusy ? { cursor: 'grabbing' } : undefined}
-              className={`absolute top-0 inset-x-0 h-[152px] rounded-2xl bg-white border border-slate-200/90 border-l-[5px] ${card.borderColor} shadow-[0_12px_28px_-6px_rgba(0,0,0,0.12),0_6px_10px_-4px_rgba(0,0,0,0.06)] p-4 flex flex-col justify-between overflow-hidden ${
+              className={`absolute top-0 inset-x-0 h-[152px] rounded-2xl bg-white border border-slate-200/90 border-l-[5px] ${card.borderColor} shadow-[0_12px_28px_-6px_rgba(0,0,0,0.14),0_6px_10px_-4px_rgba(0,0,0,0.08)] p-4 flex flex-col justify-between overflow-hidden ${
                 isTop ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
               }`}
             >
@@ -315,6 +328,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
 
                   <div className="flex items-baseline gap-2">
                     <AnimatedCounter
+                      key={`${card.id}-${currentIndex}`}
                       value={card.value}
                       decimals={card.isPercentage ? 1 : 0}
                       suffix={card.isPercentage ? '%' : ''}
@@ -343,6 +357,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
               {card.id === 'progres' ? (
                 <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden relative border border-slate-200/60 p-0.5 mt-1">
                   <motion.div
+                    key={`progress-fill-${currentIndex}`}
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, Math.max(0, stats.completionPercentage))}%` }}
                     transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
@@ -356,7 +371,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
                   </motion.div>
                 </div>
               ) : (
-                /* Footer Kartu Bersih Tanpa Tulisan Geser */
+                /* Footer Kartu Bersih */
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100">
                   <span className="font-semibold text-slate-500 flex items-center gap-1">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
@@ -371,7 +386,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
       </div>
 
       {/* Kontrol Navigasi Terpadu: Tombol Panah & Titik Pagination */}
-      <div className="flex items-center justify-center gap-3 mt-1">
+      <div className="flex items-center justify-center gap-3 mt-2">
         <button
           type="button"
           onClick={handlePrev}
