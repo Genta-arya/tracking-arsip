@@ -358,15 +358,18 @@ export function SekadauInteractiveMap({
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden transition-all duration-300 isolate relative z-0">
+    <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-[0_12px_36px_-10px_rgba(15,23,42,0.08),0_4px_12px_rgba(15,23,42,0.04)] overflow-hidden transition-all duration-300 isolate relative z-0">
+      {/* Specular top highlight */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent pointer-events-none" />
+
       {/* 1. Header Toolbar Peta */}
-      <div className="px-4 py-3 bg-gradient-to-r from-slate-50 via-white to-amber-50/30 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-4 py-3 bg-gradient-to-r from-slate-50/90 via-white to-amber-50/40 border-b border-slate-200/90 flex flex-wrap items-center justify-between gap-3 relative">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-kpu-maroon text-white shadow-xs">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-[#8B0000] to-[#5a0000] text-amber-300 flex items-center justify-center shadow-[0_3px_8px_rgba(139,0,0,0.35)] ring-1 ring-white/20">
             <Compass className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-800 tracking-tight">
+            <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
               Peta Pantauan Wilayah C-Hasil Sekadau
             </h3>
             <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
@@ -384,7 +387,7 @@ export function SekadauInteractiveMap({
               onSelectDesa('ALL');
             }}
             title="Tampilkan seluruh Kabupaten Sekadau"
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-2xs transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 bg-gradient-to-b from-white to-slate-100 hover:from-slate-50 hover:to-slate-200 border border-slate-300/80 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] transition-all cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
             <span className="hidden sm:inline">Reset Wilayah</span>
@@ -393,7 +396,7 @@ export function SekadauInteractiveMap({
           {/* Toggle Sembunyikan / Buka Peta */}
           <button
             onClick={() => setIsCollapsed((prev) => !prev)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-kpu-maroon bg-red-50 hover:bg-red-100/70 border border-red-200/60 rounded-lg shadow-2xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-kpu-maroon bg-gradient-to-b from-rose-50 to-red-100/80 hover:from-red-100 hover:to-red-200/80 border border-red-200 rounded-xl shadow-[0_2px_5px_rgba(139,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(139,0,0,0.2)] transition-all cursor-pointer"
           >
             {isCollapsed ? (
               <>

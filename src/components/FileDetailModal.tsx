@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile } from '@/types';
 import { updateFileAnomalyStatus } from '@/services/firebase';
 
@@ -27,6 +26,46 @@ interface FileDetailModalProps {
   currentUserEmail?: string | null;
 }
 
+// Konfigurasi tema warna 3D untuk 5 jenis surat suara resmi
+const BALLOT_THEMES: Record<
+  ElectionType,
+  {
+    badgeClass: string;
+    spineColor: string;
+  }
+> = {
+  PPWP: {
+    badgeClass:
+      'bg-gradient-to-b from-rose-600 via-red-700 to-rose-900 text-white shadow-[0_2px_4px_rgba(190,18,60,0.3)] border border-rose-500',
+    spineColor: 'border-l-rose-600',
+  },
+  DPR_RI: {
+    badgeClass:
+      'bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 text-amber-950 font-black shadow-[0_2px_4px_rgba(217,119,6,0.3)] border border-amber-300',
+    spineColor: 'border-l-amber-500',
+  },
+  DPD: {
+    badgeClass:
+      'bg-gradient-to-b from-red-500 via-rose-600 to-red-800 text-white shadow-[0_2px_4px_rgba(220,38,38,0.3)] border border-red-400',
+    spineColor: 'border-l-red-500',
+  },
+  DPRD_PROV: {
+    badgeClass:
+      'bg-gradient-to-b from-blue-500 via-blue-600 to-indigo-800 text-white shadow-[0_2px_4px_rgba(37,99,235,0.3)] border border-blue-400',
+    spineColor: 'border-l-blue-500',
+  },
+  DPRD_KAB: {
+    badgeClass:
+      'bg-gradient-to-b from-emerald-500 via-emerald-600 to-teal-800 text-white shadow-[0_2px_4px_rgba(16,185,129,0.3)] border border-emerald-400',
+    spineColor: 'border-l-emerald-500',
+  },
+};
+
+/**
+ * FileDetailModal 3D Tactical Dossier
+ * Modal rincian berkas TPS dengan depth 3D fisik, kartu 5 slot pemilihan interaktif,
+ * dan tombol kontrol taktil berbobot.
+ */
 export function FileDetailModal({
   record: propRecord,
   open,
@@ -79,92 +118,120 @@ export function FileDetailModal({
         fileId: file.id,
         overrideElection: isReset ? undefined : (selectedElection as ElectionType),
         isResolved: !isReset,
-        resolutionNote: resolutionNote.trim(),
+        resolutionNote: isReset ? undefined : resolutionNote,
       });
 
-      setSaveSuccessMsg('Status berkas berhasil diperbarui & disimpan permanen ke Firestore!');
+      // Update state lokal
+      if (isReset) {
+        delete file.overrideElection;
+        file.isResolved = false;
+        delete file.resolutionNote;
+        delete file.resolvedAt;
+        delete file.resolvedBy;
+      } else {
+        file.overrideElection = selectedElection as ElectionType;
+        file.isResolved = true;
+        file.resolutionNote = resolutionNote;
+        file.resolvedAt = new Date().toISOString();
+        file.resolvedBy = currentUserEmail || 'Admin Teknis';
+      }
+
+      setSaveSuccessMsg('Status berkas berhasil disimpan ke Cloud Firestore!');
       setTimeout(() => {
         setEditingFileId(null);
         setSaveSuccessMsg(null);
       }, 1400);
     } catch (err: any) {
-      setSaveErrorMsg(err.message || 'Gagal menyimpan status anomali ke Firestore.');
+      console.error('Gagal update anomali:', err);
+      setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent onClose={onClose} className="max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col p-0 rounded-xl sm:rounded-2xl">
-        
-        {/* Header Modal */}
-        <div className="bg-gradient-to-r from-kpu-darkMaroon to-kpu-maroon text-white p-4 sm:p-5 rounded-t-xl sm:rounded-t-2xl pr-10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded bg-kpu-gold text-kpu-darkMaroon font-black text-xs">
-                  {record.tpsFolderName}
-                </span>
-                <span className="text-xs sm:text-sm font-semibold text-rose-100">
-                  Desa {record.desa}
-                </span>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5),0_10px_20px_rgba(0,0,0,0.2)] bg-white select-none">
+        {/* Top 3D Specular Highlight Line */}
+        <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white/80 to-transparent pointer-events-none z-30" />
+
+        {/* Header Modal 3D Command Chassis */}
+        <div className="relative bg-gradient-to-b from-[#5c0604] via-[#480503] to-[#360302] text-white p-4 sm:p-5 pr-10 border-b border-black/50 shadow-[0_8px_20px_rgba(0,0,0,0.35)] overflow-hidden">
+          {/* Ambient Top Glow */}
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+            <div className="flex items-center gap-3">
+              {/* 3D Floating Acrylic Folder Tile */}
+              <div className="h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-b from-white via-slate-50 to-slate-100 p-1.5 flex items-center justify-center border border-white/90 shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1.5px_1px_rgba(255,255,255,1),inset_0_-1.5px_1px_rgba(0,0,0,0.1)]">
+                <FolderOpen className="h-5 w-5 text-kpu-maroon" />
               </div>
-              <DialogTitle className="text-lg sm:text-xl font-extrabold text-white leading-tight">
-                Rincian Berkas C-Hasil TPS
-              </DialogTitle>
-              <p className="text-[11px] sm:text-xs text-rose-200">
-                Kecamatan {record.kecamatan} • KPU Kabupaten Sekadau
-              </p>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* 3D Gold Pill Badge TPS */}
+                  <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 text-amber-950 font-black text-xs shadow-[0_2px_4px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.7)] border border-amber-200">
+                    {record.tpsFolderName}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-rose-100">
+                    Desa {record.desa}
+                  </span>
+                </div>
+                <DialogTitle className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                  Rincian Berkas C-Hasil TPS
+                </DialogTitle>
+                <p className="text-[11px] text-rose-200/90 font-medium">
+                  Kecamatan {record.kecamatan} • KPU Kabupaten Sekadau
+                </p>
+              </div>
             </div>
 
-            {/* Kelengkapan Badge */}
-            <div className="self-start sm:self-auto sm:text-right">
+            {/* Kelengkapan 3D Badge */}
+            <div className="self-start sm:self-auto sm:text-right shrink-0">
               {record.isComplete && !record.hasAnomaly ? (
-                <Badge className="bg-emerald-500 text-white border-0 text-[11px] sm:text-xs py-1 px-2.5 sm:px-3 font-semibold">
+                <span className="inline-block px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[0_3px_8px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] border border-emerald-300">
                   ✓ Lengkap 5/5
-                </Badge>
+                </span>
               ) : record.isComplete && record.hasAnomaly ? (
-                <Badge className="bg-amber-500 text-white border-0 text-[11px] sm:text-xs py-1 px-2.5 sm:px-3 font-bold">
+                <span className="inline-block px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-b from-amber-400 to-yellow-500 text-amber-950 shadow-[0_3px_8px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.7)] border border-amber-300">
                   ⚠️ 5/5 (Ada Anomali)
-                </Badge>
+                </span>
               ) : record.hasAnomaly ? (
-                <Badge className="bg-amber-500 text-white border-0 text-[11px] sm:text-xs py-1 px-2.5 sm:px-3 font-bold">
+                <span className="inline-block px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-b from-amber-400 to-yellow-500 text-amber-950 shadow-[0_3px_8px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.7)] border border-amber-300">
                   ⚠️ Kurang {5 - record.completedCount} Berkas (Anomali)
-                </Badge>
+                </span>
               ) : (
-                <Badge className="bg-orange-500 text-white border-0 text-[11px] sm:text-xs py-1 px-2.5 sm:px-3 font-semibold">
+                <span className="inline-block px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-b from-orange-500 to-red-600 text-white shadow-[0_3px_8px_rgba(234,88,12,0.35),inset_0_1px_0_rgba(255,255,255,0.4)] border border-orange-400">
                   Kurang {5 - record.completedCount} Berkas
-                </Badge>
+                </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Isi Modal: Daftar 5 Pemilihan */}
-        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 flex-1">
-          
+        {/* Isi Modal 3D: Daftar 5 Pemilihan */}
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
           {/* Anomali Global TPS jika ada */}
           {record.hasAnomaly && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
-              <div className="flex items-center gap-1.5 font-bold text-amber-800">
-                <AlertTriangle className="h-4 w-4" />
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 border border-amber-300 text-amber-950 text-xs space-y-1.5 shadow-[0_4px_12px_rgba(245,158,11,0.1),inset_0_1px_0_rgba(255,255,255,0.9)]">
+              <div className="flex items-center gap-2 font-black text-amber-900">
+                <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0" />
                 <span>Peringatan Anomali Pada Folder TPS Ini:</span>
               </div>
-              <ul className="list-disc pl-5 space-y-1 text-slate-700">
+              <ul className="list-disc pl-5 space-y-1 text-slate-800 font-medium">
                 {record.anomalies.map((anom, i) => (
                   <li key={i}>
-                    <strong className="text-amber-900">{anom.fileName}</strong>: {anom.message}
+                    <strong className="text-amber-950 font-bold">{anom.fileName}</strong>: {anom.message}
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Checklist 5 Slot Pemilihan */}
+          {/* Checklist 5 Slot Pemilihan 3D */}
           <div className="space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Status 5 Kategori Pemilihan Pemilu 2024:
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <span>Status 5 Kategori Pemilihan Pemilu 2024</span>
             </h4>
 
             {ELECTION_LIST.map((elec) => {
@@ -177,88 +244,103 @@ export function FileDetailModal({
 
               const isFound = !!file;
               const hasAnomaly = file && file.anomalies.length > 0;
+              const ballotTheme = BALLOT_THEMES[elec.key] || BALLOT_THEMES.PPWP;
 
               return (
-                <div
+                <motion.div
                   key={elec.key}
-                  className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition ${
+                  whileHover={{ y: -2, scale: 1.008 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className={`p-3.5 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_3px_10px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] ${
                     isFound
                       ? hasAnomaly
-                        ? 'border-amber-300 border-l-4 border-l-amber-500 bg-amber-50/70 shadow-xs ring-1 ring-amber-300'
-                        : 'border-slate-200 bg-white'
-                      : 'border-rose-200 bg-rose-50/30'
+                        ? 'border-amber-300 border-l-[5px] border-l-amber-500 bg-gradient-to-r from-amber-50/70 via-white to-amber-50/40 ring-1 ring-amber-300'
+                        : `border-slate-200/90 border-l-[5px] ${ballotTheme.spineColor} bg-white hover:border-slate-300`
+                      : 'border-rose-200/90 border-l-[5px] border-l-rose-500 bg-gradient-to-r from-rose-50/40 via-white to-rose-50/20'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5">
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* 3D Indicator Gem */}
+                    <div className="mt-0.5 shrink-0">
                       {isFound ? (
                         hasAnomaly ? (
-                          <AlertTriangle className="h-5 w-5 text-amber-600" />
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-400 to-yellow-500 text-amber-950 flex items-center justify-center shadow-[0_3px_8px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] border border-amber-300 animate-pulse">
+                            <AlertTriangle className="h-4.5 w-4.5 stroke-[2.5]" />
+                          </div>
                         ) : (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-[0_3px_8px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.7)] border border-emerald-300">
+                            <CheckCircle2 className="h-4.5 w-4.5 stroke-[2.5]" />
+                          </div>
                         )
                       ) : (
-                        <XCircle className="h-5 w-5 text-rose-500" />
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100 text-rose-500 flex items-center justify-center shadow-[inset_0_1.5px_2px_rgba(0,0,0,0.08)] border border-rose-200">
+                          <XCircle className="h-4.5 w-4.5 stroke-[2.5]" />
+                        </div>
                       )}
                     </div>
-                    <div>
+
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-800">
+                        <span className="font-extrabold text-xs sm:text-sm text-slate-900 tracking-tight">
                           {elec.label}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 font-semibold text-slate-600">
+                        <span
+                          className={`text-[9.5px] px-2 py-0.5 rounded-md font-black tracking-wide ${ballotTheme.badgeClass}`}
+                        >
                           {elec.code}
                         </span>
                       </div>
 
                       {isFound ? (
                         <div className="mt-1 space-y-0.5">
-                          <p className="text-xs font-medium text-slate-600 truncate max-w-sm sm:max-w-md">
+                          <p className="text-xs font-semibold text-slate-700 truncate max-w-sm sm:max-w-md">
                             📄 {file?.name}
                           </p>
                           {hasAnomaly && (
-                            <p className="text-[11px] text-amber-700 font-medium">
+                            <p className="text-[11px] text-amber-900 font-bold">
                               ⚠️ {file?.anomalies[0].message}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-rose-600 font-medium mt-1">
+                        <p className="text-xs text-rose-600 font-semibold mt-0.5">
                           Berkas scan belum ditemukan di folder Google Drive.
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Tombol Aksi Preview Berkas (Hanya aktif jika bukan mode preview) */}
+                  {/* Tombol Aksi Preview Berkas 3D */}
                   {isFound && file?.url && !isDemoMode && (
                     <div className="shrink-0 flex items-center gap-1.5 self-end sm:self-center">
-                      <a
+                      <motion.a
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96, y: 1 }}
                         href={file.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-slate-900 transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-800 hover:text-kpu-maroon border border-slate-300 shadow-[0_2px_0_#cbd5e1,0_2px_4px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer"
                         title="Lihat berkas di Google Drive"
                       >
                         <FileText className="h-3.5 w-3.5 text-slate-600" />
                         <span>Preview Berkas</span>
                         <ExternalLink className="h-3 w-3 text-slate-400" />
-                      </a>
+                      </motion.a>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>
 
           {/* Seluruh Berkas Terdeteksi (termasuk file extra / unrecognized) */}
           <div className="pt-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
               Daftar Seluruh File di Folder ({record.files.length} Berkas):
             </h4>
             <div className="space-y-2">
               {record.files.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">
                   Folder Google Drive ini masih kosong (0 file).
                 </div>
               ) : (
@@ -270,11 +352,11 @@ export function FileDetailModal({
                   return (
                     <div
                       key={file.id}
-                      className={`p-3 px-3.5 rounded-xl border flex flex-col gap-2.5 text-xs transition ${
+                      className={`p-3.5 rounded-2xl border flex flex-col gap-2.5 text-xs transition shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.9)] ${
                         file.isResolved
-                          ? 'border-emerald-200 bg-emerald-50/40'
+                          ? 'border-emerald-200 bg-emerald-50/50'
                           : isFileAnomaly
-                          ? 'border-amber-300 border-l-4 border-l-amber-500 bg-amber-50 shadow-xs ring-1 ring-amber-400/40'
+                          ? 'border-amber-300 border-l-[5px] border-l-amber-500 bg-amber-50/90 shadow-2xs ring-1 ring-amber-400/40'
                           : 'border-slate-200 bg-white hover:bg-slate-50/80'
                       }`}
                     >
@@ -294,17 +376,17 @@ export function FileDetailModal({
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p
                                 className={`font-bold break-all text-xs ${
-                                  isFileAnomaly && !file.isResolved ? 'text-amber-950 font-bold' : 'text-slate-800'
+                                  isFileAnomaly && !file.isResolved ? 'text-amber-950 font-black' : 'text-slate-800'
                                 }`}
                               >
                                 {file.name}
                               </p>
                               {file.isResolved ? (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                  ✓ Terverifikasi / Diperbaiki ({file.detectedElection})
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  ✓ Terverifikasi ({file.detectedElection})
                                 </span>
                               ) : isFileAnomaly && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 border border-amber-300">
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 border border-amber-300">
                                   ⚠️ Perlu Perhatian (Anomali)
                                 </span>
                               )}
@@ -312,12 +394,12 @@ export function FileDetailModal({
 
                             <div className="flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap text-[11px]">
                               <span className="text-slate-500 text-[10px] sm:text-[11px]">
-                                Kategori Terdeteksi:{' '}
+                                Kategori:{' '}
                                 <strong
                                   className={
                                     file.detectedElection === 'UNKNOWN'
                                       ? 'text-rose-600 font-bold'
-                                      : 'text-slate-700'
+                                      : 'text-slate-800'
                                   }
                                 >
                                   {file.detectedElection === 'UNKNOWN'
@@ -328,14 +410,14 @@ export function FileDetailModal({
 
                               {/* Info Pengunggah di Google Drive */}
                               <span
-                                className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-medium border ${
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border ${
                                   file.uploader
-                                    ? 'bg-amber-50 text-amber-900 border-amber-200'
+                                    ? 'bg-amber-50 text-amber-950 border-amber-200'
                                     : 'bg-slate-100 text-slate-500 border-slate-200'
                                 }`}
                                 title="Akun Google yang mengunggah / memiliki file di Google Drive"
                               >
-                                <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400" />
+                                <User className="h-3 w-3 text-slate-400" />
                                 <span>
                                   Pengunggah:{' '}
                                   <strong className={file.uploader ? 'text-amber-950 font-bold' : 'text-slate-500 font-normal'}>
@@ -347,10 +429,10 @@ export function FileDetailModal({
                               {/* Waktu Upload / Update di Drive */}
                               {(file.createdAt || file.updatedAt) && (
                                 <span
-                                  className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium text-[10px] sm:text-[11px] border border-slate-200"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium text-[10px] border border-slate-200"
                                   title="Waktu file diupload / diperbarui di Google Drive"
                                 >
-                                  <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400" />
+                                  <Clock className="h-3 w-3 text-slate-400" />
                                   <span>
                                     {new Date(file.createdAt || file.updatedAt!).toLocaleDateString('id-ID', {
                                       day: '2-digit',
@@ -384,7 +466,7 @@ export function FileDetailModal({
                                   {file.anomalies.map((anom, idx) => (
                                     <p
                                       key={idx}
-                                      className="text-[11px] text-amber-900 font-medium"
+                                      className="text-[11px] text-amber-900 font-bold"
                                     >
                                       ⚠️ {anom.message}
                                     </p>
@@ -394,44 +476,47 @@ export function FileDetailModal({
                           </div>
                         </div>
 
-                        {/* Tombol Aksi Kanan: Buka & Perbarui Status */}
+                        {/* Tombol Aksi Kanan: Buka & Perbarui Status 3D */}
                         <div className="shrink-0 flex items-center gap-1.5 self-end sm:self-center">
                           {!isDemoMode && isAdminTeknis && (
-                            <Button
-                              variant="outline"
-                              size="sm"
+                            <motion.button
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.96, y: 1 }}
+                              type="button"
                               onClick={() => handleStartEdit(file)}
-                              className={`h-7 px-2 text-[11px] font-semibold ${
+                              className={`h-7 px-3 text-[11px] font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1 shadow-2xs ${
                                 editingFileId === file.id
-                                  ? 'bg-amber-100 border-amber-400 text-amber-900'
-                                  : 'text-slate-700 border-slate-300 hover:border-kpu-maroon hover:text-kpu-maroon'
+                                  ? 'bg-amber-100 border-amber-400 text-amber-950'
+                                  : 'text-slate-700 border-slate-300 bg-white hover:border-kpu-maroon hover:text-kpu-maroon'
                               }`}
                               title="Khusus Admin Teknis: Perbarui atau tetapkan status jenis pemilihan"
                             >
-                              <Wrench className="h-3 w-3 mr-1 text-slate-500" />
+                              <Wrench className="h-3 w-3" />
                               <span>{file.isResolved ? 'Edit Status' : 'Perbarui Status'}</span>
-                            </Button>
+                            </motion.button>
                           )}
 
                           {file.url && !isDemoMode && (
-                            <a
+                            <motion.a
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.96, y: 1 }}
                               href={file.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={`text-xs font-bold shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                              className={`text-xs font-black shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition cursor-pointer ${
                                 isFileAnomaly && !file.isResolved
-                                  ? 'bg-amber-200 hover:bg-amber-300 text-amber-950 border border-amber-300'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                                  ? 'bg-gradient-to-b from-amber-300 to-amber-500 text-amber-950 border border-amber-400 shadow-[0_2px_0_#b45309]'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 shadow-2xs'
                               }`}
                             >
                               <span>Buka</span>
                               <ExternalLink className="h-3 w-3" />
-                            </a>
+                            </motion.a>
                           )}
                         </div>
                       </div>
 
-                      {/* Panel Form Inline Edit Status dengan AnimatePresence */}
+                      {/* Panel Form Inline Edit Status 3D dengan AnimatePresence */}
                       <AnimatePresence>
                         {editingFileId === file.id && (
                           <motion.div
@@ -439,7 +524,7 @@ export function FileDetailModal({
                             animate={{ opacity: 1, height: 'auto', y: 0 }}
                             exit={{ opacity: 0, height: 0, y: -6 }}
                             transition={{ duration: 0.22, ease: 'easeOut' }}
-                            className="mt-2 pt-2.5 border-t border-slate-200 space-y-2 bg-slate-50/90 p-3 rounded-lg overflow-hidden"
+                            className="mt-2 pt-2.5 border-t border-slate-200 space-y-2 bg-gradient-to-b from-slate-50 to-slate-100/80 p-3 rounded-xl border border-slate-200 shadow-inner overflow-hidden"
                           >
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-[11px] text-slate-800">
@@ -460,13 +545,13 @@ export function FileDetailModal({
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
                                   Kategori Jenis Pemilihan:
                                 </label>
                                 <select
                                   value={selectedElection}
                                   onChange={(e) => setSelectedElection(e.target.value)}
-                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:ring-1 focus:ring-kpu-maroon"
+                                  className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 >
                                   <option value="PPWP">1. Presiden & Wakil Presiden (PPWP)</option>
                                   <option value="DPR_RI">2. DPR Republik Indonesia (DPR RI)</option>
@@ -478,7 +563,7 @@ export function FileDetailModal({
                               </div>
 
                               <div>
-                                <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
                                   Catatan Perbaikan:
                                 </label>
                                 <input
@@ -486,7 +571,7 @@ export function FileDetailModal({
                                   value={resolutionNote}
                                   onChange={(e) => setResolutionNote(e.target.value)}
                                   placeholder="Misal: Sudah diperbaiki di Drive"
-                                  className="w-full text-xs p-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 focus:ring-1 focus:ring-kpu-maroon"
+                                  className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 />
                               </div>
                             </div>
@@ -498,29 +583,30 @@ export function FileDetailModal({
                                 size="sm"
                                 onClick={() => setEditingFileId(null)}
                                 disabled={isSaving}
-                                className="h-7 text-xs cursor-pointer"
+                                className="h-7 text-xs cursor-pointer rounded-lg"
                               >
                                 Batal
                               </Button>
-                              <Button
+                              <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.96, y: 1 }}
                                 type="button"
-                                size="sm"
                                 onClick={() => handleSaveStatus(file)}
                                 disabled={isSaving}
-                                className="h-7 text-xs bg-kpu-maroon hover:bg-kpu-darkMaroon text-white font-bold shadow-xs cursor-pointer"
+                                className="h-8 px-3.5 text-xs font-black rounded-xl bg-gradient-to-b from-kpu-maroon via-red-900 to-red-950 text-white border border-red-800 shadow-[0_2px_0_#4a0200,0_3px_6px_rgba(102,3,0,0.25)] active:translate-y-[1px] active:shadow-none flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                               >
                                 {isSaving ? (
                                   <>
-                                    <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
+                                    <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     <span>Menyimpan ke Cloud...</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Save className="h-3 w-3 mr-1.5" />
+                                    <Save className="h-3.5 w-3.5" />
                                     <span>Simpan Status ke Cloud</span>
                                   </>
                                 )}
-                              </Button>
+                              </motion.button>
                             </div>
                           </motion.div>
                         )}
@@ -533,32 +619,39 @@ export function FileDetailModal({
           </div>
         </div>
 
-        {/* Footer Modal: Tombol */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl sm:rounded-b-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Footer Modal 3D: Tombol Taktil */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50/90 rounded-b-2xl sm:rounded-b-3xl flex flex-col sm:flex-row items-center justify-between gap-3 backdrop-blur-xs">
           <div className="text-[11px] sm:text-xs text-slate-500 font-medium text-center sm:text-left">
-            Total {record.files.length} berkas terdeteksi di folder TPS ini
+            Total <strong>{record.files.length}</strong> berkas terdeteksi di folder TPS ini
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             {record.tpsFolderUrl && !isDemoMode && (
-              <a
+              <motion.a
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.96, y: 2 }}
                 href={record.tpsFolderUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold bg-kpu-maroon hover:bg-kpu-darkMaroon text-white transition shadow-xs"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-b from-kpu-maroon via-red-900 to-red-950 text-white border border-red-800 shadow-[0_3px_0_#4a0200,0_4px_10px_rgba(102,3,0,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
               >
-                <FolderOpen className="h-3.5 w-3.5 mr-1.5" />
+                <FolderOpen className="h-3.5 w-3.5 mr-1.5 text-amber-300" />
                 <span>Buka Drive</span>
                 <ExternalLink className="h-3 w-3 ml-1.5 opacity-80" />
-              </a>
+              </motion.a>
             )}
 
-            <Button variant="outline" size="sm" onClick={onClose} className="text-xs px-4 flex-1 sm:flex-initial">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.96, y: 1 }}
+              type="button"
+              onClick={onClose}
+              className="text-xs h-8 px-4 rounded-xl font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-2xs flex-1 sm:flex-initial cursor-pointer"
+            >
               Tutup
-            </Button>
+            </motion.button>
           </div>
         </div>
-
       </DialogContent>
     </Dialog>
   );
