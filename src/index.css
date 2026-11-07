@@ -76,5 +76,16 @@
   display: none !important;
 }
 
+/* Hilangkan outline hitam browser pada SVG / Recharts saat diklik */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-wrapper *:focus,
+svg:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 
 

@@ -214,14 +214,14 @@ export function TrendChart3D({
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
-                  Grafik 3D pemantauan penambahan arsip berkas C-Hasil yang masuk ke Google Drive setiap harinya
+                  Monitoring
                 </p>
               </div>
             </div>
 
-            {/* Kontrol Interaktif: Mode 3D & Filter Waktu */}
+            {/* Kontrol Interaktif: Mode Tampilan & Filter Waktu */}
             <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-auto">
-              {/* Tombol Alih Mode Tampilan 3D */}
+              {/* Tombol Alih Mode Tampilan */}
               <div className="inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-2xs backdrop-blur-xs">
                 <button
                   type="button"
@@ -231,10 +231,10 @@ export function TrendChart3D({
                       ? 'bg-kpu-maroon text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
-                  title="Visualisasi Gelombang Laser Hologram 3D"
+                  title="Visualisasi Gelombang Laser Hologram"
                 >
                   <Waves className="h-3.5 w-3.5" />
-                  <span>Area 3D</span>
+                  <span>Area</span>
                 </button>
                 <button
                   type="button"
@@ -244,10 +244,10 @@ export function TrendChart3D({
                       ? 'bg-kpu-maroon text-white shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
-                  title="Visualisasi Pilar Isometrik 3D Kristal"
+                  title="Visualisasi Pilar Isometrik Kristal"
                 >
                   <BarChart3 className="h-3.5 w-3.5" />
-                  <span>Pilar 3D</span>
+                  <span>Pilar</span>
                 </button>
               </div>
 
@@ -415,8 +415,8 @@ export function TrendChart3D({
               className="absolute top-0 bottom-8 w-[2px] bg-gradient-to-b from-transparent via-red-500/70 to-transparent pointer-events-none z-20 shadow-[0_0_12px_rgba(239,68,68,0.8)]"
             />
 
-            {/* Container Recharts dengan Ketinggian Dinamis */}
-            <div className="w-full h-72 sm:h-80 relative z-10">
+            {/* Container Recharts dengan Ketinggian Dinamis & Tanpa Outline Hitam */}
+            <div className="w-full h-72 sm:h-80 relative z-10 [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none [&_*]:outline-none [&_*]:focus:outline-none focus:outline-none">
               <ResponsiveContainer width="100%" height="100%">
                 {viewMode === 'AREA_3D' ? (
                   <AreaChart data={dailyUploadData} margin={{ top: 22, right: 15, left: -15, bottom: 5 }}>
@@ -465,34 +465,39 @@ export function TrendChart3D({
                       allowDecimals={false}
                     />
 
-                    {/* Tooltip Kaca 3D Holografik */}
+                    {/* Tooltip Kaca Solid dengan Kontras Tinggi */}
                     <Tooltip
+                      wrapperStyle={{ outline: 'none', zIndex: 50 }}
+                      cursor={{ stroke: '#800000', strokeWidth: 1.5, strokeDasharray: '4 4' }}
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="backdrop-blur-xl bg-slate-950/92 text-white p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-xs space-y-2 border border-slate-700/80 min-w-[210px]">
-                              <div className="flex items-center gap-1.5 text-amber-400 font-black border-b border-slate-800 pb-2">
-                                <Calendar className="h-3.5 w-3.5 text-amber-400" />
+                            <div
+                              style={{ backgroundColor: '#090d16', borderColor: '#334155' }}
+                              className="text-white p-3.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-xs space-y-2 border min-w-[210px] select-none pointer-events-none"
+                            >
+                              <div className="flex items-center gap-1.5 text-amber-400 font-extrabold border-b border-slate-800 pb-2">
+                                <Calendar className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                                 <span>{label}</span>
                               </div>
                               <div className="space-y-1.5 pt-0.5">
                                 <div className="flex items-center justify-between gap-4">
-                                  <span className="flex items-center gap-1.5 text-slate-300">
-                                    <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                                  <span className="flex items-center gap-1.5 text-slate-200 font-semibold">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] shrink-0" />
                                     Upload Hari Ini:
                                   </span>
-                                  <span className="font-extrabold text-white text-sm">
-                                    {payload[0]?.value} <span className="text-[11px] font-normal text-slate-400">berkas</span>
+                                  <span className="font-black text-white text-sm">
+                                    {payload[0]?.value} <span className="text-[11px] font-medium text-slate-400">berkas</span>
                                   </span>
                                 </div>
                                 {payload[1] && (
-                                  <div className="flex items-center justify-between gap-4 border-t border-slate-800/80 pt-1.5">
-                                    <span className="flex items-center gap-1.5 text-amber-200">
-                                      <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
+                                  <div className="flex items-center justify-between gap-4 border-t border-slate-800/90 pt-1.5">
+                                    <span className="flex items-center gap-1.5 text-amber-200 font-semibold">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
                                       Total Kumulatif:
                                     </span>
-                                    <span className="font-extrabold text-amber-300 text-sm">
-                                      {payload[1]?.value} <span className="text-[11px] font-normal text-amber-200/70">file</span>
+                                    <span className="font-black text-amber-300 text-sm">
+                                      {payload[1]?.value} <span className="text-[11px] font-medium text-amber-200/80">file</span>
                                     </span>
                                   </div>
                                 )}
@@ -592,34 +597,39 @@ export function TrendChart3D({
                       allowDecimals={false}
                     />
 
-                    {/* Tooltip Kaca 3D Holografik */}
+                    {/* Tooltip Kaca Solid dengan Kontras Tinggi */}
                     <Tooltip
+                      wrapperStyle={{ outline: 'none', zIndex: 50 }}
+                      cursor={{ stroke: '#800000', strokeWidth: 1.5, strokeDasharray: '4 4' }}
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="backdrop-blur-xl bg-slate-950/92 text-white p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-xs space-y-2 border border-slate-700/80 min-w-[210px]">
-                              <div className="flex items-center gap-1.5 text-amber-400 font-black border-b border-slate-800 pb-2">
-                                <Calendar className="h-3.5 w-3.5 text-amber-400" />
+                            <div
+                              style={{ backgroundColor: '#090d16', borderColor: '#334155' }}
+                              className="text-white p-3.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-xs space-y-2 border min-w-[210px] select-none pointer-events-none"
+                            >
+                              <div className="flex items-center gap-1.5 text-amber-400 font-extrabold border-b border-slate-800 pb-2">
+                                <Calendar className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                                 <span>{label}</span>
                               </div>
                               <div className="space-y-1.5 pt-0.5">
                                 <div className="flex items-center justify-between gap-4">
-                                  <span className="flex items-center gap-1.5 text-slate-300">
-                                    <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                                  <span className="flex items-center gap-1.5 text-slate-200 font-semibold">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] shrink-0" />
                                     Upload Harian:
                                   </span>
-                                  <span className="font-extrabold text-white text-sm">
-                                    {payload[0]?.value} <span className="text-[11px] font-normal text-slate-400">berkas</span>
+                                  <span className="font-black text-white text-sm">
+                                    {payload[0]?.value} <span className="text-[11px] font-medium text-slate-400">berkas</span>
                                   </span>
                                 </div>
                                 {payload[1] && (
-                                  <div className="flex items-center justify-between gap-4 border-t border-slate-800/80 pt-1.5">
-                                    <span className="flex items-center gap-1.5 text-amber-200">
-                                      <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
+                                  <div className="flex items-center justify-between gap-4 border-t border-slate-800/90 pt-1.5">
+                                    <span className="flex items-center gap-1.5 text-amber-200 font-semibold">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
                                       Total Kumulatif:
                                     </span>
-                                    <span className="font-extrabold text-amber-300 text-sm">
-                                      {payload[1]?.value} <span className="text-[11px] font-normal text-amber-200/70">file</span>
+                                    <span className="font-black text-amber-300 text-sm">
+                                      {payload[1]?.value} <span className="text-[11px] font-medium text-amber-200/80">file</span>
                                     </span>
                                   </div>
                                 )}
