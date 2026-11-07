@@ -13,6 +13,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TPSRecord } from '@/types';
 import {
   SEKADAU_CENTER,
@@ -441,7 +442,7 @@ export function SekadauInteractiveMap({
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-black text-kpu-maroon">
-                    {currentFocusStats.percentage.toFixed(1)}%
+                    <AnimatedCounter value={currentFocusStats.percentage} decimals={1} suffix="%" />
                   </span>
                   <p className="text-[9px] text-slate-400">Progres</p>
                 </div>
@@ -451,19 +452,19 @@ export function SekadauInteractiveMap({
                 <div className="bg-slate-50 rounded-lg p-1 border border-slate-100">
                   <span className="text-[10px] text-slate-500 block">Total TPS</span>
                   <span className="font-extrabold text-slate-800 text-xs">
-                    {currentFocusStats.totalTps}
+                    <AnimatedCounter value={currentFocusStats.totalTps} />
                   </span>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-1 border border-emerald-100">
                   <span className="text-[10px] text-emerald-700 block">Lengkap</span>
                   <span className="font-extrabold text-emerald-800 text-xs">
-                    {currentFocusStats.completedTps}
+                    <AnimatedCounter value={currentFocusStats.completedTps} />
                   </span>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-1 border border-amber-100">
                   <span className="text-[10px] text-amber-700 block">Anomali</span>
                   <span className="font-extrabold text-amber-800 text-xs">
-                    {currentFocusStats.anomalyTps}
+                    <AnimatedCounter value={currentFocusStats.anomalyTps} />
                   </span>
                 </div>
               </div>

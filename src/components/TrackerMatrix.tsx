@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TPSRecord, ScannedFile } from '@/types';
 
 interface TrackerMatrixProps {
@@ -97,7 +98,7 @@ export function TrackerMatrix({
             Matriks Kelengkapan Berkas Scan C-Hasil
           </h3>
           <span className="text-xs text-slate-500 font-medium">
-            (Total {records.length} TPS terdata)
+            (Total <AnimatedCounter value={records.length} /> TPS terdata)
           </span>
         </div>
 

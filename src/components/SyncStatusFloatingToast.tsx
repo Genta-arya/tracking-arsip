@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, X, RefreshCw, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,15 +16,8 @@ export function SyncStatusFloatingToast({
   lastSyncedBy,
   onOpenSyncModal,
 }: SyncStatusFloatingToastProps) {
-  // Kontrol buka/tutup floating message
-  const [isOpen, setIsOpen] = useState(true);
-
-  // Jika ada timestamp sinkronisasi baru, buka kembali otomatis untuk memberi tahu user
-  useEffect(() => {
-    if (lastSyncedAt) {
-      setIsOpen(true);
-    }
-  }, [lastSyncedAt]);
+  // Kontrol buka/tutup floating message (Default tertutup/minimized agar tidak menutupi layar)
+  const [isOpen, setIsOpen] = useState(false);
 
   // Format Hari, Tanggal, Jam, dan Detik (WIB)
   const formattedSync = (() => {

@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -256,101 +257,135 @@ export function ProgressDashboard({
     return [...kecamatanSummaries].sort((a, b) => b.percentage - a.percentage);
   }, [kecamatanSummaries]);
 
-  // Framer Motion Variants untuk animasi staggered & hover interaktif
+  // Framer Motion Variants untuk animasi presentasi slide PowerPoint (3D pop & spring)
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.08,
+        staggerChildren: 0.1,
         delayChildren: 0.05,
       },
     },
   };
 
   const cardItemVariants: Variants = {
-    hidden: { opacity: 0, y: 16, scale: 0.98 },
+    hidden: { opacity: 0, y: 40, scale: 0.9, rotateX: 12 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { type: 'spring', stiffness: 350, damping: 25 },
+      rotateX: 0,
+      transition: { type: 'spring', stiffness: 280, damping: 20 },
     },
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. Baris 4 Kartu KPI Utama */}
+      {/* 1. Baris 4 Kartu KPI Utama - Animasi Slide Presentasi */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 perspective-1000"
       >
         {/* Total TPS */}
-        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
-          <Card className="border-l-4 border-l-kpu-maroon shadow-xs hover:shadow-md transition bg-white h-full">
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
+          className="h-full"
+        >
+          <Card className="border-l-4 border-l-kpu-maroon shadow-xs hover:shadow-xl hover:shadow-red-950/10 hover:border-red-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
+            {/* Subtle card sheen on hover */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-red-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Total Wilayah & TPS
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900">
-                    {stats.totalTPS}
-                  </span>
+                  <AnimatedCounter
+                    value={stats.totalTPS}
+                    className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
+                  />
                   <span className="text-xs text-slate-500 font-semibold">TPS</span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium">
                   {stats.totalKecamatan} Kecamatan • {stats.totalDesa} Desa/Kel.
                 </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-red-50 text-kpu-maroon shrink-0">
+              <motion.div
+                whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
+                transition={{ duration: 0.5 }}
+                className="p-2.5 rounded-xl bg-red-50 text-kpu-maroon shrink-0 shadow-2xs group-hover:bg-red-100 transition-colors"
+              >
                 <FolderOpen className="h-6 w-6" />
-              </div>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
 
         {/* TPS Lengkap (5/5) */}
-        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
-          <Card className="border-l-4 border-l-emerald-600 shadow-xs hover:shadow-md transition bg-white h-full">
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
+          className="h-full"
+        >
+          <Card className="border-l-4 border-l-emerald-600 shadow-xs hover:shadow-xl hover:shadow-emerald-600/10 hover:border-emerald-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-emerald-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   TPS Lengkap (5/5 File)
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-emerald-600">
-                    {stats.completedTPS}
-                  </span>
+                  <AnimatedCounter
+                    value={stats.completedTPS}
+                    className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight"
+                  />
                   <span className="text-xs text-slate-500 font-medium">
                     / {stats.totalTPS} TPS
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 font-medium">
-                  {((stats.completedTPS / (stats.totalTPS || 1)) * 100).toFixed(1)}% TPS Sudah Siap Arsip
+                <p className="text-xs text-slate-600 font-medium flex items-center gap-1">
+                  <AnimatedCounter
+                    value={(stats.completedTPS / (stats.totalTPS || 1)) * 100}
+                    decimals={1}
+                    suffix="%"
+                    className="font-bold text-emerald-700"
+                  />
+                  <span>TPS Sudah Siap Arsip</span>
                 </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+              <motion.div
+                whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
+                transition={{ duration: 0.5 }}
+                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0 shadow-2xs group-hover:bg-emerald-100 transition-colors"
+              >
                 <CheckCircle2 className="h-6 w-6" />
-              </div>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
 
         {/* Total Berkas */}
-        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
-          <Card className="border-l-4 border-l-kpu-gold shadow-xs hover:shadow-md transition bg-white h-full">
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
+          className="h-full"
+        >
+          <Card className="border-l-4 border-l-kpu-gold shadow-xs hover:shadow-xl hover:shadow-amber-500/10 hover:border-amber-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-amber-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Total Berkas C-Hasil
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900">
-                    {stats.totalFilesCollected.toLocaleString('id-ID')}
-                  </span>
+                  <AnimatedCounter
+                    value={stats.totalFilesCollected}
+                    className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
+                  />
                   <span className="text-xs text-slate-500 font-medium">
                     / {stats.expectedFilesTotal.toLocaleString('id-ID')}
                   </span>
@@ -359,44 +394,74 @@ export function ProgressDashboard({
                   {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali Nama
                 </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+              <motion.div
+                whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
+                transition={{ duration: 0.5 }}
+                className="p-2.5 rounded-xl bg-amber-50 text-amber-600 shrink-0 shadow-2xs group-hover:bg-amber-100 transition-colors"
+              >
                 <FileCheck className="h-6 w-6" />
-              </div>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
 
         {/* Progres Global */}
-        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
-          <Card className="border-l-4 border-l-kpu-orange shadow-xs hover:shadow-md transition bg-white h-full">
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
+          className="h-full"
+        >
+          <Card className="border-l-4 border-l-kpu-orange shadow-xs hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-orange-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
               <div className="space-y-1 flex-1 pr-2">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Progres Global Arsip
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-kpu-orange">
-                    {stats.completionPercentage.toFixed(1)}%
-                  </span>
+                  <AnimatedCounter
+                    value={stats.completionPercentage}
+                    decimals={1}
+                    suffix="%"
+                    className="text-2xl sm:text-3xl font-black text-kpu-orange tracking-tight"
+                  />
                   {stats.anomalyTPS > 0 && (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1">
+                    <motion.span
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: [1, 1.08, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1 shadow-2xs"
+                    >
                       <AlertTriangle className="h-3 w-3" />
                       {stats.anomalyTPS} Anomali
-                    </span>
+                    </motion.span>
                   )}
                 </div>
-                <div className="mt-2.5 w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+
+                {/* Progress Bar dengan Efek Laser Shimmer Berkelanjutan */}
+                <div className="mt-2.5 w-full h-2.5 rounded-full bg-slate-100 overflow-hidden relative shadow-inner border border-slate-200/60 p-0.5">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, Math.max(0, stats.completionPercentage))}%` }}
-                    transition={{ duration: 1.1, ease: 'easeOut', delay: 0.25 }}
-                    className="h-full rounded-full bg-gradient-to-r from-kpu-orange to-kpu-gold shadow-xs"
-                  />
+                    transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                    className="h-full rounded-full bg-gradient-to-r from-red-600 via-amber-500 to-yellow-400 relative overflow-hidden shadow-xs"
+                  >
+                    {/* Sinar Shimmer Meluncur Terus Menerus */}
+                    <motion.div
+                      animate={{ x: ['-100%', '250%'] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent w-2/3 -skew-x-12"
+                    />
+                  </motion.div>
                 </div>
               </div>
-              <div className="p-2.5 rounded-xl bg-orange-50 text-kpu-orange shrink-0">
+              <motion.div
+                whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
+                transition={{ duration: 0.5 }}
+                className="p-2.5 rounded-xl bg-orange-50 text-kpu-orange shrink-0 shadow-2xs group-hover:bg-orange-100 transition-colors"
+              >
                 <TrendingUp className="h-6 w-6" />
-              </div>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
@@ -455,14 +520,15 @@ export function ProgressDashboard({
         </CardHeader>
 
         <CardContent className="p-4 sm:p-6 space-y-6">
-          {/* Quick Stats Banner */}
+          {/* Quick Stats Banner dengan Animated Numbers */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
             <div className="space-y-0.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Upload Hari Ini
               </span>
               <p className="text-lg sm:text-xl font-black text-slate-800">
-                {uploadStats.todayUploads} <span className="text-xs font-medium text-slate-500">berkas</span>
+                <AnimatedCounter value={uploadStats.todayUploads} />{' '}
+                <span className="text-xs font-medium text-slate-500">berkas</span>
               </p>
             </div>
 
@@ -471,7 +537,8 @@ export function ProgressDashboard({
                 Puncak Tertinggi
               </span>
               <p className="text-lg sm:text-xl font-black text-emerald-600">
-                {uploadStats.peakUpload} <span className="text-xs font-medium text-slate-500">berkas</span>
+                <AnimatedCounter value={uploadStats.peakUpload} />{' '}
+                <span className="text-xs font-medium text-slate-500">berkas</span>
               </p>
               <p className="text-[10px] text-slate-500 font-medium">({uploadStats.peakDate})</p>
             </div>
@@ -481,7 +548,8 @@ export function ProgressDashboard({
                 Rata-rata Upload
               </span>
               <p className="text-lg sm:text-xl font-black text-kpu-maroon">
-                {uploadStats.averagePerDay} <span className="text-xs font-medium text-slate-500">berkas/hari</span>
+                <AnimatedCounter value={uploadStats.averagePerDay} />{' '}
+                <span className="text-xs font-medium text-slate-500">berkas/hari</span>
               </p>
             </div>
 
@@ -490,7 +558,8 @@ export function ProgressDashboard({
                 Total Arsip di Drive
               </span>
               <p className="text-lg sm:text-xl font-black text-slate-900">
-                {stats.totalFilesCollected} <span className="text-xs font-medium text-slate-500">file</span>
+                <AnimatedCounter value={stats.totalFilesCollected} />{' '}
+                <span className="text-xs font-medium text-slate-500">file</span>
               </p>
               <p className="text-[10px] text-slate-500 font-medium">
                 ({stats.validFilesCount} sah • {stats.anomalyFilesCount} anomali)
@@ -630,32 +699,41 @@ export function ProgressDashboard({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-slate-800">
-                        {kec.totalFiles} berkas ({kec.percentage.toFixed(1)}%)
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                        <AnimatedCounter value={kec.totalFiles} /> berkas (
+                        <AnimatedCounter value={kec.percentage} decimals={1} suffix="%" />)
                       </span>
                       <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-kpu-maroon group-hover:translate-x-0.5 transition" />
                     </div>
                   </div>
 
-                  {/* Animated Mini Progress Bar */}
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  {/* Animated Progress Bar dengan Laser Shimmer */}
+                  <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden relative shadow-inner">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(100, Math.max(0, kec.percentage))}%` }}
-                      transition={{ duration: 0.85, ease: 'easeOut', delay: index * 0.04 + 0.25 }}
-                      className={`h-full rounded-full ${
+                      transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: index * 0.05 + 0.2 }}
+                      className={`h-full rounded-full relative overflow-hidden ${
                         kec.percentage >= 100
-                          ? 'bg-emerald-500'
+                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
                           : kec.percentage >= 50
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500'
+                          ? 'bg-gradient-to-r from-amber-600 to-amber-400'
+                          : 'bg-gradient-to-r from-rose-600 to-rose-400'
                       }`}
-                    />
+                    >
+                      <motion.div
+                        animate={{ x: ['-100%', '250%'] }}
+                        transition={{ repeat: Infinity, duration: 2.2, ease: 'linear', delay: index * 0.15 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-2/3 -skew-x-12"
+                      />
+                    </motion.div>
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5 flex-wrap gap-1">
                     <span>
-                      <strong className="text-slate-800 font-bold">{kec.totalFiles}</strong> berkas scan • {kec.completedTPS} dari {kec.totalTPS} TPS lengkap (5/5)
+                      <strong className="text-slate-800 font-bold">
+                        <AnimatedCounter value={kec.totalFiles} />
+                      </strong> berkas scan • {kec.completedTPS} dari {kec.totalTPS} TPS lengkap (5/5)
                     </span>
                     {kec.anomalyTPS > 0 && (
                       <span className="text-rose-600 font-semibold">
@@ -692,11 +770,11 @@ export function ProgressDashboard({
               return (
                 <motion.div
                   key={item.key}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + idx * 0.05, duration: 0.3 }}
-                  whileHover={{ y: -2, transition: { duration: 0.15 } }}
-                  className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 space-y-2 hover:border-slate-200 transition"
+                  transition={{ delay: 0.15 + idx * 0.06, duration: 0.35 }}
+                  whileHover={{ y: -3, scale: 1.01, transition: { duration: 0.15 } }}
+                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 space-y-2 hover:border-slate-200 hover:bg-white hover:shadow-sm transition-all"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
@@ -706,28 +784,36 @@ export function ProgressDashboard({
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="font-bold text-slate-900">
-                        {item.percentage.toFixed(1)}%
+                      <span className="font-black text-slate-900">
+                        <AnimatedCounter value={item.percentage} decimals={1} suffix="%" />
                       </span>
                       <span className="text-[11px] text-slate-500 ml-1">
-                        ({item.collected}/{item.total})
+                        (<AnimatedCounter value={item.collected} />/{item.total})
                       </span>
                     </div>
                   </div>
 
-                  {/* Animated Progress Bar */}
-                  <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  {/* Animated Progress Bar dengan Laser Shimmer */}
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden relative shadow-inner border border-slate-200/40">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(100, Math.max(0, item.percentage))}%` }}
-                      transition={{ duration: 0.9, ease: 'easeOut', delay: 0.25 + idx * 0.06 }}
-                      className="h-full rounded-full bg-gradient-to-r from-kpu-maroon to-kpu-orange"
-                    />
+                      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 + idx * 0.07 }}
+                      className="h-full rounded-full bg-gradient-to-r from-kpu-maroon via-red-600 to-kpu-orange relative overflow-hidden"
+                    >
+                      <motion.div
+                        animate={{ x: ['-100%', '250%'] }}
+                        transition={{ repeat: Infinity, duration: 2.4, ease: 'linear', delay: idx * 0.2 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-2/3 -skew-x-12"
+                      />
+                    </motion.div>
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500">
                     <span className="font-medium text-slate-600">
-                      <strong className="text-slate-800 font-bold">{item.collected}</strong> berkas terkumpul
+                      <strong className="text-slate-800 font-bold">
+                        <AnimatedCounter value={item.collected} />
+                      </strong> berkas terkumpul
                     </span>
                     {item.missing > 0 ? (
                       <button

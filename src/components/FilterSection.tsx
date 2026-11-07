@@ -1,5 +1,6 @@
 import { Search, RotateCcw, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { FilterState, StatusFilterOption, ElectionType } from '@/types';
 
 interface FilterSectionProps {
@@ -48,7 +49,7 @@ export function FilterSection({
             Filter & Pencarian TPS
           </h3>
           <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full font-medium">
-            Menampilkan {totalFiltered} dari {totalAll} TPS
+            Menampilkan <AnimatedCounter value={totalFiltered} /> dari <AnimatedCounter value={totalAll} /> TPS
           </span>
         </div>
 

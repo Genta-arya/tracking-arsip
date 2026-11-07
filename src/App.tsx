@@ -11,6 +11,7 @@ import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
 import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
 import { AuthGate } from '@/components/AuthGate';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { MOCK_DESA_MAP } from '@/data/mockSekadauData';
 import {
   processRawTps,
@@ -491,7 +492,7 @@ export function App() {
                     : 'bg-slate-100 text-slate-500'
                 }`}
               >
-                {globalStats.completionPercentage.toFixed(1)}%
+                <AnimatedCounter value={globalStats.completionPercentage} decimals={1} suffix="%" />
               </span>
               {activeTab === 'progress' && (
                 <motion.div
@@ -506,7 +507,7 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab('rekapitulasi')}
-              className={`relative flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-colors duration-150 ${
+              className={`relative flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-colors duration-150 cursor-pointer ${
                 activeTab === 'rekapitulasi'
                   ? 'text-kpu-maroon font-bold'
                   : 'text-slate-500 hover:text-slate-800 font-medium'
@@ -521,7 +522,7 @@ export function App() {
                     : 'bg-slate-100 text-slate-500'
                 }`}
               >
-                {processedRecords.length} TPS
+                <AnimatedCounter value={processedRecords.length} /> TPS
               </span>
               {activeTab === 'rekapitulasi' && (
                 <motion.div
