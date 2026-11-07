@@ -422,21 +422,6 @@ export function AuthGate({ onLoginSuccess, onBypassDemo }: AuthGateProps) {
                 </button>
               </div>
             )}
-
-            {/* Security Badges Footer */}
-            <div className="pt-2 flex items-center justify-center gap-3 text-[10px] text-slate-500 font-bold border-t border-white/5">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span>256-Bit SSL</span>
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                <span>Firebase Auth</span>
-              </span>
-              <span>•</span>
-              <span>KPU Sekadau</span>
-            </div>
           </div>
         </motion.div>
       </div>
