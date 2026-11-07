@@ -374,7 +374,7 @@ export function DriveSyncModal({
                   const isCompleted = completedKecamatans.includes(kec.name);
                   const isQueued = isScanning && !isCompleted && !isCurrentlyScanning;
                   const syncedFileCount = getKecamatanSyncedFileCount(kec.name);
-                  const isAlreadyInCloud = !isScanning && !isCompleted && syncedFileCount > 0;
+                  const hasDataInCloud = isCompleted || syncedFileCount > 0;
 
                   return (
                     <motion.div
@@ -384,8 +384,8 @@ export function DriveSyncModal({
                       className={`p-3 sm:p-3.5 rounded-2xl border transition-all duration-300 relative overflow-hidden flex items-center justify-between gap-3 ${
                         isCurrentlyScanning
                           ? 'bg-amber-50/95 border-amber-400 border-l-[6px] border-l-amber-500 ring-2 ring-amber-400/60 shadow-[0_8px_22px_rgba(245,158,11,0.25)]'
-                          : isCompleted
-                          ? 'bg-emerald-50/80 border-emerald-300 border-l-[6px] border-l-emerald-600 shadow-[0_6px_18px_rgba(16,185,129,0.18)]'
+                          : hasDataInCloud
+                          ? 'bg-emerald-50/60 border-emerald-300/80 border-l-[6px] border-l-emerald-600 shadow-[0_4px_14px_rgba(16,185,129,0.12)]'
                           : 'bg-white border-slate-200/90 border-l-[5px] border-l-slate-300 hover:border-l-kpu-maroon shadow-[0_3px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)]'
                       }`}
                     >
@@ -399,17 +399,17 @@ export function DriveSyncModal({
                           className={`p-2.5 rounded-xl shrink-0 shadow-sm border ${
                             isCurrentlyScanning
                               ? 'bg-amber-200/90 text-amber-950 border-amber-300'
-                              : isCompleted
+                              : hasDataInCloud
                               ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                               : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}
                         >
                           {isCurrentlyScanning ? (
                             <RefreshCw className="h-4 w-4 animate-spin text-amber-800" />
-                          ) : isCompleted ? (
+                          ) : hasDataInCloud ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                           ) : (
-                            <FolderOpen className="h-4 w-4 text-slate-600" />
+                            <FolderOpen className="h-4 w-4 text-slate-500" />
                           )}
                         </div>
 
@@ -420,17 +420,11 @@ export function DriveSyncModal({
                               {kec.name}
                             </h4>
 
-                            {/* Status Badges saat progress */}
+                            {/* Status Badges saat progress & cloud state */}
                             {isCurrentlyScanning && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-200 text-amber-950 border border-amber-300 shadow-2xs animate-pulse">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping" />
                                 SEDANG MEMINDAI...
-                              </span>
-                            )}
-                            {isCompleted && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                                SELESAI DIPINDAI
                               </span>
                             )}
                             {isQueued && (
@@ -439,29 +433,36 @@ export function DriveSyncModal({
                                 Menunggu Antrean
                               </span>
                             )}
-                            {isAlreadyInCloud && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {hasDataInCloud && !isCurrentlyScanning && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-300 shadow-2xs">
                                 <ShieldCheck className="h-2.5 w-2.5 text-emerald-600" />
                                 Tersimpan di Cloud
+                              </span>
+                            )}
+                            {!hasDataInCloud && !isScanning && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                Belum Dipindai
                               </span>
                             )}
                           </div>
 
                           <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5 truncate">
                             <span>ID: {kec.id}</span>
-                            {syncedFileCount > 0 && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-600 font-sans font-semibold">
-                                  {syncedFileCount} Berkas Terdata
-                                </span>
-                              </>
-                            )}
+                            <span>•</span>
+                            <span
+                              className={
+                                syncedFileCount > 0
+                                  ? 'text-slate-700 font-sans font-bold'
+                                  : 'text-slate-400 font-sans font-medium'
+                              }
+                            >
+                              {syncedFileCount} Berkas Terdata
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* 3D Tactile Push-Button Pindai Ini Saja */}
+                      {/* 3D Tactile Push-Button Pindai / Pindai Ulang */}
                       <motion.button
                         whileHover={!isScanning ? { scale: 1.05 } : {}}
                         whileTap={!isScanning ? { scale: 0.95, y: 1 } : {}}
@@ -471,15 +472,15 @@ export function DriveSyncModal({
                         className={`text-xs h-7 px-3 rounded-xl shrink-0 font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs border ${
                           isCurrentlyScanning
                             ? 'bg-amber-300 text-amber-950 border-amber-400 shadow-inner opacity-90'
-                            : isCompleted
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
+                            : hasDataInCloud
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 hover:shadow-xs'
                             : 'bg-slate-100 hover:bg-white text-slate-700 border-slate-300 hover:border-kpu-maroon hover:text-kpu-maroon hover:shadow-[0_2px_6px_rgba(102,3,0,0.15)] active:translate-y-0.5'
                         } disabled:opacity-60 disabled:cursor-not-allowed`}
                       >
                         <RefreshCw
                           className={`h-3 w-3 shrink-0 ${isCurrentlyScanning ? 'animate-spin' : ''}`}
                         />
-                        <span>{isCompleted ? 'Pindai Ulang' : 'Pindai Ini Saja'}</span>
+                        <span>{hasDataInCloud ? 'Pindai Ulang' : 'Pindai Ini Saja'}</span>
                       </motion.button>
                     </motion.div>
                   );
