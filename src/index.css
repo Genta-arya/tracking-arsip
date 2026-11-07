@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased min-h-screen selection:bg-kpu-maroon selection:text-white;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glow effects */
+.glow-maroon {
+  box-shadow: 0 0 20px -5px rgba(102, 3, 0, 0.3);
+}
+
+.glow-gold {
+  box-shadow: 0 0 15px -3px rgba(255, 191, 0, 0.4);
+}
+
+/* Leaflet Custom Styling */
+.leaflet-container {
+  font-family: inherit !important;
+  z-index: 1 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 14px !important;
+  padding: 4px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.leaflet-popup-content {
+  margin: 8px 10px !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-tooltip {
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  padding: 4px 8px !important;
+}
+
+.custom-leaflet-kec-pin,
+.custom-leaflet-desa-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Sembunyikan Leaflet & OpenStreetMap Attribution Control */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+
+

@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==============================================================
+    // PENGAMANAN LINK GOOGLE DRIVE C-HASIL KPU SEKADAU
+    // ==============================================================
+    // 1. Dokumen link Google Drive & GAS HANYA bisa dibaca jika
+    //    pengguna sudah memasukkan sandi akses yang sah (request.auth != null).
+    // 2. Sebelum login, Firestore server menolak akses (Permission Denied),
+    //    sehingga DevTools Chrome tidak dapat mengintip URL Drive.
+    // 3. Penulisan diblokir (write: if false) agar tidak bisa diubah dari browser.
+    // ==============================================================
+    match /app_config/drive_settings {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // ==============================================================
+    // DATA HASIL SINKRONISASI GOOGLE DRIVE C-HASIL TERPUSAT
+    // ==============================================================
+    // Dapat DIBACA oleh seluruh pengguna/publik (termasuk incognito / mode preview)
+    // HANYA dapat DITULIS oleh petugas kantor yang sudah login
+    // ==============================================================
+    match /scanned_data/{kecamatanId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /app_config/sync_metadata {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Override/Koreksi Manual Status Anomali Berkas
+    match /file_overrides/{fileId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+  }
+}
+
