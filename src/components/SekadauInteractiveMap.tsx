@@ -470,16 +470,18 @@ export function SekadauInteractiveMap({
               </div>
 
               {selectedKecamatan !== 'ALL' && (
-                <div className="pt-1 text-[10px] text-slate-500 flex items-center justify-between">
-                  <span>Klik desa di peta untuk zoom detail</span>
+                <div className="pt-2 border-t border-slate-100 mt-2 flex flex-col gap-1">
+                  <span className="text-[10px] text-slate-500">
+                    Klik pin desa di peta untuk zoom detail
+                  </span>
                   <button
                     onClick={() => {
                       onSelectKecamatan('ALL');
                       onSelectDesa('ALL');
                     }}
-                    className="text-kpu-maroon font-bold hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-kpu-maroon hover:text-kpu-darkMaroon hover:underline cursor-pointer self-start"
                   >
-                    Kembali ke Sekadau
+                    ← Kembali ke Seluruh Sekadau
                   </button>
                 </div>
               )}
