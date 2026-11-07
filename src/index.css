@@ -69,6 +69,38 @@
 .custom-leaflet-desa-pin {
   background: transparent !important;
   border: none !important;
+  overflow: visible !important;
+}
+
+/* 3D Pin Pulsing Radar Ring */
+@keyframes pin-radar-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.animate-radar-pulse {
+  animation: pin-radar-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* 3D Floating hover effect for map pins */
+.map-pin-3d {
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 8px 16px rgba(15, 23, 42, 0.28)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+}
+
+.map-pin-3d:hover {
+  transform: translateY(-4px) scale(1.06);
+  filter: drop-shadow(0 14px 22px rgba(15, 23, 42, 0.35)) drop-shadow(0 4px 8px rgba(245, 158, 11, 0.35));
 }
 
 /* Sembunyikan Leaflet & OpenStreetMap Attribution Control */

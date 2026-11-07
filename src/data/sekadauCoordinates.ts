@@ -25,6 +25,12 @@ export const SEKADAU_CENTER: LocationCoordinate = {
 
 export const SEKADAU_DEFAULT_ZOOM = 9.5;
 
+// Batas geografis seluruh Kabupaten Sekadau (dari Nanga Mahap hingga Belitang Hulu)
+export const SEKADAU_BOUNDS: [[number, number], [number, number]] = [
+  [-0.60, 110.55], // Southwest (selatan Nanga Mahap, barat Nanga Taman)
+  [0.68, 111.38],  // Northeast (utara Belitang Hulu, timur Belitang)
+];
+
 export const SEKADAU_COORDINATES: Record<string, KecamatanCoordinate> = {
   'Sekadau Hilir': {
     name: 'Sekadau Hilir',
