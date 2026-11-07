@@ -50,7 +50,7 @@ export function TrackerMatrix({
       return (
         <td className="px-3 py-3 text-center">
           <div
-            className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-rose-50 text-rose-500 border border-rose-200/60 shadow-xs cursor-pointer hover:bg-rose-100 transition"
+            className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-rose-50 text-rose-500 border border-rose-200/60 shadow-xs cursor-pointer hover:bg-rose-100 hover:scale-110 active:scale-95 transition-all"
             title={`${label}: BELUM ADA. Klik untuk lihat detail folder.`}
             onClick={() => onOpenFileDetail(tps)}
           >
@@ -65,7 +65,7 @@ export function TrackerMatrix({
     return (
       <td className="px-3 py-3 text-center">
         <div
-          className={`inline-flex items-center justify-center h-7 w-7 rounded-lg shadow-xs cursor-pointer transition ${
+          className={`inline-flex items-center justify-center h-7 w-7 rounded-lg shadow-xs cursor-pointer hover:scale-110 active:scale-95 transition-all ${
             hasFileAnomaly
               ? 'bg-amber-100 text-amber-800 border border-amber-300 ring-2 ring-amber-300/40 hover:bg-amber-200'
               : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'

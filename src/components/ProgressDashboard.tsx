@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import {
   TrendingUp,
   Users,
@@ -21,7 +22,6 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -256,115 +256,151 @@ export function ProgressDashboard({
     return [...kecamatanSummaries].sort((a, b) => b.percentage - a.percentage);
   }, [kecamatanSummaries]);
 
+  // Framer Motion Variants untuk animasi staggered & hover interaktif
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+        delayChildren: 0.05,
+      },
+    },
+  };
+
+  const cardItemVariants: Variants = {
+    hidden: { opacity: 0, y: 16, scale: 0.98 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { type: 'spring', stiffness: 350, damping: 25 },
+    },
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       {/* 1. Baris 4 Kartu KPI Utama */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         {/* Total TPS */}
-        <Card className="border-l-4 border-l-kpu-maroon shadow-xs hover:shadow-md transition bg-white">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Total Wilayah & TPS
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {stats.totalTPS}
-                </span>
-                <span className="text-xs text-slate-500 font-semibold">TPS</span>
+        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
+          <Card className="border-l-4 border-l-kpu-maroon shadow-xs hover:shadow-md transition bg-white h-full">
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Total Wilayah & TPS
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900">
+                    {stats.totalTPS}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">TPS</span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  {stats.totalKecamatan} Kecamatan • {stats.totalDesa} Desa/Kel.
+                </p>
               </div>
-              <p className="text-xs text-slate-600 font-medium">
-                {stats.totalKecamatan} Kecamatan • {stats.totalDesa} Desa/Kel.
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-red-50 text-kpu-maroon shrink-0">
-              <FolderOpen className="h-6 w-6" />
-            </div>
-          </CardContent>
-        </Card>
+              <div className="p-2.5 rounded-xl bg-red-50 text-kpu-maroon shrink-0">
+                <FolderOpen className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* TPS Lengkap (5/5) */}
-        <Card className="border-l-4 border-l-emerald-600 shadow-xs hover:shadow-md transition bg-white">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                TPS Lengkap (5/5 File)
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-emerald-600">
-                  {stats.completedTPS}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  / {stats.totalTPS} TPS
-                </span>
+        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
+          <Card className="border-l-4 border-l-emerald-600 shadow-xs hover:shadow-md transition bg-white h-full">
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  TPS Lengkap (5/5 File)
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-600">
+                    {stats.completedTPS}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    / {stats.totalTPS} TPS
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  {((stats.completedTPS / (stats.totalTPS || 1)) * 100).toFixed(1)}% TPS Sudah Siap Arsip
+                </p>
               </div>
-              <p className="text-xs text-slate-600 font-medium">
-                {((stats.completedTPS / (stats.totalTPS || 1)) * 100).toFixed(1)}% TPS Sudah Siap Arsip
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-          </CardContent>
-        </Card>
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Total Berkas */}
-        <Card className="border-l-4 border-l-kpu-gold shadow-xs hover:shadow-md transition bg-white">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Total Berkas C-Hasil
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {stats.totalFilesCollected.toLocaleString('id-ID')}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  / {stats.expectedFilesTotal.toLocaleString('id-ID')}
-                </span>
+        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
+          <Card className="border-l-4 border-l-kpu-gold shadow-xs hover:shadow-md transition bg-white h-full">
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Total Berkas C-Hasil
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900">
+                    {stats.totalFilesCollected.toLocaleString('id-ID')}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    / {stats.expectedFilesTotal.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium">
+                  {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali Nama
+                </p>
               </div>
-              <p className="text-xs text-slate-600 font-medium">
-                {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali Nama
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 shrink-0">
-              <FileCheck className="h-6 w-6" />
-            </div>
-          </CardContent>
-        </Card>
+              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+                <FileCheck className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Progres Global */}
-        <Card className="border-l-4 border-l-kpu-orange shadow-xs hover:shadow-md transition bg-white">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1 flex-1 pr-2">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Progres Global Arsip
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-kpu-orange">
-                  {stats.completionPercentage.toFixed(1)}%
-                </span>
-                {stats.anomalyTPS > 0 && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {stats.anomalyTPS} Anomali
+        <motion.div variants={cardItemVariants} whileHover={{ y: -4, transition: { duration: 0.18 } }}>
+          <Card className="border-l-4 border-l-kpu-orange shadow-xs hover:shadow-md transition bg-white h-full">
+            <CardContent className="p-4 sm:p-5 flex items-start justify-between">
+              <div className="space-y-1 flex-1 pr-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Progres Global Arsip
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-kpu-orange">
+                    {stats.completionPercentage.toFixed(1)}%
                   </span>
-                )}
+                  {stats.anomalyTPS > 0 && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {stats.anomalyTPS} Anomali
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2.5 w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, Math.max(0, stats.completionPercentage))}%` }}
+                    transition={{ duration: 1.1, ease: 'easeOut', delay: 0.25 }}
+                    className="h-full rounded-full bg-gradient-to-r from-kpu-orange to-kpu-gold shadow-xs"
+                  />
+                </div>
               </div>
-              <div className="mt-2 w-full">
-                <Progress
-                  value={stats.completionPercentage}
-                  indicatorColor="bg-gradient-to-r from-kpu-orange to-kpu-gold"
-                  className="h-2"
-                />
+              <div className="p-2.5 rounded-xl bg-orange-50 text-kpu-orange shrink-0">
+                <TrendingUp className="h-6 w-6" />
               </div>
-            </div>
-            <div className="p-2.5 rounded-xl bg-orange-50 text-kpu-orange shrink-0">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       {/* 2. Section Chart Line: Tren Upload Berkas Scan per Hari di Bulan Ini */}
       <Card className="shadow-xs border border-slate-200 bg-white overflow-hidden">
@@ -384,41 +420,36 @@ export function ProgressDashboard({
               </p>
             </div>
 
-            {/* Filter Rentang Chart */}
-            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setChartRange('THIS_MONTH')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
-                  chartRange === 'THIS_MONTH'
-                    ? 'bg-kpu-maroon text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                Bulan Ini
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartRange('LAST_30')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
-                  chartRange === 'LAST_30'
-                    ? 'bg-kpu-maroon text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                30 Hari Terakhir
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartRange('ALL')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
-                  chartRange === 'ALL'
-                    ? 'bg-kpu-maroon text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                Semua Riwayat
-              </button>
+            {/* Filter Rentang Chart dengan Animated Active Pill */}
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs self-start sm:self-auto relative">
+              {(
+                [
+                  { key: 'THIS_MONTH', label: 'Bulan Ini' },
+                  { key: 'LAST_30', label: '30 Hari Terakhir' },
+                  { key: 'ALL', label: 'Semua Riwayat' },
+                ] as const
+              ).map(({ key, label }) => {
+                const isActive = chartRange === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setChartRange(key)}
+                    className={`relative px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                      isActive ? 'text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeChartRangePill"
+                        className="absolute inset-0 bg-kpu-maroon rounded-md shadow-2xs"
+                        transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                      />
+                    )}
+                    <span className="relative z-10">{label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </CardHeader>
@@ -574,8 +605,13 @@ export function ProgressDashboard({
                   : 'bg-slate-100 text-slate-600 font-semibold';
 
               return (
-                <div
+                <motion.div
                   key={kec.name}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.04 + 0.15, duration: 0.25 }}
+                  whileHover={{ scale: 1.012, x: 3, transition: { duration: 0.15 } }}
+                  whileTap={{ scale: 0.99 }}
                   onClick={() => onNavigateToRekap({ kecamatan: kec.name, desa: 'ALL' })}
                   className="p-3 rounded-xl border border-slate-100 hover:border-kpu-maroon/40 bg-slate-50/50 hover:bg-white transition cursor-pointer group shadow-2xs"
                   title={`Klik untuk melihat rekapitulasi data TPS Kecamatan ${kec.name}`}
@@ -601,18 +637,21 @@ export function ProgressDashboard({
                     </div>
                   </div>
 
-                  {/* Mini Progress Bar */}
-                  <Progress
-                    value={kec.percentage}
-                    indicatorColor={
-                      kec.percentage >= 100
-                        ? 'bg-emerald-500'
-                        : kec.percentage >= 50
-                        ? 'bg-amber-500'
-                        : 'bg-rose-500'
-                    }
-                    className="h-1.5"
-                  />
+                  {/* Animated Mini Progress Bar */}
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, Math.max(0, kec.percentage))}%` }}
+                      transition={{ duration: 0.85, ease: 'easeOut', delay: index * 0.04 + 0.25 }}
+                      className={`h-full rounded-full ${
+                        kec.percentage >= 100
+                          ? 'bg-emerald-500'
+                          : kec.percentage >= 50
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
+                      }`}
+                    />
+                  </div>
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5 flex-wrap gap-1">
                     <span>
@@ -624,7 +663,7 @@ export function ProgressDashboard({
                       </span>
                     )}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </CardContent>
@@ -649,11 +688,15 @@ export function ProgressDashboard({
           </CardHeader>
 
           <CardContent className="p-4 sm:p-5 space-y-4">
-            {electionBreakdown.map((item) => {
+            {electionBreakdown.map((item, idx) => {
               return (
-                <div
+                <motion.div
                   key={item.key}
-                  className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 space-y-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 + idx * 0.05, duration: 0.3 }}
+                  whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                  className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 space-y-2 hover:border-slate-200 transition"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
@@ -672,11 +715,15 @@ export function ProgressDashboard({
                     </div>
                   </div>
 
-                  <Progress
-                    value={item.percentage}
-                    indicatorColor="bg-gradient-to-r from-kpu-maroon to-kpu-orange"
-                    className="h-2"
-                  />
+                  {/* Animated Progress Bar */}
+                  <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, Math.max(0, item.percentage))}%` }}
+                      transition={{ duration: 0.9, ease: 'easeOut', delay: 0.25 + idx * 0.06 }}
+                      className="h-full rounded-full bg-gradient-to-r from-kpu-maroon to-kpu-orange"
+                    />
+                  </div>
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500">
                     <span className="font-medium text-slate-600">
@@ -699,7 +746,7 @@ export function ProgressDashboard({
                       <span className="text-emerald-600 font-bold">✓ 100% Lengkap</span>
                     )}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </CardContent>

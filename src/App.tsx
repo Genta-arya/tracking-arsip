@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, RefreshCw, TrendingUp, Table, MapPin, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
@@ -475,10 +476,10 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab('progress')}
-              className={`flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-all duration-150 border-b-2 ${
+              className={`relative flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-colors duration-150 ${
                 activeTab === 'progress'
-                  ? 'border-kpu-maroon text-kpu-maroon font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 font-medium'
+                  ? 'text-kpu-maroon font-bold'
+                  : 'text-slate-500 hover:text-slate-800 font-medium'
               }`}
             >
               <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'progress' ? 'text-kpu-maroon' : 'text-slate-400'}`} />
@@ -492,16 +493,23 @@ export function App() {
               >
                 {globalStats.completionPercentage.toFixed(1)}%
               </span>
+              {activeTab === 'progress' && (
+                <motion.div
+                  layoutId="activeTabUnderline"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-kpu-maroon rounded-full"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
             </button>
 
             {/* TAB 2: REKAPITULASI */}
             <button
               type="button"
               onClick={() => setActiveTab('rekapitulasi')}
-              className={`flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-all duration-150 border-b-2 ${
+              className={`relative flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-colors duration-150 ${
                 activeTab === 'rekapitulasi'
-                  ? 'border-kpu-maroon text-kpu-maroon font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 font-medium'
+                  ? 'text-kpu-maroon font-bold'
+                  : 'text-slate-500 hover:text-slate-800 font-medium'
               }`}
             >
               <Table className={`h-4 w-4 shrink-0 ${activeTab === 'rekapitulasi' ? 'text-kpu-maroon' : 'text-slate-400'}`} />
@@ -515,6 +523,13 @@ export function App() {
               >
                 {processedRecords.length} TPS
               </span>
+              {activeTab === 'rekapitulasi' && (
+                <motion.div
+                  layoutId="activeTabUnderline"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-kpu-maroon rounded-full"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
             </button>
           </div>
 
@@ -526,7 +541,11 @@ export function App() {
 
         {/* Banner Info jika data Firestore belum ada yang dipindai */}
         {!isLoading && rawData.length === 0 && (
-          <div className="p-8 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3 shadow-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-8 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3 shadow-xs"
+          >
             <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700 shadow-inner">
               <FolderOpen className="h-6 w-6" />
             </div>
@@ -556,61 +575,75 @@ export function App() {
                 <span>Masuk dengan Sandi Kantor untuk Sinkronisasi</span>
               </Button>
             )}
-          </div>
+          </motion.div>
         )}
 
-        {/* TAB 1: PROGRES & ANALITIK LENGKAP */}
-        {activeTab === 'progress' && (
-          <ProgressDashboard
-            records={processedRecords}
-            stats={globalStats}
-            kecamatanSummaries={kecamatanSummaries}
-            onNavigateToRekap={(filterUpdate) => {
-              if (filterUpdate) {
-                setFilter((prev) => ({ ...prev, ...filterUpdate }));
-              }
-              setActiveTab('rekapitulasi');
-            }}
-            isDemoMode={config.isDemoMode}
-          />
-        )}
+        {/* Konten Tab Aktif dengan Animasi Transisi Halus */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'progress' ? (
+            <motion.div
+              key="progress"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+            >
+              <ProgressDashboard
+                records={processedRecords}
+                stats={globalStats}
+                kecamatanSummaries={kecamatanSummaries}
+                onNavigateToRekap={(filterUpdate) => {
+                  if (filterUpdate) {
+                    setFilter((prev) => ({ ...prev, ...filterUpdate }));
+                  }
+                  setActiveTab('rekapitulasi');
+                }}
+                isDemoMode={config.isDemoMode}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="rekapitulasi"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="space-y-6"
+            >
+              {/* Filter Bar */}
+              <FilterSection
+                filter={filter}
+                onFilterChange={(newVals) =>
+                  setFilter((prev) => ({ ...prev, ...newVals }))
+                }
+                kecamatanList={kecamatanList}
+                desaList={desaList}
+                totalFiltered={filteredRecords.length}
+                totalAll={processedRecords.length}
+              />
 
-        {/* TAB 2: REKAPITULASI DATA TPS & MATRIKS */}
-        {activeTab === 'rekapitulasi' && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Filter Bar */}
-            <FilterSection
-              filter={filter}
-              onFilterChange={(newVals) =>
-                setFilter((prev) => ({ ...prev, ...newVals }))
-              }
-              kecamatanList={kecamatanList}
-              desaList={desaList}
-              totalFiltered={filteredRecords.length}
-              totalAll={processedRecords.length}
-            />
+              {/* Peta Interaktif Leaflet Sekadau */}
+              <SekadauInteractiveMap
+                selectedKecamatan={filter.kecamatan}
+                selectedDesa={filter.desa}
+                onSelectKecamatan={(kec) =>
+                  setFilter((prev) => ({ ...prev, kecamatan: kec, desa: 'ALL' }))
+                }
+                onSelectDesa={(desa) =>
+                  setFilter((prev) => ({ ...prev, desa }))
+                }
+                records={processedRecords}
+              />
 
-            {/* Peta Interaktif Leaflet Sekadau */}
-            <SekadauInteractiveMap
-              selectedKecamatan={filter.kecamatan}
-              selectedDesa={filter.desa}
-              onSelectKecamatan={(kec) =>
-                setFilter((prev) => ({ ...prev, kecamatan: kec, desa: 'ALL' }))
-              }
-              onSelectDesa={(desa) =>
-                setFilter((prev) => ({ ...prev, desa }))
-              }
-              records={processedRecords}
-            />
-
-            {/* Tracker Matrix Table */}
-            <TrackerMatrix
-              records={filteredRecords}
-              onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
-              isDemoMode={config.isDemoMode}
-            />
-          </div>
-        )}
+              {/* Tracker Matrix Table */}
+              <TrackerMatrix
+                records={filteredRecords}
+                onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
+                isDemoMode={config.isDemoMode}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* 3. Footer KPU Sekadau */}

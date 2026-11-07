@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -408,11 +409,23 @@ export function SekadauInteractiveMap({
         </div>
       </div>
 
-      {/* 2. Isi Peta Interaktif (Collapsible) */}
-      {!isCollapsed && (
-        <div className="relative">
-          {/* Floating Glassmorphism Badge Statistik Lokasi yang Aktif */}
-          <div className="absolute top-3 left-3 z-10 pointer-events-none max-w-xs sm:max-w-sm">
+      {/* 2. Isi Peta Interaktif (Collapsible dengan AnimatePresence) */}
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.35, ease: 'easeInOut' }}
+            className="relative overflow-hidden"
+          >
+            {/* Floating Glassmorphism Badge Statistik Lokasi yang Aktif */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.25 }}
+              className="absolute top-3 left-3 z-10 pointer-events-none max-w-xs sm:max-w-sm"
+            >
             <div className="pointer-events-auto bg-white/95 backdrop-blur-md p-3 rounded-xl border border-slate-200/90 shadow-lg text-xs space-y-1.5 transition-all">
               <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
                 <div className="flex items-center gap-1.5">
@@ -463,14 +476,14 @@ export function SekadauInteractiveMap({
                       onSelectKecamatan('ALL');
                       onSelectDesa('ALL');
                     }}
-                    className="text-kpu-maroon font-bold hover:underline"
+                    className="text-kpu-maroon font-bold hover:underline cursor-pointer"
                   >
                     Kembali ke Sekadau
                   </button>
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Floating Legend di Kanan Bawah */}
           <div className="absolute bottom-6 right-3 z-10 pointer-events-none hidden sm:block">
@@ -696,8 +709,9 @@ export function SekadauInteractiveMap({
                 })}
             </MapContainer>
           </div>
-        </div>
+        </motion.div>
       )}
+    </AnimatePresence>
     </div>
   );
 }
