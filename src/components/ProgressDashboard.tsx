@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
+import { MobileStackCards3D } from '@/components/MobileStackCards3D';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -275,12 +276,16 @@ export function ProgressDashboard({
 
   return (
     <div className="space-y-6">
-      {/* 1. Baris 4 Kartu KPI Utama - Animasi 3D Parallax Tilt KPU */}
+      {/* 1. Baris 4 Kartu KPI Utama - Mobile 3D Swipe Stack vs Desktop 3D Parallax Grid */}
+      <div className="sm:hidden">
+        <MobileStackCards3D stats={stats} />
+      </div>
+
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 [perspective:1200px]"
+        className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 [perspective:1200px]"
       >
         {/* Total TPS - 3D Card Maroon */}
         <motion.div variants={cardItemVariants} className="h-full">
