@@ -2,20 +2,18 @@ import { useState, useMemo } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   TrendingUp,
-  Users,
   AlertTriangle,
   CheckCircle2,
   FileCheck,
   FolderOpen,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
 import { MobileStackCards3D } from '@/components/MobileStackCards3D';
 import { KecamatanRanking3D } from '@/components/KecamatanRanking3D';
 import { ElectionBreakdown3D } from '@/components/ElectionBreakdown3D';
+import { UploaderLeaderboard3D } from '@/components/UploaderLeaderboard3D';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -486,106 +484,11 @@ export function ProgressDashboard({
         />
       </div>
 
-      {/* 4. Leaderboard Pengunggah Berkas (Monitoring Staf Pengunggah di Drive) */}
-      <Card className="shadow-xs border border-slate-200 bg-white overflow-hidden">
-        <CardHeader className="bg-slate-50/70 border-b border-slate-200 p-4 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-amber-100 text-amber-900">
-                  <Users className="h-4 w-4" />
-                </div>
-                <CardTitle className="text-sm sm:text-base font-bold text-slate-900">
-                  Monitoring Aktivitas Tim & Staf Pengunggah di Google Drive
-                </CardTitle>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Memantau siapa saja akun yang mengunggah file scan ke Drive, jumlah berkas, dan tingkat ketepatan penamaan
-              </p>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onNavigateToRekap({ status: 'ANOMALY' })}
-              className="text-xs h-7 text-amber-900 border-amber-300 bg-amber-50 hover:bg-amber-100 self-start sm:self-auto"
-            >
-              <AlertTriangle className="h-3 w-3 mr-1 text-amber-600" />
-              <span>Lihat Daftar Berkas Anomali</span>
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3">No</th>
-                  <th className="px-4 py-3">Nama / Akun Staf Pengunggah</th>
-                  <th className="px-4 py-3 text-center">Total Berkas Diunggah</th>
-                  <th className="px-4 py-3 text-center">Format Sesuai (Normal)</th>
-                  <th className="px-4 py-3 text-center">Ada Anomali Nama</th>
-                  <th className="px-4 py-3 text-center">Tingkat Akurasi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {uploaderLeaderboard.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-6 text-slate-400">
-                      Belum ada data pengunggah. Lakukan pemindaian Google Drive untuk membaca metadata file.
-                    </td>
-                  </tr>
-                ) : (
-                  uploaderLeaderboard.map((item, idx) => (
-                    <tr key={item.name} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 font-semibold text-slate-500 w-12 text-center">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-slate-800">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
-                            {item.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span>{item.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center font-black text-slate-900">
-                        {item.total} file
-                      </td>
-                      <td className="px-4 py-3 text-center font-semibold text-emerald-600">
-                        {item.valid} file
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {item.anomaly > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px]">
-                            ⚠️ {item.anomaly} file
-                          </span>
-                        ) : (
-                          <span className="text-emerald-600 font-medium">0</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center font-bold">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] ${
-                            parseFloat(item.accuracy) >= 90
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : parseFloat(item.accuracy) >= 70
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {item.accuracy}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 4. Leaderboard Pengunggah Berkas (Monitoring Staf Pengunggah di Drive 3D) */}
+      <UploaderLeaderboard3D
+        uploaders={uploaderLeaderboard}
+        onViewAnomalies={() => onNavigateToRekap({ status: 'ANOMALY' })}
+      />
     </div>
   );
 }
