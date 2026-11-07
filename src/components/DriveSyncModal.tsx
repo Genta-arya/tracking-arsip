@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Play, Layers, Sparkles } from 'lucide-react';
+import { RefreshCw, Play, Layers, Maximize2, Minus } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
 import { saveKecamatanScanToFirestore, fetchAllFileOverrides } from '@/services/firebase';
 import { RawTpsData, AppConfig } from '@/types';
 import { Scan3DAnimation } from '@/components/Scan3DAnimation';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 
 interface DriveSyncModalProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface DriveSyncModalProps {
   config: AppConfig;
   onSyncComplete: (updatedData: RawTpsData[]) => void;
   currentRawData: RawTpsData[];
+  onReopenModal?: () => void;
 }
 
 export function DriveSyncModal({
@@ -22,6 +24,7 @@ export function DriveSyncModal({
   config,
   onSyncComplete,
   currentRawData,
+  onReopenModal,
 }: DriveSyncModalProps) {
   const [kecamatanFolders, setKecamatanFolders] = useState<GasKecamatanItem[]>([]);
   const [isFetchingFolders, setIsFetchingFolders] = useState(false);
@@ -227,57 +230,39 @@ export function DriveSyncModal({
     }
   };
 
-  // Demo simulasi animasi 3D optical scanner
-  const handleSimulateScanDemo = () => {
-    if (isScanning) return;
-    setIsScanning(true);
-    setCurrentScanningKec('Sekadau Hilir');
-    setScanProgress(12);
-    setStatusMessage('Memulai pemindaian optik berkas Model C-Hasil...');
-    setStatusType('info');
-
-    const demoSteps = [
-      { progress: 30, msg: 'Membaca folder Kecamatan Sekadau Hilir di Google Drive...' },
-      { progress: 58, msg: 'Memindai 204 TPS & analisis berkas PPWP, DPR, DPD, DPRD...' },
-      { progress: 80, msg: 'Validasi kelengkapan 5 jenis pemilihan & deteksi anomali...' },
-      { progress: 95, msg: 'Menyinkronkan data pemindaian ke Cloud Firestore realtime...' },
-      { progress: 100, msg: 'Selesai! Seluruh data formulir C-Hasil berhasil disinkronkan.' },
-    ];
-
-    demoSteps.forEach((step, idx) => {
-      setTimeout(() => {
-        setScanProgress(step.progress);
-        setStatusMessage(step.msg);
-        if (idx === demoSteps.length - 1) {
-          setTimeout(() => {
-            setIsScanning(false);
-            setCurrentScanningKec(null);
-            setStatusType('success');
-          }, 1400);
-        }
-      }, (idx + 1) * 1200);
-    });
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent onClose={onClose} className="max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col p-0 rounded-xl sm:rounded-2xl">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-kpu-darkMaroon to-kpu-maroon text-white p-4 sm:p-5 rounded-t-xl sm:rounded-t-2xl pr-10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white/10 shrink-0">
-              <Layers className="h-5 w-5 text-kpu-gold" />
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent onClose={onClose} className="max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col p-0 rounded-xl sm:rounded-2xl">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-kpu-darkMaroon to-kpu-maroon text-white p-4 sm:p-5 rounded-t-xl sm:rounded-t-2xl pr-16 relative">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-white/10 shrink-0">
+                <Layers className="h-5 w-5 text-kpu-gold" />
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold text-white leading-tight">
+                  Sinkronisasi Pemindaian Google Drive
+                </DialogTitle>
+                <DialogDescription className="text-[11px] sm:text-xs text-rose-200 mt-0.5">
+                  Pindai per kecamatan atau seluruh kecamatan untuk memperbarui data
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-base sm:text-lg font-bold text-white leading-tight">
-                Sinkronisasi Pemindaian Google Drive
-              </DialogTitle>
-              <DialogDescription className="text-[11px] sm:text-xs text-rose-200 mt-0.5">
-                Pindai per kecamatan atau seluruh kecamatan untuk memperbarui data
-              </DialogDescription>
-            </div>
+
+            {/* Tombol Minimize di Header saat proses scan sedang aktif */}
+            {isScanning && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute right-12 top-4 z-20 rounded-full p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer"
+                title="Minimalkan ke latar belakang"
+              >
+                <Minus className="h-4 w-4" />
+                <span className="sr-only">Minimalkan</span>
+              </button>
+            )}
           </div>
-        </div>
 
         {/* Content */}
         <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
@@ -392,23 +377,118 @@ export function DriveSyncModal({
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl sm:rounded-b-2xl flex items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSimulateScanDemo}
-            disabled={isScanning}
-            className="text-[11px] text-kpu-darkMaroon hover:text-white hover:bg-kpu-maroon border border-kpu-gold/70 bg-amber-50/80 flex items-center gap-1.5 font-bold h-8 px-3 transition-colors shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-kpu-gold fill-kpu-gold" />
-            <span>Tes Animasi Pemindaian KPU</span>
-          </Button>
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl sm:rounded-b-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="text-[11px] text-slate-500 font-medium truncate">
+            {isScanning ? (
+              <span className="flex items-center gap-1.5 text-amber-800 font-bold truncate">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                Pemindaian sedang berjalan... Anda dapat menutup modal ini kapan saja.
+              </span>
+            ) : (
+              <span>Pilih kecamatan atau pindai seluruh kecamatan sekaligus</span>
+            )}
+          </div>
 
-          <Button variant="outline" size="sm" onClick={onClose} disabled={isScanning} className="w-full sm:w-auto text-xs h-8">
-            Tutup
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className={`text-xs h-8 px-4 shrink-0 cursor-pointer ${
+              isScanning
+                ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300 font-bold shadow-xs'
+                : ''
+            }`}
+          >
+            {isScanning ? 'Minimalkan (Tetap Berjalan)' : 'Tutup'}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Minimized Floating Scanning Widget (Aktif saat scan sedang berjalan dan modal ditutup) */}
+    <AnimatePresence>
+      {isScanning && !open && (
+        <motion.div
+          key="minimized-scan-widget"
+          initial={{ opacity: 0, y: 40, scale: 0.92 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 40, scale: 0.92 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-[9995] sm:w-[410px] rounded-2xl bg-gradient-to-b from-[#220302] via-[#160201] to-[#0c0101] border-2 border-kpu-gold/70 text-white p-3.5 shadow-2xl shadow-black/90 backdrop-blur-xl"
+        >
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-kpu-gold/20">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kpu-gold opacity-80"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-kpu-gold shadow-[0_0_8px_#ffbf00]"></span>
+              </span>
+              <div className="min-w-0">
+                <span className="text-[9.5px] uppercase font-mono text-kpu-lightGold font-bold block leading-none">
+                  MEMINDAI DI LATAR BELAKANG
+                </span>
+                <p className="text-xs font-bold text-white truncate leading-tight mt-0.5">
+                  {currentScanningKec ? `Kecamatan ${currentScanningKec}` : 'Seluruh Kecamatan Sekadau'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="text-right">
+                <div className="text-base font-black font-mono text-kpu-lightGold leading-none flex items-center justify-end">
+                  <AnimatedCounter value={scanProgress} duration={0.5} />
+                  <span className="text-kpu-gold text-xs">%</span>
+                </div>
+              </div>
+
+              {onReopenModal && (
+                <button
+                  type="button"
+                  onClick={onReopenModal}
+                  className="p-1.5 rounded-lg bg-kpu-maroon hover:bg-kpu-darkMaroon border border-kpu-gold/60 text-kpu-lightGold hover:text-white transition cursor-pointer shadow-xs"
+                  title="Buka Tampilan Penuh"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Mini Progress Bar */}
+          <div className="mt-2.5">
+            <div className="relative w-full h-2 rounded-full bg-[#120101] border border-kpu-gold/40 overflow-hidden shadow-inner p-0.5">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-kpu-maroon via-kpu-orange to-kpu-gold relative overflow-hidden shadow-[0_0_12px_rgba(233,80,7,0.7)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.max(scanProgress, 4)}%` }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <motion.div
+                  animate={{ x: ['-100%', '300%'] }}
+                  transition={{ repeat: Infinity, duration: 1.4, ease: 'linear' }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent w-1/2 -skew-x-20"
+                />
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Status message */}
+          <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-amber-200/80">
+            <span className="truncate max-w-[270px]">
+              {statusMessage || 'Sedang memproses berkas...'}
+            </span>
+            {onReopenModal && (
+              <button
+                type="button"
+                onClick={onReopenModal}
+                className="text-kpu-lightGold hover:underline font-bold text-[10px] shrink-0 ml-2 cursor-pointer"
+              >
+                Buka Penuh →
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </>
   );
 }

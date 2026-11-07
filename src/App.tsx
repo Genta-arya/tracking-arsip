@@ -747,6 +747,7 @@ export function App() {
       <DriveSyncModal
         open={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
+        onReopenModal={() => setIsSyncModalOpen(true)}
         config={config}
         onSyncComplete={handleSyncComplete}
         currentRawData={rawData}
