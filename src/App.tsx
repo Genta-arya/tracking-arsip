@@ -135,12 +135,12 @@ export function App() {
         try {
           // Ambil konfigurasi Google Drive secara aman dari Firestore
           const secureConfig = await fetchSecureDriveConfig();
-          setConfig({
+          setConfig((prev) => ({
+            ...prev,
             gasWebAppUrl: secureConfig.gasWebAppUrl,
             rootFolderId: secureConfig.rootFolderId,
-            lastSyncedAt: new Date().toISOString(),
             isDemoMode: !(secureConfig.gasWebAppUrl && secureConfig.rootFolderId),
-          });
+          }));
         } catch (err) {
           console.error('Gagal mengambil data dari Firestore:', err);
         }
@@ -754,7 +754,7 @@ export function App() {
 
       {/* 5. Floating Message Jam Terakhir Sinkronisasi Drive (Bisa di-close) */}
       <SyncStatusFloatingToast
-        lastSyncedAt={config.lastSyncedAt || syncMeta?.lastSyncedAt || null}
+        lastSyncedAt={syncMeta?.lastSyncedAt || config.lastSyncedAt || null}
         lastSyncedKecamatan={syncMeta?.lastSyncedKecamatan}
         lastSyncedBy={syncMeta?.lastSyncedBy}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
