@@ -89,19 +89,7 @@ export function UploaderLeaderboard3D({
               </tr>
             ) : (
               uploaders.map((item, idx) => {
-                const isGold = idx === 0;
-                const isSilver = idx === 1;
-                const isBronze = idx === 2;
                 const accNum = parseFloat(item.accuracy);
-
-                // 3D Medals for Top 3 Uploaders
-                const medalClass = isGold
-                  ? 'bg-gradient-to-b from-amber-300 via-amber-400 to-yellow-600 text-amber-950 shadow-[0_3px_8px_rgba(245,158,11,0.5),inset_0_1.5px_1px_rgba(255,255,255,0.9),inset_0_-2px_1px_rgba(180,83,9,0.3)] border border-amber-200 ring-2 ring-amber-400/25 font-black'
-                  : isSilver
-                  ? 'bg-gradient-to-b from-slate-100 via-slate-200 to-slate-400 text-slate-800 shadow-[0_3px_8px_rgba(148,163,184,0.4),inset_0_1.5px_1px_rgba(255,255,255,0.9),inset_0_-2px_1px_rgba(71,85,105,0.3)] border border-slate-200 ring-2 ring-slate-300/25 font-black'
-                  : isBronze
-                  ? 'bg-gradient-to-b from-amber-600 via-amber-700 to-amber-900 text-amber-100 shadow-[0_3px_8px_rgba(180,83,9,0.4),inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-2px_1px_rgba(69,26,3,0.4)] border border-amber-600 ring-2 ring-amber-700/25 font-black'
-                  : 'bg-gradient-to-b from-slate-100 to-slate-200 text-slate-600 shadow-[0_2px_4px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] border border-slate-200 font-bold';
 
                 // 3D Accuracy Badges
                 const accuracyBadge =
@@ -119,38 +107,24 @@ export function UploaderLeaderboard3D({
                     transition={{ delay: idx * 0.03 + 0.1, duration: 0.2 }}
                     className="hover:bg-gradient-to-r hover:from-amber-50/40 hover:via-white hover:to-amber-50/20 transition-all duration-200 group"
                   >
-                    {/* Rank Number with 3D Medal */}
+                    {/* Nomor Urut */}
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex items-center justify-center">
-                        <div
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] relative ${medalClass}`}
-                        >
+                        <span className="w-6 h-6 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shadow-2xs">
                           {idx + 1}
-                          {isGold && (
-                            <span className="absolute -top-2 -right-1 text-[9px] drop-shadow-xs">
-                              👑
-                            </span>
-                          )}
-                        </div>
+                        </span>
                       </div>
                     </td>
 
-                    {/* Uploader Name & 3D Spherical Avatar */}
+                    {/* Uploader Name & Avatar */}
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 border border-white shadow-[0_2px_5px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center font-black text-xs text-slate-700 shrink-0 group-hover:scale-105 transition-transform">
+                        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 border border-white shadow-2xs flex items-center justify-center font-bold text-xs text-slate-700 shrink-0">
                           {item.name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0">
-                          <span className="font-extrabold text-xs sm:text-sm text-slate-800 group-hover:text-kpu-maroon transition block truncate">
-                            {item.name}
-                          </span>
-                          {idx < 3 && (
-                            <span className="text-[10px] font-bold text-amber-600 block">
-                              Top Kontributor #{idx + 1}
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-kpu-maroon transition block truncate">
+                          {item.name}
+                        </span>
                       </div>
                     </td>
 
