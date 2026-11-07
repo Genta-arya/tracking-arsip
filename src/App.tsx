@@ -457,15 +457,15 @@ export function App() {
       {/* 2. Main Dashboard Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
         
-        {/* Navigasi 2 Tab Utama - 3D Segmented Floating Command Deck */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100/90 border border-slate-200/90 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(255,255,255,0.8)] backdrop-blur-md">
-          {/* 3D Segmented Tab Switcher */}
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 w-full sm:w-auto">
+        {/* Navigasi 2 Tab Utama - 3D Segmented Floating Command Deck Full Width & Centered */}
+        <div className="w-full p-1.5 rounded-2xl bg-slate-100/90 border border-slate-200/90 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(255,255,255,0.8)] backdrop-blur-md">
+          {/* 3D Segmented Tab Switcher (Full Width Grid) */}
+          <div className="grid grid-cols-2 gap-2 w-full">
             {/* TAB 1: PROGRES */}
             <button
               type="button"
               onClick={() => setActiveTab('progress')}
-              className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              className={`relative flex items-center justify-center gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'progress'
                   ? 'text-white'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -478,11 +478,11 @@ export function App() {
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                 />
               )}
-              <span className="relative z-10 flex items-center gap-2">
+              <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-2.5">
                 <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'progress' ? 'text-amber-300' : 'text-slate-500'}`} />
                 <span className="whitespace-nowrap font-black">Progres</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-colors shadow-2xs ${
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-colors shadow-2xs ${
                     activeTab === 'progress'
                       ? 'bg-amber-400 text-amber-950 border border-amber-300/80'
                       : 'bg-slate-200 text-slate-700'
@@ -497,7 +497,7 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab('rekapitulasi')}
-              className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`relative flex items-center justify-center gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'rekapitulasi'
                   ? 'text-white'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -510,11 +510,11 @@ export function App() {
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                 />
               )}
-              <span className="relative z-10 flex items-center gap-2">
+              <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-2.5">
                 <Table className={`h-4 w-4 shrink-0 ${activeTab === 'rekapitulasi' ? 'text-amber-300' : 'text-slate-500'}`} />
                 <span className="whitespace-nowrap font-black">Rekapitulasi</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-colors shadow-2xs ${
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition-colors shadow-2xs ${
                     activeTab === 'rekapitulasi'
                       ? 'bg-amber-400 text-amber-950 border border-amber-300/80'
                       : 'bg-slate-200 text-slate-700'
@@ -524,15 +524,6 @@ export function App() {
                 </span>
               </span>
             </button>
-          </div>
-
-          {/* 3D Floating Status Badge di Kanan Tab */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/90 border border-slate-200/90 shadow-2xs text-[11px] sm:text-xs text-slate-700 font-bold self-start sm:self-auto">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
-            </span>
-            <span>Sistem Monitoring C-Hasil • 7 Kecamatan</span>
           </div>
         </div>
 
