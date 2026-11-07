@@ -172,7 +172,7 @@ function CustomMapFloatingControls({
   );
 }
 
-// Generator HTML Pin 3D Kecamatan
+// Generator HTML Pin 3D Kecamatan - Dioptimalkan Sangat Ringan untuk Mobile
 function createKecamatanPinIcon(
   name: string,
   percentage: number,
@@ -186,46 +186,37 @@ function createKecamatanPinIcon(
 
   const theme = isHigh
     ? {
-        topRim: 'from-emerald-400 via-teal-500 to-emerald-600',
-        radarBg: 'bg-emerald-500',
+        topRim: 'from-emerald-400 to-emerald-600',
         orbBg: 'bg-emerald-600',
-        badgeBg: 'bg-gradient-to-b from-emerald-500 to-teal-700',
-        textColor: 'text-emerald-700',
+        badgeBg: 'bg-emerald-600',
       }
     : isMedium
     ? {
-        topRim: 'from-amber-400 via-yellow-500 to-amber-600',
-        radarBg: 'bg-amber-400',
+        topRim: 'from-amber-400 to-amber-600',
         orbBg: 'bg-amber-500',
-        badgeBg: 'bg-gradient-to-b from-amber-500 to-yellow-700',
-        textColor: 'text-amber-700',
+        badgeBg: 'bg-amber-600',
       }
     : {
-        topRim: 'from-rose-500 via-red-600 to-rose-700',
-        radarBg: 'bg-rose-400',
+        topRim: 'from-rose-500 to-rose-700',
         orbBg: 'bg-rose-600',
-        badgeBg: 'bg-gradient-to-b from-rose-600 to-red-800',
-        textColor: 'text-rose-700',
+        badgeBg: 'bg-rose-600',
       };
 
   const html = `
     <div class="map-pin-3d relative flex flex-col items-center cursor-pointer ${
-      isSelected ? 'scale-110 z-50 ring-4 ring-amber-400 ring-offset-2' : ''
-    }" style="width: 156px;">
-      <div class="w-full bg-white/98 backdrop-blur-md rounded-2xl border-2 ${
+      isSelected ? 'scale-105 z-50' : ''
+    }" style="width: 144px;">
+      <div class="w-full bg-white rounded-xl border ${
         isSelected
-          ? 'border-amber-500 shadow-amber-500/40 shadow-xl'
-          : 'border-slate-200/90 shadow-lg'
+          ? 'border-amber-500 ring-2 ring-amber-400 shadow-lg'
+          : 'border-slate-300 shadow-md'
       } overflow-hidden">
         <!-- Top Rim Bar -->
         <div class="h-1 bg-gradient-to-r ${theme.topRim}"></div>
         
-        <div class="px-2.5 py-1.5 flex items-center justify-between gap-1.5 bg-gradient-to-b from-white via-slate-50/70 to-slate-100/90">
-          <!-- Pulsing Radar Status Beacon -->
-          <div class="relative flex items-center justify-center w-5 h-5 shrink-0">
-            <span class="absolute w-4 h-4 rounded-full ${theme.radarBg} animate-radar-pulse"></span>
-            <span class="relative w-3 h-3 rounded-full ${theme.orbBg} border border-white shadow-xs"></span>
-          </div>
+        <div class="px-2 py-1.5 flex items-center justify-between gap-1.5 bg-white">
+          <!-- Status Indicator Dot -->
+          <span class="w-2.5 h-2.5 rounded-full ${theme.orbBg} shrink-0 border border-white shadow-2xs"></span>
 
           <!-- Kecamatan & TPS Details -->
           <div class="flex-1 min-w-0 text-left">
@@ -236,30 +227,30 @@ function createKecamatanPinIcon(
             </div>
           </div>
 
-          <!-- 3D Progress Pill -->
-          <div class="px-1.5 py-0.5 rounded-lg ${theme.badgeBg} text-white font-black text-[10px] shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.18)] flex items-center shrink-0">
+          <!-- Progress Badge -->
+          <div class="px-1.5 py-0.5 rounded-md ${theme.badgeBg} text-white font-black text-[10px] shadow-xs flex items-center shrink-0">
             ${percentage.toFixed(0)}%
           </div>
         </div>
       </div>
 
-      <!-- 3D Beveled Pointer Arrow -->
-      <div class="w-3 h-3 bg-white border-r-2 border-b-2 ${
+      <!-- Beveled Pointer Arrow -->
+      <div class="w-2.5 h-2.5 bg-white border-r border-b ${
         isSelected ? 'border-amber-500' : 'border-slate-300'
-      } rotate-45 -mt-1.5 shadow-xs"></div>
+      } rotate-45 -mt-1.5 shadow-2xs"></div>
     </div>
   `;
 
   return L.divIcon({
     html,
     className: 'custom-leaflet-kec-pin',
-    iconSize: [156, 56],
-    iconAnchor: [78, 56],
-    popupAnchor: [0, -56],
+    iconSize: [144, 48],
+    iconAnchor: [72, 48],
+    popupAnchor: [0, -48],
   });
 }
 
-// Generator HTML Pin 3D Desa
+// Generator HTML Pin 3D Desa - Dioptimalkan Ringan & Bebas Lag
 function createDesaPinIcon(
   name: string,
   percentage: number,
@@ -284,14 +275,14 @@ function createDesaPinIcon(
 
   const html = `
     <div class="map-pin-3d relative flex flex-col items-center cursor-pointer ${
-      isSelected ? 'scale-120 z-50 ring-2 ring-amber-400 ring-offset-1' : ''
-    }" style="width: 104px;">
-      <div class="w-full px-1.5 py-1 bg-white/95 backdrop-blur-md rounded-xl border ${
+      isSelected ? 'scale-110 z-50' : ''
+    }" style="width: 96px;">
+      <div class="w-full px-1.5 py-1 bg-white rounded-lg border ${
         isSelected
           ? 'border-amber-500 ring-2 ring-amber-400 shadow-md'
-          : 'border-slate-300 shadow-sm'
+          : 'border-slate-300 shadow-xs'
       } flex items-center gap-1.5">
-        <span class="w-2.5 h-2.5 rounded-full ${orbBg} shrink-0"></span>
+        <span class="w-2 h-2 rounded-full ${orbBg} shrink-0"></span>
         <div class="flex-1 min-w-0 text-left leading-tight">
           <div class="text-[9px] font-black text-slate-800 truncate">${name}</div>
           <div class="text-[8px] font-bold ${textClass}">${percentage.toFixed(0)}% • ${totalTps} TPS ${hasAnomaly ? '⚠️' : ''}</div>
@@ -304,9 +295,9 @@ function createDesaPinIcon(
   return L.divIcon({
     html,
     className: 'custom-leaflet-desa-pin',
-    iconSize: [104, 38],
-    iconAnchor: [52, 38],
-    popupAnchor: [0, -38],
+    iconSize: [96, 34],
+    iconAnchor: [48, 34],
+    popupAnchor: [0, -34],
   });
 }
 
@@ -694,14 +685,31 @@ export function SekadauInteractiveMap({
             transition={{ duration: 0.35, ease: 'easeInOut' }}
             className="relative overflow-hidden"
           >
-            {/* Floating Glassmorphism 3D HUD Statistik Lokasi (Kiri Atas) */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.25 }}
-              className="absolute top-3 left-3 z-[400] pointer-events-none max-w-xs sm:max-w-sm"
-            >
-              <div className="pointer-events-auto bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-slate-200/90 shadow-[0_12px_28px_rgba(15,23,42,0.18)] text-xs space-y-2 transition-all">
+            {/* Floating HUD Statistik Lokasi (Kiri Atas) - Dioptimalkan Sangat Ringan untuk Mobile */}
+            <div className="absolute top-2.5 left-2.5 z-[400] pointer-events-none max-w-xs sm:max-w-sm">
+              {/* Tampilan Mobile: Chip Ringkas agar Peta Lega & Tidak Berat */}
+              <div className="sm:hidden pointer-events-auto bg-white/95 px-3 py-1.5 rounded-xl border border-slate-200/90 shadow-md flex items-center gap-2 text-xs font-black text-slate-800">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                <span className="truncate max-w-[130px]">{currentFocusStats.label}</span>
+                <span className="text-kpu-maroon font-black ml-auto shrink-0">
+                  {currentFocusStats.percentage.toFixed(1)}%
+                </span>
+                {selectedKecamatan !== 'ALL' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectKecamatan('ALL');
+                      onSelectDesa('ALL');
+                    }}
+                    className="text-[10px] text-slate-500 font-bold ml-1 hover:text-rose-600 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Tampilan Desktop: Full 3D HUD Card */}
+              <div className="hidden sm:block pointer-events-auto bg-white/95 p-3 rounded-2xl border border-slate-200/90 shadow-lg text-xs space-y-2 transition-all">
                 {/* Header HUD */}
                 <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -783,7 +791,7 @@ export function SekadauInteractiveMap({
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
 
             {/* Floating 3D Legend di Kanan Bawah */}
             <div className="absolute bottom-5 right-3 z-[400] pointer-events-none hidden sm:block">
@@ -830,6 +838,9 @@ export function SekadauInteractiveMap({
                   url={activeLayerConfig.url}
                   subdomains={activeLayerConfig.subdomains}
                   maxZoom={19}
+                  keepBuffer={3}
+                  updateWhenIdle={true}
+                  updateWhenZooming={false}
                 />
 
                 {/* Controller Navigasi Kamera & Resizing */}
