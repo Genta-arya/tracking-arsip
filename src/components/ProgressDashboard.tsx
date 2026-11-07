@@ -23,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
+import { TiltCard3D } from '@/components/TiltCard3D';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -282,23 +283,20 @@ export function ProgressDashboard({
 
   return (
     <div className="space-y-6">
-      {/* 1. Baris 4 Kartu KPI Utama - Animasi Slide Presentasi */}
+      {/* 1. Baris 4 Kartu KPI Utama - Animasi 3D Parallax Tilt KPU */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 perspective-1000"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 [perspective:1200px]"
       >
-        {/* Total TPS */}
-        <motion.div
-          variants={cardItemVariants}
-          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
-          className="h-full"
-        >
-          <Card className="border-l-4 border-l-kpu-maroon shadow-xs hover:shadow-xl hover:shadow-red-950/10 hover:border-red-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
-            {/* Subtle card sheen on hover */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-red-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
+        {/* Total TPS - 3D Card Maroon */}
+        <motion.div variants={cardItemVariants} className="h-full">
+          <TiltCard3D
+            borderColorClass="border-l-kpu-maroon"
+            glowColor="rgba(102, 3, 0, 0.25)"
+          >
+            <div className="flex items-start justify-between relative">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Total Wilayah & TPS
@@ -311,29 +309,28 @@ export function ProgressDashboard({
                   <span className="text-xs text-slate-500 font-semibold">TPS</span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium">
-                  {stats.totalKecamatan} Kecamatan • {stats.totalDesa} Desa/Kel.
+                  {stats.totalKecamatan} Kecamatan • {stats.totalDesa || 87} Desa/Kel.
                 </p>
               </div>
               <motion.div
+                style={{ transform: 'translateZ(35px)' }}
                 whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
                 transition={{ duration: 0.5 }}
-                className="p-2.5 rounded-xl bg-red-50 text-kpu-maroon shrink-0 shadow-2xs group-hover:bg-red-100 transition-colors"
+                className="p-2.5 rounded-xl bg-red-50 text-kpu-maroon shrink-0 shadow-md border border-red-100"
               >
                 <FolderOpen className="h-6 w-6" />
               </motion.div>
-            </CardContent>
-          </Card>
+            </div>
+          </TiltCard3D>
         </motion.div>
 
-        {/* TPS Lengkap (5/5) */}
-        <motion.div
-          variants={cardItemVariants}
-          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
-          className="h-full"
-        >
-          <Card className="border-l-4 border-l-emerald-600 shadow-xs hover:shadow-xl hover:shadow-emerald-600/10 hover:border-emerald-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-emerald-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
+        {/* TPS Lengkap (5/5) - 3D Card Emerald */}
+        <motion.div variants={cardItemVariants} className="h-full">
+          <TiltCard3D
+            borderColorClass="border-l-emerald-600"
+            glowColor="rgba(16, 185, 129, 0.25)"
+          >
+            <div className="flex items-start justify-between relative">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   TPS Lengkap (5/5 File)
@@ -358,25 +355,24 @@ export function ProgressDashboard({
                 </p>
               </div>
               <motion.div
+                style={{ transform: 'translateZ(35px)' }}
                 whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
                 transition={{ duration: 0.5 }}
-                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0 shadow-2xs group-hover:bg-emerald-100 transition-colors"
+                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0 shadow-md border border-emerald-100"
               >
                 <CheckCircle2 className="h-6 w-6" />
               </motion.div>
-            </CardContent>
-          </Card>
+            </div>
+          </TiltCard3D>
         </motion.div>
 
-        {/* Total Berkas */}
-        <motion.div
-          variants={cardItemVariants}
-          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
-          className="h-full"
-        >
-          <Card className="border-l-4 border-l-kpu-gold shadow-xs hover:shadow-xl hover:shadow-amber-500/10 hover:border-amber-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-amber-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
+        {/* Total Berkas - 3D Card Gold */}
+        <motion.div variants={cardItemVariants} className="h-full">
+          <TiltCard3D
+            borderColorClass="border-l-kpu-gold"
+            glowColor="rgba(255, 191, 0, 0.28)"
+          >
+            <div className="flex items-start justify-between relative">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Total Berkas C-Hasil
@@ -395,25 +391,24 @@ export function ProgressDashboard({
                 </p>
               </div>
               <motion.div
+                style={{ transform: 'translateZ(35px)' }}
                 whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
                 transition={{ duration: 0.5 }}
-                className="p-2.5 rounded-xl bg-amber-50 text-amber-600 shrink-0 shadow-2xs group-hover:bg-amber-100 transition-colors"
+                className="p-2.5 rounded-xl bg-amber-50 text-amber-600 shrink-0 shadow-md border border-amber-100"
               >
                 <FileCheck className="h-6 w-6" />
               </motion.div>
-            </CardContent>
-          </Card>
+            </div>
+          </TiltCard3D>
         </motion.div>
 
-        {/* Progres Global */}
-        <motion.div
-          variants={cardItemVariants}
-          whileHover={{ y: -6, scale: 1.025, transition: { type: 'spring', stiffness: 400, damping: 18 } }}
-          className="h-full"
-        >
-          <Card className="border-l-4 border-l-kpu-orange shadow-xs hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-200 transition-all duration-300 bg-white h-full relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-orange-50/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <CardContent className="p-4 sm:p-5 flex items-start justify-between relative z-10">
+        {/* Progres Global - 3D Card Orange */}
+        <motion.div variants={cardItemVariants} className="h-full">
+          <TiltCard3D
+            borderColorClass="border-l-kpu-orange"
+            glowColor="rgba(233, 80, 7, 0.28)"
+          >
+            <div className="flex items-start justify-between relative">
               <div className="space-y-1 flex-1 pr-2">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Progres Global Arsip
@@ -450,20 +445,21 @@ export function ProgressDashboard({
                     <motion.div
                       animate={{ x: ['-100%', '250%'] }}
                       transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent w-2/3 -skew-x-12"
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent w-2/3 -skew-x-20"
                     />
                   </motion.div>
                 </div>
               </div>
               <motion.div
+                style={{ transform: 'translateZ(35px)' }}
                 whileHover={{ rotate: [0, -12, 12, -6, 0], scale: 1.15 }}
                 transition={{ duration: 0.5 }}
-                className="p-2.5 rounded-xl bg-orange-50 text-kpu-orange shrink-0 shadow-2xs group-hover:bg-orange-100 transition-colors"
+                className="p-2.5 rounded-xl bg-orange-50 text-kpu-orange shrink-0 shadow-md border border-orange-100"
               >
                 <TrendingUp className="h-6 w-6" />
               </motion.div>
-            </CardContent>
-          </Card>
+            </div>
+          </TiltCard3D>
         </motion.div>
       </motion.div>
 
