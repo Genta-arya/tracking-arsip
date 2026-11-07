@@ -35,8 +35,8 @@ interface SekadauInteractiveMapProps {
   records: TPSRecord[];
 }
 
-// Koleksi Provider Tile Layer Peta Interaktif
-export type MapLayerStyle = 'voyager' | 'satellite' | 'positron' | 'dark';
+// Koleksi Provider Tile Layer Peta Interaktif 100% Gratis & Tanpa API Key
+export type MapLayerStyle = 'osm' | 'satellite' | 'hot';
 
 interface MapLayerConfig {
   name: string;
@@ -48,37 +48,29 @@ interface MapLayerConfig {
 }
 
 const MAP_LAYERS: Record<MapLayerStyle, MapLayerConfig> = {
-  voyager: {
-    name: 'Modern (Voyager)',
-    shortName: 'Modern',
+  osm: {
+    name: 'OpenStreetMap (Gratis)',
+    shortName: 'Peta Standar',
     icon: '🗺️',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO &copy; OpenStreetMap',
-    subdomains: 'abcd',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
+    subdomains: 'abc',
   },
   satellite: {
-    name: 'Citra Satelit Geografis',
+    name: 'Citra Satelit Esri (Gratis)',
     shortName: 'Satelit',
     icon: '🛰️',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri, USGS',
+    attribution: 'Tiles &copy; Esri',
     subdomains: 'abc',
   },
-  positron: {
-    name: 'Minimalis Terang',
-    shortName: 'Terang',
-    icon: '⚪',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO &copy; OpenStreetMap',
-    subdomains: 'abcd',
-  },
-  dark: {
-    name: 'Cyber Dark Mode',
-    shortName: 'Gelap',
-    icon: '🌙',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO &copy; OpenStreetMap',
-    subdomains: 'abcd',
+  hot: {
+    name: 'Humanitarian OSM (Kontras)',
+    shortName: 'Kontras',
+    icon: '🏞️',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors, HOT',
+    subdomains: 'abc',
   },
 };
 
@@ -332,7 +324,7 @@ export function SekadauInteractiveMap({
 }: SekadauInteractiveMapProps) {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isExpandedHeight, setIsExpandedHeight] = useState<boolean>(false);
-  const [activeLayer, setActiveLayer] = useState<MapLayerStyle>('voyager');
+  const [activeLayer, setActiveLayer] = useState<MapLayerStyle>('osm');
 
   // Kalkulasi agregat data per Kecamatan
   const kecamatanData = useMemo(() => {
