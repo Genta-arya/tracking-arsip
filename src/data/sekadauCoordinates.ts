@@ -107,7 +107,7 @@ export const SEKADAU_COORDINATES: Record<string, KecamatanCoordinate> = {
       'Landau Apin': { lat: -0.4990844, lng: 110.7035098 },
       'Landau Kumpai': { lat: -0.3822155, lng: 110.7435972 },
       'Lembah Beringin': { lat: -0.4802746, lng: 110.7595325 },
-      'Nanga Mahap': { lat: -0.4222407, lng: 110.7589452 },
+      'Nanga Mahap': { lat: -0.4265, lng: 110.7605 },
       'Nanga Suri': { lat: -0.4003089, lng: 110.7726992 },
       'Sebabas': { lat: -0.4482014, lng: 110.7871589 },
       'Tamang': { lat: -0.4126474, lng: 110.6816088 },
