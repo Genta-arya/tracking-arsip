@@ -467,27 +467,27 @@ export function App() {
       {/* 2. Main Dashboard Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
         
-        {/* Navigasi 2 Tab Utama (Progress vs Rekapitulasi) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/90 pb-3">
-          {/* Segmented Tab Pill Controller (50% on mobile, clean side-by-side on desktop) */}
-          <div className="w-full sm:w-auto grid grid-cols-2 sm:flex p-1.5 bg-slate-200/75 rounded-2xl border border-slate-300/60 shadow-inner gap-1.5">
+        {/* Navigasi 2 Tab Utama (Model Garis Bawah / Underline) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200">
+          {/* Tab Bar dengan Indikator Garis Bawah */}
+          <div className="w-full sm:w-auto grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-8 -mb-px">
             {/* TAB 1: PROGRES */}
             <button
               type="button"
               onClick={() => setActiveTab('progress')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 sm:px-6 rounded-xl text-xs sm:text-sm transition-all duration-200 ${
+              className={`flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-all duration-150 border-b-2 ${
                 activeTab === 'progress'
-                  ? 'bg-white text-kpu-darkMaroon shadow-md border border-slate-200/80 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
+                  ? 'border-kpu-maroon text-kpu-maroon font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 font-medium'
               }`}
             >
-              <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'progress' ? 'text-kpu-maroon' : 'text-slate-500'}`} />
-              <span className="tracking-tight whitespace-nowrap">Progres</span>
+              <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'progress' ? 'text-kpu-maroon' : 'text-slate-400'}`} />
+              <span className="whitespace-nowrap">Progres</span>
               <span
-                className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition ${
+                className={`ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold shrink-0 transition ${
                   activeTab === 'progress'
-                    ? 'bg-red-100 text-kpu-maroon border border-red-200/70'
-                    : 'bg-slate-300/70 text-slate-700'
+                    ? 'bg-red-100 text-kpu-maroon'
+                    : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 {globalStats.completionPercentage.toFixed(1)}%
@@ -498,19 +498,19 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab('rekapitulasi')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 sm:px-6 rounded-xl text-xs sm:text-sm transition-all duration-200 ${
+              className={`flex items-center justify-center gap-2 pb-3 pt-2 text-xs sm:text-sm transition-all duration-150 border-b-2 ${
                 activeTab === 'rekapitulasi'
-                  ? 'bg-white text-kpu-darkMaroon shadow-md border border-slate-200/80 font-black'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-bold'
+                  ? 'border-kpu-maroon text-kpu-maroon font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 font-medium'
               }`}
             >
-              <Table className={`h-4 w-4 shrink-0 ${activeTab === 'rekapitulasi' ? 'text-kpu-maroon' : 'text-slate-500'}`} />
-              <span className="tracking-tight whitespace-nowrap">Rekapitulasi</span>
+              <Table className={`h-4 w-4 shrink-0 ${activeTab === 'rekapitulasi' ? 'text-kpu-maroon' : 'text-slate-400'}`} />
+              <span className="whitespace-nowrap">Rekapitulasi</span>
               <span
-                className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 transition ${
+                className={`ml-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold shrink-0 transition ${
                   activeTab === 'rekapitulasi'
-                    ? 'bg-amber-100 text-amber-900 border border-amber-300/70'
-                    : 'bg-slate-300/70 text-slate-700'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 {processedRecords.length} TPS
@@ -518,7 +518,7 @@ export function App() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500 font-medium px-1 sm:px-0">
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500 font-medium pb-2 sm:pb-3 px-1 sm:px-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
             <span>Sistem Monitoring C-Hasil • 7 Kecamatan</span>
           </div>
