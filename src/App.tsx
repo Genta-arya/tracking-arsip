@@ -7,6 +7,7 @@ import { ProgressDashboard } from '@/components/ProgressDashboard';
 import { FilterSection } from '@/components/FilterSection';
 import { SekadauInteractiveMap } from '@/components/SekadauInteractiveMap';
 import { TrackerMatrix } from '@/components/TrackerMatrix';
+import { DailyAnomalyTable3D } from '@/components/DailyAnomalyTable3D';
 import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
 import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
@@ -598,19 +599,13 @@ export function App() {
               transition={{ duration: 0.22, ease: 'easeOut' }}
               className="space-y-6"
             >
-              {/* Filter Bar */}
-              <FilterSection
-                filter={filter}
-                onFilterChange={(newVals) =>
-                  setFilter((prev) => ({ ...prev, ...newVals }))
-                }
-                kecamatanList={kecamatanList}
-                desaList={desaList}
-                totalFiltered={filteredRecords.length}
-                totalAll={processedRecords.length}
+              {/* 1. Header 1: Fitur Data Anomali Berkas Harian (Bypass Nama Berkas) */}
+              <DailyAnomalyTable3D
+                records={processedRecords}
+                onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
               />
 
-              {/* Peta Interaktif Leaflet Sekadau */}
+              {/* 2. Peta Pantauan Wilayah Sekadau (Interaktif & Collapsible) */}
               <SekadauInteractiveMap
                 selectedKecamatan={filter.kecamatan}
                 selectedDesa={filter.desa}
@@ -623,12 +618,27 @@ export function App() {
                 records={processedRecords}
               />
 
-              {/* Tracker Matrix Table */}
-              <TrackerMatrix
-                records={filteredRecords}
-                onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
-                isDemoMode={config.isDemoMode}
-              />
+              {/* 3 & 4. Filter & Matriks Melekat Berdampingan Tanpa Terhalang Peta */}
+              <div id="filter-dan-matriks-container" className="space-y-4">
+                {/* Filter Bar */}
+                <FilterSection
+                  filter={filter}
+                  onFilterChange={(newVals) =>
+                    setFilter((prev) => ({ ...prev, ...newVals }))
+                  }
+                  kecamatanList={kecamatanList}
+                  desaList={desaList}
+                  totalFiltered={filteredRecords.length}
+                  totalAll={processedRecords.length}
+                />
+
+                {/* Tracker Matrix Table (Tepat di Bawah Filter) */}
+                <TrackerMatrix
+                  records={filteredRecords}
+                  onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
+                  isDemoMode={config.isDemoMode}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
