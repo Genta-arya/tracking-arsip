@@ -23,10 +23,10 @@ function doGet(e) {
 
   try {
     // -------------------------------------------------------------
-    // FITUR 1: Smart Quick-Scan (Deteksi Kilat Berkas Baru 1-2 Detik)
+    // FITUR 1: Smart Quick-Scan (Deteksi Kilat Berkas Baru di Shared Folder)
     // -------------------------------------------------------------
     if (action === 'quickScan') {
-      var mins = parseInt((e && e.parameter && e.parameter.minutes) || '30', 10);
+      var mins = parseInt((e && e.parameter && e.parameter.minutes) || '60', 10);
       var pastIso = new Date(Date.now() - mins * 60 * 1000).toISOString();
       var query = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + pastIso + "'";
 
@@ -34,8 +34,16 @@ function doGet(e) {
       var seenIds = {};
       var count = 0;
 
+      // 1. Cari dari Target Root Folder (Mendukung Shared Folder & Link Publik)
       try {
-        var files = DriveApp.searchFiles(query);
+        var targetFolder = null;
+        if (folderId) {
+          try {
+            targetFolder = DriveApp.getFolderById(folderId);
+          } catch (errF) {}
+        }
+        var files = targetFolder ? targetFolder.searchFiles(query) : DriveApp.searchFiles(query);
+
         while (files.hasNext() && count < 100) {
           var file = files.next();
           var fileId = file.getId();
@@ -56,7 +64,6 @@ function doGet(e) {
           if (!tpsName || !desaName || !kecName) continue;
 
           var uploaderName = extractFileUploader(file);
-
           var createdAt = '';
           var updatedAt = '';
           try {
@@ -83,6 +90,59 @@ function doGet(e) {
           count++;
         }
       } catch (errSearch) {}
+
+      // 2. Fallback pencarian lanjutan jika menggunakan Google Shared Drive
+      if (count === 0) {
+        try {
+          if (typeof Drive !== 'undefined' && Drive.Files && Drive.Files.list) {
+            var advQuery = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + pastIso + "'";
+            var advResp = Drive.Files.list({
+              q: advQuery,
+              supportsAllDrives: true,
+              includeItemsFromAllDrives: true,
+              corpora: 'allDrives',
+              maxResults: 60,
+              fields: 'items(id,title,alternateLink,createdDate,modifiedDate,fileSize,parents)'
+            });
+            if (advResp && advResp.items) {
+              for (var k = 0; k < advResp.items.length; k++) {
+                var it = advResp.items[k];
+                if (seenIds[it.id]) continue;
+                try {
+                  var fObj = DriveApp.getFileById(it.id);
+                  var pObj = fObj.getParents();
+                  var tpsF = pObj.hasNext() ? pObj.next() : null;
+                  var tpsN = tpsF ? tpsF.getName().trim() : '';
+                  var desaF = (tpsF && tpsF.getParents().hasNext()) ? tpsF.getParents().next() : null;
+                  var desaN = desaF ? desaF.getName().trim() : '';
+                  var kecF = (desaF && desaF.getParents().hasNext()) ? desaF.getParents().next() : null;
+                  var kecN = kecF ? kecF.getName().trim() : '';
+
+                  if (tpsN && desaN && kecN) {
+                    seenIds[it.id] = true;
+                    recentFiles.push({
+                      file: {
+                        id: it.id,
+                        name: it.title || fObj.getName(),
+                        url: it.alternateLink || fObj.getUrl(),
+                        createdAt: it.createdDate || '',
+                        updatedAt: it.modifiedDate || '',
+                        size: it.fileSize ? parseInt(it.fileSize, 10) : fObj.getSize(),
+                        uploader: extractFileUploader(fObj)
+                      },
+                      tpsFolderName: tpsN,
+                      tpsFolderId: tpsF ? tpsF.getId() : '',
+                      desa: desaN,
+                      kecamatan: kecN
+                    });
+                    count++;
+                  }
+                } catch (eF) {}
+              }
+            }
+          }
+        } catch (eAdv) {}
+      }
 
       return responseJSON({ status: 'success', count: recentFiles.length, data: recentFiles });
     }
@@ -228,6 +288,7 @@ function responseJSON(obj) {
 var FIREBASE_CONFIG = {
   PROJECT_ID: 'tracking-chasil',
   API_KEY: 'AIzaSyBy0sw8e7TcNrdoZkQHg0fZ992Gc-WMY6U',
+  ROOT_FOLDER_ID: '1cvw-44j6Tao85OLxn0jzR4jVInkquT5r',
   AUTH_EMAIL: 'teknis.kpusekadau@gmail.com',
   AUTH_PASSWORD: 'teknissekadau'
 };
@@ -337,9 +398,15 @@ function autoPushRecentFilesToFirestore() {
       }
     } catch (errAdv) {}
 
-    // 1B. Pencarian standar DriveApp (My Drive & Accessible Folders)
+    // 1B. Pencarian via Target Root Folder C-Hasil (Mendukung Shared Folder)
     try {
-      var files = DriveApp.searchFiles(query);
+      var rootTargetFolder = null;
+      if (FIREBASE_CONFIG.ROOT_FOLDER_ID) {
+        try {
+          rootTargetFolder = DriveApp.getFolderById(FIREBASE_CONFIG.ROOT_FOLDER_ID);
+        } catch (eR) {}
+      }
+      var files = rootTargetFolder ? rootTargetFolder.searchFiles(query) : DriveApp.searchFiles(query);
       while (files.hasNext() && count < 60) {
         var file = files.next();
         var fileId = file.getId();
