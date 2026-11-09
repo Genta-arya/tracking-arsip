@@ -1,7 +1,6 @@
 import { FileSpreadsheet, RefreshCw, LogIn, LogOut, UserCheck, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AppConfig } from '@/types';
-import { AutoSyncWidget } from './AutoSyncWidget';
 
 interface NavbarProps {
   config: AppConfig;
@@ -95,42 +94,38 @@ export function Navbar({
             )}
           </div>
 
-          {/* Action Buttons: Auto-Sync, Pindai Drive & Export Excel (serta Tombol Keluar di Desktop) */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+          {/* Action Buttons: Pindai Drive & Export Excel (serta Tombol Keluar di Desktop) */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
             {!config.isDemoMode && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
-                <AutoSyncWidget />
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
+                {/* Tombol 3D Pindai Drive */}
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96, y: 2 }}
+                  type="button"
+                  onClick={onRefreshData}
+                  disabled={isLoading}
+                  className="relative h-9 px-4 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 shadow-[0_3px_0_#b45309,0_6px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.7)] active:translate-y-[2px] active:shadow-[0_1px_0_#b45309] border border-amber-300/80 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  title="Pindai ulang folder Google Drive"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 shrink-0 ${isLoading ? 'animate-spin' : ''}`}
+                  />
+                  <span>Pindai Drive</span>
+                </motion.button>
 
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto">
-                  {/* Tombol 3D Pindai Drive */}
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.96, y: 2 }}
-                    type="button"
-                    onClick={onRefreshData}
-                    disabled={isLoading}
-                    className="relative h-9 px-4 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:to-amber-400 shadow-[0_3px_0_#b45309,0_6px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.7)] active:translate-y-[2px] active:shadow-[0_1px_0_#b45309] border border-amber-300/80 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                    title="Pindai ulang folder Google Drive"
-                  >
-                    <RefreshCw
-                      className={`h-3.5 w-3.5 shrink-0 ${isLoading ? 'animate-spin' : ''}`}
-                    />
-                    <span>Pindai Drive</span>
-                  </motion.button>
-
-                  {/* Tombol 3D Export Excel */}
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.96, y: 2 }}
-                    type="button"
-                    onClick={onExportExcel}
-                    className="relative h-9 px-4 rounded-xl text-xs font-black text-white bg-gradient-to-b from-kpu-orange via-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 shadow-[0_3px_0_#9a3412,0_6px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] active:translate-y-[2px] active:shadow-[0_1px_0_#9a3412] border border-orange-400/80 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                    title="Unduh rekapitulasi format Excel (.xlsx)"
-                  >
-                    <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
-                    <span>Export (.xlsx)</span>
-                  </motion.button>
-                </div>
+                {/* Tombol 3D Export Excel */}
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96, y: 2 }}
+                  type="button"
+                  onClick={onExportExcel}
+                  className="relative h-9 px-4 rounded-xl text-xs font-black text-white bg-gradient-to-b from-kpu-orange via-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 shadow-[0_3px_0_#9a3412,0_6px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] active:translate-y-[2px] active:shadow-[0_1px_0_#9a3412] border border-orange-400/80 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  title="Unduh rekapitulasi format Excel (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
+                  <span>Export (.xlsx)</span>
+                </motion.button>
               </div>
             )}
 

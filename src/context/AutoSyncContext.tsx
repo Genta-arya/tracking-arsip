@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { RawTpsData, AppConfig } from '@/types';
-import { performFullDriveSync } from '@/services/driveSyncEngine';
-
+import { performFullDriveSync, performSmartQuickSync } from '@/services/driveSyncEngine';
 
 interface AutoSyncContextType {
   isAutoSyncEnabled: boolean;
@@ -32,9 +31,9 @@ export function AutoSyncProvider({
   rawData,
   onSyncComplete,
 }: AutoSyncProviderProps) {
-  // 1. Sinkronisasi otomatis berjalan permanen setiap 5 menit (tidak dapat dimatikan manual)
+  // 1. Sinkronisasi otomatis berjalan permanen setiap 2 menit (tanpa indikator UI)
   const isAutoSyncEnabled = true;
-  const intervalMinutes = 5;
+  const intervalMinutes = 2;
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [nextSyncCountdown, setNextSyncCountdown] = useState<number>(() => intervalMinutes * 60);
@@ -75,6 +74,22 @@ export function AutoSyncProvider({
     setSyncError(null);
 
     try {
+      // 1. Prioritaskan Smart Quick-Scan (hanya berkas baru 25 menit terakhir, super kilat 1-2 detik)
+      const quickResult = await performSmartQuickSync(
+        currentCfg.gasWebAppUrl,
+        currentCfg.rootFolderId,
+        rawDataRef.current
+      );
+
+      if (quickResult && quickResult.length > 0) {
+        onSyncCompleteRef.current(quickResult);
+        setLastSyncAt(new Date());
+        setLastSyncStatus('success');
+        setNextSyncCountdown(intervalMinutes * 60);
+        return;
+      }
+
+      // 2. Jika tidak ada berkas cepat atau belum didukung, jalankan pemindaian normal secara senyap
       const result = await performFullDriveSync(
         currentCfg.gasWebAppUrl,
         currentCfg.rootFolderId,

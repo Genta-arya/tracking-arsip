@@ -1,5 +1,5 @@
 import { RawTpsData } from '@/types';
-import { fetchKecamatanList, scanKecamatanFolder } from './driveService';
+import { fetchKecamatanList, scanKecamatanFolder, quickScanRecentFiles } from './driveService';
 import {
   fetchAllFileOverrides,
   deleteFileOverride,
@@ -121,3 +121,73 @@ export async function performFullDriveSync(
     errors,
   };
 }
+
+/**
+ * Smart Quick-Scan Engine:
+ * Memindai berkas yang baru diunggah/diubah dalam 25 menit terakhir dari Google Drive
+ * dan memperbarui data TPS & Firestore seketika (hanya 1-2 detik eksekusi).
+ */
+export async function performSmartQuickSync(
+  gasWebAppUrl: string,
+  rootFolderId: string,
+  currentRawData: RawTpsData[]
+): Promise<RawTpsData[] | null> {
+  if (!gasWebAppUrl || !rootFolderId) return null;
+
+  const recentItems = await quickScanRecentFiles(gasWebAppUrl, rootFolderId, 25);
+  if (!recentItems || recentItems.length === 0) return null;
+
+  const overrides = await fetchAllFileOverrides();
+  let updatedData = [...currentRawData];
+  let hasChanges = false;
+  const changedKecamatans = new Set<string>();
+
+  for (const item of recentItems) {
+    const { file, tpsFolderName, tpsFolderId, desa, kecamatan } = item;
+    if (!tpsFolderId && !tpsFolderName) continue;
+
+    // Temukan TPS dalam data
+    const tpsIndex = updatedData.findIndex(
+      (t) =>
+        (tpsFolderId && t.tpsFolderId === tpsFolderId) ||
+        (t.kecamatan.toLowerCase() === kecamatan.toLowerCase() &&
+          t.desa.toLowerCase() === desa.toLowerCase() &&
+          t.tpsFolderName.toLowerCase() === tpsFolderName.toLowerCase())
+    );
+
+    const fileOverride = overrides.get(file.id);
+    const enrichedFile = {
+      ...file,
+      overrideElection: fileOverride?.overrideElection,
+      isResolved: fileOverride?.isResolved,
+      resolutionNote: fileOverride?.resolutionNote,
+    };
+
+    if (tpsIndex >= 0) {
+      const existingTps = updatedData[tpsIndex];
+      const existingFileIdx = existingTps.files.findIndex((f) => f.id === file.id);
+      let nextFiles = [...existingTps.files];
+      if (existingFileIdx >= 0) {
+        nextFiles[existingFileIdx] = { ...nextFiles[existingFileIdx], ...enrichedFile };
+      } else {
+        nextFiles.push(enrichedFile as any);
+        hasChanges = true;
+      }
+      updatedData[tpsIndex] = { ...existingTps, files: nextFiles };
+      changedKecamatans.add(existingTps.kecamatan);
+    }
+  }
+
+  if (hasChanges && changedKecamatans.size > 0) {
+    for (const kec of changedKecamatans) {
+      const kecData = updatedData.filter(
+        (t) => t.kecamatan.toLowerCase() === kec.toLowerCase()
+      );
+      await saveKecamatanScanToFirestore(kec, kecData);
+    }
+    return updatedData;
+  }
+
+  return null;
+}
+
