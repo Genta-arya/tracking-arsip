@@ -22,6 +22,35 @@ function doGet(e) {
   }
 
   try {
+    if (action === 'diagnose') {
+      var diagRootId = folderId || FIREBASE_CONFIG.ROOT_FOLDER_ID;
+      var diagFolder = DriveApp.getFolderById(diagRootId);
+      var diagName = diagFolder.getName();
+
+      var sfResults = [];
+      try {
+        var sf = diagFolder.searchFiles("trashed = false and mimeType != 'application/vnd.google-apps.folder'");
+        while (sf.hasNext() && sfResults.length < 10) {
+          var f1 = sf.next();
+          sfResults.push({
+            name: f1.getName(),
+            id: f1.getId(),
+            lastUpdated: f1.getLastUpdated() ? f1.getLastUpdated().toISOString() : '',
+            dateCreated: f1.getDateCreated() ? f1.getDateCreated().toISOString() : ''
+          });
+        }
+      } catch (errSf) {
+        sfResults.push({ error: errSf.toString() });
+      }
+
+      return responseJSON({
+        status: 'success',
+        rootId: diagRootId,
+        rootName: diagName,
+        searchFilesSample: sfResults
+      });
+    }
+
     // -------------------------------------------------------------
     // FITUR 1: Smart Quick-Scan (Deteksi Kilat Berkas Baru di Shared Folder)
     // -------------------------------------------------------------
@@ -327,6 +356,61 @@ function uninstallAutoTrigger() {
 }
 
 /**
+ * FUNGSI DIAGNOSIS:
+ * Jalankan fungsi ini di editor Apps Script (Pilih 'testDiagnoseUpload' lalu klik 'Run')
+ * untuk mengecek apakah Google Apps Script dapat melihat folder dan berkas yang Anda unggah.
+ */
+function testDiagnoseUpload() {
+  Logger.log('=== MEMULAI DIAGNOSIS GOOGLE DRIVE C-HASIL ===');
+  var rootId = FIREBASE_CONFIG.ROOT_FOLDER_ID;
+  Logger.log('1. ID Root Folder: ' + rootId);
+  var rootFolder = DriveApp.getFolderById(rootId);
+  Logger.log('2. Nama Root Folder: ' + rootFolder.getName());
+
+  // Cek apakah ada file dalam 12 jam terakhir
+  var halfDayAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  var q = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + halfDayAgo + "'";
+  Logger.log('3. Mencari berkas dalam 12 jam terakhir di folder ini...');
+
+  var files = rootFolder.searchFiles(q);
+  var count = 0;
+  while (files.hasNext() && count < 10) {
+    var f = files.next();
+    Logger.log('   -> Berkas ditemukan: ' + f.getName() + ' | Updated: ' + f.getLastUpdated().toISOString());
+    count++;
+  }
+  Logger.log('4. Total berkas 12 jam terakhir ditemukan: ' + count);
+
+  if (count === 0) {
+    Logger.log('⚠️ CATATAN: searchFiles() pada Google Shared Drive mengembalikan 0.');
+    Logger.log('   Mencoba membaca folder TPS secara langsung (Folder Traversal)...');
+    var kecs = rootFolder.getFolders();
+    if (kecs.hasNext()) {
+      var k = kecs.next();
+      Logger.log('   Contoh Kecamatan: ' + k.getName());
+      var des = k.getFolders();
+      if (des.hasNext()) {
+        var d = des.next();
+        Logger.log('   Contoh Desa: ' + d.getName());
+        var tps = d.getFolders();
+        if (tps.hasNext()) {
+          var t = tps.next();
+          Logger.log('   Contoh TPS: ' + t.getName());
+          var tFiles = t.getFiles();
+          var fCount = 0;
+          while (tFiles.hasNext() && fCount < 5) {
+            var tf = tFiles.next();
+            Logger.log('   ==> DITEMUKAN BERKAS DI TPS: ' + tf.getName() + ' | Size: ' + tf.getSize() + ' bytes');
+            fCount++;
+          }
+        }
+      }
+    }
+  }
+  Logger.log('=== DIAGNOSIS SELESAI ===');
+}
+
+/**
  * Fungsi Inti Auto-Push:
  * Dipanggil otomatis oleh Google Cloud Trigger setiap menit.
  */
@@ -399,6 +483,7 @@ function autoPushRecentFilesToFirestore() {
     } catch (errAdv) {}
 
     // 1B. Pencarian via Target Root Folder C-Hasil (Mendukung Shared Folder)
+    var searchCount = 0;
     try {
       var rootTargetFolder = null;
       if (FIREBASE_CONFIG.ROOT_FOLDER_ID) {
@@ -409,6 +494,7 @@ function autoPushRecentFilesToFirestore() {
       var files = rootTargetFolder ? rootTargetFolder.searchFiles(query) : DriveApp.searchFiles(query);
       while (files.hasNext() && count < 60) {
         var file = files.next();
+        searchCount++;
         var fileId = file.getId();
         if (seenIds[fileId]) continue;
 
@@ -452,10 +538,15 @@ function autoPushRecentFilesToFirestore() {
         });
         count++;
       }
-    } catch (errSearch) {}
+    } catch (errSearch) {
+      Logger.log('[Search Error]: ' + errSearch.toString());
+    }
 
-    // Jika tidak ada berkas baru: selesai seketika (0 detik)
+    Logger.log('[Auto-Push] Memindai berkas 30 menit terakhir. Ditemukan ' + recentFiles.length + ' berkas C-Hasil.');
+
+    // Jika tidak ada berkas baru: selesai seketika
     if (recentFiles.length === 0) {
+      Logger.log('ℹ️ Hasil: Tidak ada berkas baru yang diunggah ke folder TPS dalam 30 menit terakhir.');
       return;
     }
 
