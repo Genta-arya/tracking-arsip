@@ -88,16 +88,23 @@ function MapCameraController({
 }) {
   const map = useMap();
 
-  // Invalidate size agar tidak ada tile terpotong saat resize / collapse
+  // Invalidate size agar tidak ada tile terpotong saat resize / collapse / initial mount
   useEffect(() => {
     if (isCollapsed) return;
-    const timer = setTimeout(() => {
+    map.invalidateSize();
+    const timer1 = setTimeout(() => {
       map.invalidateSize();
-    }, 280);
-    return () => clearTimeout(timer);
+    }, 100);
+    const timer2 = setTimeout(() => {
+      map.invalidateSize();
+    }, 350);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [map, isCollapsed, isExpandedHeight]);
 
-  // Kamera otomatis menyesuaikan filter
+  // Kamera otomatis menyesuaikan filter dengan bounds yang aman & responsif
   useEffect(() => {
     if (isCollapsed) return;
 
@@ -105,23 +112,24 @@ function MapCameraController({
       const coord = getDesaCoordinate(kecamatan, desa);
       if (coord) {
         map.flyTo([coord.lat, coord.lng], 14, {
-          duration: 1.1,
-          easeLinearity: 0.25,
+          duration: 0.8,
+          easeLinearity: 0.35,
         });
       }
     } else if (kecamatan && kecamatan !== 'ALL') {
       const kecCoord = getKecamatanCoordinate(kecamatan);
       if (kecCoord) {
         map.flyTo([kecCoord.lat, kecCoord.lng], kecCoord.zoom || 11.5, {
-          duration: 1.1,
-          easeLinearity: 0.25,
+          duration: 0.8,
+          easeLinearity: 0.35,
         });
       }
     } else {
-      // Tampilkan seluruh batas geografis Sekadau
+      // Tampilkan seluruh batas geografis Sekadau terpusat aman tanpa pernah lompat ke pulau lain
       map.flyToBounds(SEKADAU_BOUNDS, {
-        padding: [35, 35],
-        duration: 1.2,
+        padding: [25, 25],
+        maxZoom: 10,
+        duration: 0.9,
       });
     }
   }, [kecamatan, desa, map, isCollapsed]);
@@ -827,6 +835,14 @@ export function SekadauInteractiveMap({
               <MapContainer
                 center={[SEKADAU_CENTER.lat, SEKADAU_CENTER.lng]}
                 zoom={SEKADAU_DEFAULT_ZOOM}
+                minZoom={8.5}
+                maxZoom={18}
+                maxBounds={[
+                  [-1.6, 109.2], // Southwest boundary (terkunci ketat di Kalimantan Barat / Sekadau)
+                  [1.6, 112.8],  // Northeast boundary
+                ]}
+                maxBoundsViscosity={1.0}
+                preferCanvas={true}
                 scrollWheelZoom={true}
                 attributionControl={false}
                 style={{ height: '100%', width: '100%' }}
