@@ -26,53 +26,64 @@ function doGet(e) {
     // FITUR 1: Smart Quick-Scan (Deteksi Kilat Berkas Baru 1-2 Detik)
     // -------------------------------------------------------------
     if (action === 'quickScan') {
-      var mins = parseInt((e && e.parameter && e.parameter.minutes) || '25', 10);
+      var mins = parseInt((e && e.parameter && e.parameter.minutes) || '30', 10);
       var pastIso = new Date(Date.now() - mins * 60 * 1000).toISOString();
       var query = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + pastIso + "'";
 
-      var files = DriveApp.searchFiles(query);
       var recentFiles = [];
+      var seenIds = {};
       var count = 0;
 
-      while (files.hasNext() && count < 100) {
-        var file = files.next();
-        var parents = file.getParents();
-        var tpsFolder = parents.hasNext() ? parents.next() : null;
-        var tpsName = tpsFolder ? tpsFolder.getName().trim() : '';
-        var tpsId = tpsFolder ? tpsFolder.getId() : '';
+      try {
+        var files = DriveApp.searchFiles(query);
+        while (files.hasNext() && count < 100) {
+          var file = files.next();
+          var fileId = file.getId();
+          if (seenIds[fileId]) continue;
 
-        var desaFolder = (tpsFolder && tpsFolder.getParents().hasNext()) ? tpsFolder.getParents().next() : null;
-        var desaName = desaFolder ? desaFolder.getName().trim() : '';
+          var parents = file.getParents();
+          var tpsFolder = parents.hasNext() ? parents.next() : null;
+          var tpsName = tpsFolder ? tpsFolder.getName().trim() : '';
+          var tpsId = tpsFolder ? tpsFolder.getId() : '';
 
-        var kecFolder = (desaFolder && desaFolder.getParents().hasNext()) ? desaFolder.getParents().next() : null;
-        var kecName = kecFolder ? kecFolder.getName().trim() : '';
+          var desaFolder = (tpsFolder && tpsFolder.getParents().hasNext()) ? tpsFolder.getParents().next() : null;
+          var desaName = desaFolder ? desaFolder.getName().trim() : '';
 
-        var uploaderName = extractFileUploader(file);
+          var kecFolder = (desaFolder && desaFolder.getParents().hasNext()) ? desaFolder.getParents().next() : null;
+          var kecName = kecFolder ? kecFolder.getName().trim() : '';
 
-        var createdAt = '';
-        var updatedAt = '';
-        try {
-          if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
-          if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-        } catch (err) {}
+          // Wajib hanya memproses berkas yang berada di struktur Folder TPS -> Desa -> Kecamatan
+          if (!tpsName || !desaName || !kecName) continue;
 
-        recentFiles.push({
-          file: {
-            id: file.getId(),
-            name: file.getName(),
-            url: file.getUrl(),
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            size: file.getSize(),
-            uploader: uploaderName
-          },
-          tpsFolderName: tpsName,
-          tpsFolderId: tpsId,
-          desa: desaName,
-          kecamatan: kecName
-        });
-        count++;
-      }
+          var uploaderName = extractFileUploader(file);
+
+          var createdAt = '';
+          var updatedAt = '';
+          try {
+            if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
+            if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
+          } catch (err) {}
+
+          seenIds[fileId] = true;
+          recentFiles.push({
+            file: {
+              id: fileId,
+              name: file.getName(),
+              url: file.getUrl(),
+              createdAt: createdAt,
+              updatedAt: updatedAt,
+              size: file.getSize(),
+              uploader: uploaderName
+            },
+            tpsFolderName: tpsName,
+            tpsFolderId: tpsId,
+            desa: desaName,
+            kecamatan: kecName
+          });
+          count++;
+        }
+      } catch (errSearch) {}
+
       return responseJSON({ status: 'success', count: recentFiles.length, data: recentFiles });
     }
 

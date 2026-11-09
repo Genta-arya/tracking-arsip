@@ -111,14 +111,23 @@ Total cakupan wilayah: **7 Kecamatan**, **87 Desa**, dan tepat **698 TPS**.
 
 ---
 
-### C. Background Auto-Sync & Smart Quick-Scan
+### C. Background Auto-Sync 2 Menit & Smart Quick-Scan (Realtime Experience)
 
-1. **Berjalan Murni Otomatis di Latar Belakang:**
-   - Berjalan senyap setiap 2 menit sekali via `AutoSyncContext`.
-   - Tampilan navbar tetap 100% bersih tanpa indikator yang mengganggu.
-2. **Dukungan Smart Quick-Scan:**
-   - Mengambil file baru CamScanner dalam hitungan 1–2 detik saja menggunakan query waktu Google Drive (`modifiedDate > ...`).
-   - Jika GAS yang terpasang adalah versi standar (belum memiliki `quickScan`), sistem secara otomatis beralih ke `scanKecamatan` normal dengan aman.
+1. **Header Bebas Gangguan (100% Bersih):**
+   - Navbar utama sengaja dibiarkan bersih tanpa widget sinkronisasi agar antarmuka tetap elegan dan fokus pada identitas kantor serta tombol aksi utama.
+2. **Indikator Hitungan Mundur Taktil di Floating Pill (Kanan Bawah):**
+   - Di pojok kanan bawah terdapat tombol pill mengambang interaktif: `(🟢 Auto-Sync: 02:00)`.
+   - Menghitung mundur secara *real-time* dari `02:00` ke `00:00`.
+   - Saat hitungan habis, status otomatis berganti menjadi animasi putar: `🔄 Quick-Fetch Berkas...`.
+   - Jika diklik, panel meluas menampilkan waktu sinkronisasi terakhir, tombol **Fetch Sekarang**, dan opsi **Pemindaian Penuh 7 Kecamatan**.
+3. **Murni Fetch Berkas Baru (Tanpa Full-Scan yang Membuat Lemot):**
+   - Auto-sync memanggil `action=quickScan&minutes=30` ke Google Apps Script (hanya butuh 1-2 detik).
+   - Jika tidak ada berkas baru yang diunggah staf PPK/PPS dalam 30 menit terakhir, proses langsung selesai sukses dalam 1 detik tanpa memindai seluruh folder kecamatan sehingga 0% lag dan hemat kuota Google Drive.
+   - Jika ditemukan berkas baru:
+     - Berkas digabungkan secara cerdas ke database TPS bersangkutan.
+     - Hanya kecamatan yang bersangkutan yang di-update ke Cloud Firestore.
+     - Tampil notifikasi mengambang: `✨ {N} Berkas C-Hasil Baru Masuk!`.
+     - Seluruh HP/laptop staf lain langsung ter-update secara *real-time* via listener Firestore `onSnapshot`.
 
 ---
 
