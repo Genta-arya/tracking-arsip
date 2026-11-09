@@ -76,7 +76,7 @@ export function TrackerMatrix({
       );
     }
 
-    const hasFileAnomaly = file.anomalies.length > 0;
+    const hasFileAnomaly = (file.anomalies?.length ?? 0) > 0 && !file.isResolved;
 
     return (
       <td className={`px-0.5 py-2 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>

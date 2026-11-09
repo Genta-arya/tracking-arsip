@@ -306,7 +306,9 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     }
 
     // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (termasuk SUDAH_DIBENARKAN):
-    if (file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE')) {
+    const isFileResolved = Boolean(file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE'));
+
+    if (isFileResolved) {
       if (file.overrideElection && file.overrideElection !== 'IGNORE' && file.overrideElection !== 'SUDAH_DIBENARKAN') {
         finalElection = file.overrideElection as ElectionType;
       }
@@ -325,7 +327,7 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       detectedElection: finalElection,
       anomalies: finalAnomalies,
       overrideElection: file.overrideElection,
-      isResolved: true,
+      isResolved: isFileResolved,
       resolutionNote: file.resolutionNote,
       resolvedAt: file.resolvedAt,
       resolvedBy: file.resolvedBy,
