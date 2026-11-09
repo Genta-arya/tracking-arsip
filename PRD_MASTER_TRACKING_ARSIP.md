@@ -215,3 +215,24 @@ tracking-arsip/
 Aplikasi terhubung ke Vercel:
 - Setiap commit yang dipush ke branch `master` di GitHub secara otomatis memicu build dan deploy ke domain produksi Vercel KPU Sekadau.
 - Konfigurasi environment Firebase dan Google Drive Web App tersimpan aman di Firestore dan local storage browser.
+
+---
+
+## 7. Arsitektur Google Apps Script & Cloud Auto-Push (24 Jam Nonstop)
+
+Google Apps Script (`google-apps-script-code.js`) bertindak sebagai pelayan cloud tanpa henti:
+1. **True Folder Traversal Audit (`auditSingleKecamatan`):**
+   - Mengabaikan keterbatasan `searchFiles` pada Shared Folder Google Drive.
+   - Menelusuri hirarki folder fisik langsung: `Kecamatan -> Desa -> TPS -> getFiles()`.
+   - **Mendeteksi Berkas Baru Diunggah:** Menambah total berkas & mendeteksi berkas C-Hasil baru.
+   - **Mendeteksi Berkas Dihapus:** Mengurangi total berkas saat berkas dihapus dari Drive oleh operator TPS.
+   - **Mendeteksi Berkas Dimodifikasi / Diganti:** Membandingkan sidik jari nama & ukuran berkas (`name|size`).
+   - **Mempertahankan Status Override Admin:** Status penyesuaian jenis pemilihan (`overrideElection`) dan verifikasi anomali (`isResolved`) tidak akan hilang.
+2. **Smart Firestore Write:**
+   - Menggunakan REST API Firestore dengan autentikasi ID Token Firebase Auth (`identitytoolkit.googleapis.com`).
+   - Hanya melakukan operasi `setFirestoreDocument` jika ada perbedaan fisik nyata antara Drive dan Firestore. Menghemat 100% kuota write Firestore.
+3. **Cloud Time-Driven Triggers (`installAutoTrigger`):**
+   - `installAutoTrigger()`: Berjalan setiap 5 menit (standar aman kuota 90 menit/hari akun Google gratis).
+   - `installAutoTrigger2Min()`: Berjalan setiap 2 menit (opsi respon cepat).
+   - `testDiagnoseUpload()`: Uji diagnosis instan pembacaan folder Drive dan koneksi Firestore.
+

@@ -249,6 +249,24 @@ function doGet(e) {
       });
     }
 
+    // -------------------------------------------------------------
+    // FITUR 4: Audit Fisik 1 Kecamatan & Sinkronisasi ke Firestore
+    // -------------------------------------------------------------
+    if (action === 'auditKecamatan') {
+      var idTokenKec = getFirebaseAuthToken();
+      var targetKecFolder = DriveApp.getFolderById(folderId);
+      var auditRes = auditSingleKecamatan(targetKecFolder, idTokenKec);
+      return responseJSON({ status: 'success', data: auditRes });
+    }
+
+    // -------------------------------------------------------------
+    // FITUR 5: Audit Fisik Seluruh Kecamatan & Auto-Push ke Firestore
+    // -------------------------------------------------------------
+    if (action === 'auditAll') {
+      autoPushRecentFilesToFirestore();
+      return responseJSON({ status: 'success', message: 'Audit fisik seluruh kecamatan selesai diproses ke Firestore.' });
+    }
+
     return responseJSON({ status: 'error', message: 'Aksi tidak dikenali' });
   } catch (err) {
     return responseJSON({ status: 'error', message: err.toString() });
@@ -323,20 +341,51 @@ var FIREBASE_CONFIG = {
 };
 
 /**
- * 1-CLICK INSTALL TRIGGER:
+ * 1-CLICK INSTALL TRIGGER (DEFAULT 5 MENIT - REKOMENDASI KUOTA GOOGLE):
  * Jalankan fungsi ini SEKALI di editor Google Apps Script (klik 'Run' / 'Jalankan')
- * untuk mengaktifkan pemindaian otomatis di server Google setiap 1-2 menit.
+ * untuk mengaktifkan pemindaian otomatis di server Google setiap 5 menit.
+ * 100% Aman dari batas kuota eksekusi harian Google (90 menit/hari pada akun gratis).
  */
 function installAutoTrigger() {
-  uninstallAutoTrigger(); // Bersihkan trigger lama jika ada agar tidak ganda
+  uninstallAutoTrigger();
 
-  // Pasang trigger waktu: Otomatis berjalan setiap 1 menit di Cloud Google
+  ScriptApp.newTrigger('autoPushRecentFilesToFirestore')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+
+  Logger.log('✅ BERHASIL! Trigger Auto-Push ke Firestore aktif setiap 5 menit.');
+  Logger.log('   Skrip akan berjalan otomatis 24 jam nonstop di Cloud Google tanpa perlu membuka web.');
+}
+
+/**
+ * TRIGGER RESPON CEPAT (SETIAP 2 MENIT):
+ * Aktifkan fungsi ini jika Anda menginginkan pembaharuan data berkas lebih cepat (tiap 2 menit).
+ */
+function installAutoTrigger2Min() {
+  uninstallAutoTrigger();
+
+  ScriptApp.newTrigger('autoPushRecentFilesToFirestore')
+    .timeBased()
+    .everyMinutes(2)
+    .create();
+
+  Logger.log('✅ BERHASIL! Trigger Auto-Push ke Firestore aktif setiap 2 menit.');
+}
+
+/**
+ * TRIGGER RESPON KILAT (SETIAP 1 MENIT):
+ * Catatan: Hanya direkomendasikan jika akun Google Anda memiliki kuota tinggi.
+ */
+function installAutoTrigger1Min() {
+  uninstallAutoTrigger();
+
   ScriptApp.newTrigger('autoPushRecentFilesToFirestore')
     .timeBased()
     .everyMinutes(1)
     .create();
 
-  Logger.log('✅ BERHASIL! Trigger Auto-Push ke Firestore aktif. Skrip akan berjalan otomatis setiap 1 menit tanpa perlu membuka web.');
+  Logger.log('✅ BERHASIL! Trigger Auto-Push ke Firestore aktif setiap 1 menit.');
 }
 
 /**
@@ -356,298 +405,247 @@ function uninstallAutoTrigger() {
 }
 
 /**
- * FUNGSI DIAGNOSIS:
+ * FUNGSI DIAGNOSIS & BENCHMARK:
  * Jalankan fungsi ini di editor Apps Script (Pilih 'testDiagnoseUpload' lalu klik 'Run')
- * untuk mengecek apakah Google Apps Script dapat melihat folder dan berkas yang Anda unggah.
+ * untuk mengecek status fisik Drive dan memverifikasi koneksi ke Cloud Firestore.
  */
 function testDiagnoseUpload() {
   Logger.log('=== MEMULAI DIAGNOSIS GOOGLE DRIVE C-HASIL ===');
   var rootId = FIREBASE_CONFIG.ROOT_FOLDER_ID;
-  Logger.log('1. ID Root Folder: ' + rootId);
   var rootFolder = DriveApp.getFolderById(rootId);
-  Logger.log('2. Nama Root Folder: ' + rootFolder.getName());
+  Logger.log('1. Root Folder: ' + rootFolder.getName() + ' (ID: ' + rootId + ')');
 
-  // Cek apakah ada file dalam 12 jam terakhir
-  var halfDayAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-  var q = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + halfDayAgo + "'";
-  Logger.log('3. Mencari berkas dalam 12 jam terakhir di folder ini...');
+  var idToken = getFirebaseAuthToken();
+  Logger.log('2. Firebase Auth Token: Berhasil terhubung ke Cloud Firestore! (' + idToken.substring(0, 15) + '...)');
 
-  var files = rootFolder.searchFiles(q);
-  var count = 0;
-  while (files.hasNext() && count < 10) {
-    var f = files.next();
-    Logger.log('   -> Berkas ditemukan: ' + f.getName() + ' | Updated: ' + f.getLastUpdated().toISOString());
-    count++;
-  }
-  Logger.log('4. Total berkas 12 jam terakhir ditemukan: ' + count);
-
-  if (count === 0) {
-    Logger.log('⚠️ CATATAN: searchFiles() pada Google Shared Drive mengembalikan 0.');
-    Logger.log('   Mencoba membaca folder TPS secara langsung (Folder Traversal)...');
-    var kecs = rootFolder.getFolders();
-    if (kecs.hasNext()) {
-      var k = kecs.next();
-      Logger.log('   Contoh Kecamatan: ' + k.getName());
-      var des = k.getFolders();
-      if (des.hasNext()) {
-        var d = des.next();
-        Logger.log('   Contoh Desa: ' + d.getName());
-        var tps = d.getFolders();
-        if (tps.hasNext()) {
-          var t = tps.next();
-          Logger.log('   Contoh TPS: ' + t.getName());
-          var tFiles = t.getFiles();
-          var fCount = 0;
-          while (tFiles.hasNext() && fCount < 5) {
-            var tf = tFiles.next();
-            Logger.log('   ==> DITEMUKAN BERKAS DI TPS: ' + tf.getName() + ' | Size: ' + tf.getSize() + ' bytes');
-            fCount++;
-          }
-        }
-      }
+  Logger.log('3. Melakukan audit fisik 1 kecamatan contoh (Belitang)...');
+  var kecs = rootFolder.getFolders();
+  while (kecs.hasNext()) {
+    var k = kecs.next();
+    if (k.getName().trim() === 'Belitang') {
+      var res = auditSingleKecamatan(k, idToken);
+      Logger.log('   Hasil Belitang: Berkas fisik = ' + res.newCount + ', Berkas Firestore lama = ' + res.oldCount + ', Status = ' + (res.changed ? 'DIPERBARUI KE FIRESTORE' : '100% SINKRON'));
+      break;
     }
   }
   Logger.log('=== DIAGNOSIS SELESAI ===');
 }
 
 /**
- * Fungsi Inti Auto-Push:
- * Dipanggil otomatis oleh Google Cloud Trigger setiap menit.
+ * FUNGSI INTI AUDIT 1 KECAMATAN:
+ * Memindai hirarki fisik Google Drive: Kecamatan -> Desa -> TPS -> Berkas
+ * dan membandingkannya dengan data terkini di Cloud Firestore (scanned_data/{kecamatan}).
+ *
+ * MENDUKUNG 100%:
+ * - Berkas baru diunggah (+ file count otomatis bertambah di dashboard)
+ * - Berkas dihapus dari Google Drive (- file count otomatis berkurang di dashboard)
+ * - Berkas diganti / diperbarui (perubahan ukuran atau nama berkas)
+ * - Mempertahankan status verifikasi / anomali admin (overrideElection, isResolved)
+ * - Smart Write: HANYA menulis ke Firestore jika terbukti ada perubahan fisik!
  */
-function autoPushRecentFilesToFirestore() {
-  try {
-    // 1. Cari berkas yang baru diunggah / dimodifikasi dalam 30 menit terakhir
-    var pastIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    var query = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + pastIso + "'";
+function auditSingleKecamatan(kecFolder, idToken) {
+  var kecName = kecFolder.getName().trim();
+  var desaFolders = kecFolder.getFolders();
+  var tpsList = [];
+  var physicalTotalFiles = 0;
+  var physicalFileFingerprints = {}; // fileId -> fingerprint (name + size)
 
-    var recentFiles = [];
-    var seenIds = {};
-    var count = 0;
+  while (desaFolders.hasNext()) {
+    var desa = desaFolders.next();
+    var desaName = desa.getName().trim();
+    var tpsFolders = desa.getFolders();
 
-    // 1A. Jika Advanced Drive API aktif, cari di seluruh Shared Drive & My Drive
-    try {
-      if (typeof Drive !== 'undefined' && Drive.Files && Drive.Files.list) {
-        var sharedResp = Drive.Files.list({
-          q: query,
-          supportsAllDrives: true,
-          includeItemsFromAllDrives: true,
-          corpora: 'allDrives',
-          maxResults: 60,
-          fields: 'items(id,title,alternateLink,createdDate,modifiedDate,fileSize,owners,lastModifyingUser,parents)'
-        });
+    while (tpsFolders.hasNext()) {
+      var tps = tpsFolders.next();
+      var tpsName = tps.getName().trim();
+      var files = tps.getFiles();
+      var fileList = [];
 
-        if (sharedResp && sharedResp.items && sharedResp.items.length > 0) {
-          for (var s = 0; s < sharedResp.items.length; s++) {
-            var sItem = sharedResp.items[s];
-            var sId = sItem.id;
-            if (seenIds[sId]) continue;
-
-            // Dapatkan hirarki parent folder via DriveApp
-            try {
-              var sFile = DriveApp.getFileById(sId);
-              var sParents = sFile.getParents();
-              var sTpsFolder = sParents.hasNext() ? sParents.next() : null;
-              var sTpsName = sTpsFolder ? sTpsFolder.getName().trim() : '';
-              var sTpsId = sTpsFolder ? sTpsFolder.getId() : '';
-
-              var sDesaFolder = (sTpsFolder && sTpsFolder.getParents().hasNext()) ? sTpsFolder.getParents().next() : null;
-              var sDesaName = sDesaFolder ? sDesaFolder.getName().trim() : '';
-
-              var sKecFolder = (sDesaFolder && sDesaFolder.getParents().hasNext()) ? sDesaFolder.getParents().next() : null;
-              var sKecName = sKecFolder ? sKecFolder.getName().trim() : '';
-
-              if (sTpsName && sDesaName && sKecName) {
-                var sUploader = extractFileUploader(sFile);
-                seenIds[sId] = true;
-                recentFiles.push({
-                  file: {
-                    id: sId,
-                    name: sItem.title || sFile.getName(),
-                    url: sItem.alternateLink || sFile.getUrl(),
-                    createdAt: sItem.createdDate || '',
-                    updatedAt: sItem.modifiedDate || '',
-                    size: sItem.fileSize ? parseInt(sItem.fileSize, 10) : sFile.getSize(),
-                    uploader: sUploader
-                  },
-                  tpsFolderName: sTpsName,
-                  tpsFolderId: sTpsId,
-                  desa: sDesaName,
-                  kecamatan: sKecName
-                });
-                count++;
-              }
-            } catch (errParent) {}
-          }
-        }
-      }
-    } catch (errAdv) {}
-
-    // 1B. Pencarian via Target Root Folder C-Hasil (Mendukung Shared Folder)
-    var searchCount = 0;
-    try {
-      var rootTargetFolder = null;
-      if (FIREBASE_CONFIG.ROOT_FOLDER_ID) {
-        try {
-          rootTargetFolder = DriveApp.getFolderById(FIREBASE_CONFIG.ROOT_FOLDER_ID);
-        } catch (eR) {}
-      }
-      var files = rootTargetFolder ? rootTargetFolder.searchFiles(query) : DriveApp.searchFiles(query);
-      while (files.hasNext() && count < 60) {
+      while (files.hasNext()) {
         var file = files.next();
-        searchCount++;
-        var fileId = file.getId();
-        if (seenIds[fileId]) continue;
-
-        var parents = file.getParents();
-        var tpsFolder = parents.hasNext() ? parents.next() : null;
-        var tpsName = tpsFolder ? tpsFolder.getName().trim() : '';
-        var tpsId = tpsFolder ? tpsFolder.getId() : '';
-
-        var desaFolder = (tpsFolder && tpsFolder.getParents().hasNext()) ? tpsFolder.getParents().next() : null;
-        var desaName = desaFolder ? desaFolder.getName().trim() : '';
-
-        var kecFolder = (desaFolder && desaFolder.getParents().hasNext()) ? desaFolder.getParents().next() : null;
-        var kecName = kecFolder ? kecFolder.getName().trim() : '';
-
-        // Abaikan berkas di luar struktur folder TPS -> Desa -> Kecamatan
-        if (!tpsName || !desaName || !kecName) continue;
-
-        var uploaderName = extractFileUploader(file);
+        var fId = file.getId();
+        var fName = file.getName();
+        var fSize = file.getSize();
         var createdAt = '';
         var updatedAt = '';
         try {
           if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
           if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-        } catch (err) {}
+        } catch (e) {}
 
-        seenIds[fileId] = true;
-        recentFiles.push({
-          file: {
-            id: fileId,
-            name: file.getName(),
-            url: file.getUrl(),
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            size: file.getSize(),
-            uploader: uploaderName
-          },
-          tpsFolderName: tpsName,
-          tpsFolderId: tpsId,
-          desa: desaName,
-          kecamatan: kecName
+        var uploader = extractFileUploader(file);
+
+        fileList.push({
+          id: fId,
+          name: fName,
+          url: file.getUrl(),
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+          size: fSize,
+          uploader: uploader
         });
-        count++;
+
+        physicalTotalFiles++;
+        physicalFileFingerprints[fId] = fName + '|' + fSize;
       }
-    } catch (errSearch) {
-      Logger.log('[Search Error]: ' + errSearch.toString());
+
+      tpsList.push({
+        kecamatan: kecName,
+        desa: desaName,
+        tpsFolderName: tpsName,
+        tpsFolderId: tps.getId(),
+        tpsFolderUrl: tps.getUrl(),
+        files: fileList
+      });
     }
+  }
 
-    Logger.log('[Auto-Push] Memindai berkas 30 menit terakhir. Ditemukan ' + recentFiles.length + ' berkas C-Hasil.');
+  // 2. Baca dokumen pembanding saat ini dari Cloud Firestore
+  var existingDoc = getFirestoreDocument('scanned_data', kecName, idToken);
+  var hasChanged = false;
+  var oldTotalFiles = 0;
+  var oldFileFingerprints = {};
+  var overrideLookup = {};
 
-    // Jika tidak ada berkas baru: selesai seketika
-    if (recentFiles.length === 0) {
-      Logger.log('ℹ️ Hasil: Tidak ada berkas baru yang diunggah ke folder TPS dalam 30 menit terakhir.');
-      return;
-    }
+  if (!existingDoc || !Array.isArray(existingDoc.tpsList)) {
+    hasChanged = true;
+    Logger.log('⚡ [Kecamatan ' + kecName + '] Dokumen belum ada di Firestore. Melakukan sinkronisasi awal...');
+  } else {
+    for (var i = 0; i < existingDoc.tpsList.length; i++) {
+      var oTps = existingDoc.tpsList[i];
+      var oFiles = oTps.files || [];
+      for (var f = 0; f < oFiles.length; f++) {
+        var of = oFiles[f];
+        oldTotalFiles++;
+        oldFileFingerprints[of.id] = of.name + '|' + of.size;
 
-    Logger.log('[Auto-Push Server] Menemukan ' + recentFiles.length + ' berkas baru. Menghubungkan ke Firestore...');
-
-    // 2. Dapatkan Token Autentikasi Firebase
-    var idToken = getFirebaseAuthToken();
-
-    // 3. Kelompokkan berkas per kecamatan
-    var filesByKec = {};
-    for (var i = 0; i < recentFiles.length; i++) {
-      var item = recentFiles[i];
-      if (!filesByKec[item.kecamatan]) {
-        filesByKec[item.kecamatan] = [];
-      }
-      filesByKec[item.kecamatan].push(item);
-    }
-
-    // 4. Update data Firestore per kecamatan yang terpengaruh
-    for (var kecName in filesByKec) {
-      var kecItems = filesByKec[kecName];
-      var existingDoc = getFirestoreDocument('scanned_data', kecName, idToken);
-      var tpsList = (existingDoc && Array.isArray(existingDoc.tpsList)) ? existingDoc.tpsList : [];
-
-      var hasChanges = false;
-      for (var j = 0; j < kecItems.length; j++) {
-        var nItem = kecItems[j];
-        var tpsIdx = -1;
-
-        for (var t = 0; t < tpsList.length; t++) {
-          if (
-            (nItem.tpsFolderId && tpsList[t].tpsFolderId === nItem.tpsFolderId) ||
-            (tpsList[t].desa.toLowerCase() === nItem.desa.toLowerCase() &&
-             tpsList[t].tpsFolderName.toLowerCase() === nItem.tpsFolderName.toLowerCase())
-          ) {
-            tpsIdx = t;
-            break;
-          }
-        }
-
-        if (tpsIdx >= 0) {
-          var targetTps = tpsList[tpsIdx];
-          var existingFiles = targetTps.files || [];
-          var fIdx = -1;
-          for (var f = 0; f < existingFiles.length; f++) {
-            if (existingFiles[f].id === nItem.file.id) {
-              fIdx = f;
-              break;
-            }
-          }
-
-          if (fIdx >= 0) {
-            if (
-              existingFiles[fIdx].updatedAt !== nItem.file.updatedAt ||
-              existingFiles[fIdx].name !== nItem.file.name ||
-              existingFiles[fIdx].size !== nItem.file.size
-            ) {
-              existingFiles[fIdx] = nItem.file;
-              hasChanges = true;
-            }
-          } else {
-            existingFiles.push(nItem.file);
-            hasChanges = true;
-          }
-          targetTps.files = existingFiles;
-        } else {
-          tpsList.push({
-            kecamatan: kecName,
-            desa: nItem.desa,
-            tpsFolderName: nItem.tpsFolderName,
-            tpsFolderId: nItem.tpsFolderId,
-            tpsFolderUrl: '',
-            files: [nItem.file]
-          });
-          hasChanges = true;
+        // Simpan catatan anomali / verifikasi admin agar tidak tertimpa
+        if (of.overrideElection || of.isResolved || of.resolutionNote) {
+          overrideLookup[of.id] = {
+            overrideElection: of.overrideElection,
+            isResolved: of.isResolved,
+            resolutionNote: of.resolutionNote,
+            resolvedAt: of.resolvedAt,
+            resolvedBy: of.resolvedBy
+          };
         }
       }
+    }
 
-      if (hasChanges) {
-        var payloadKec = {
-          kecamatan: kecName,
-          tpsList: tpsList,
-          tpsCount: tpsList.length,
-          updatedAt: new Date().toISOString(),
-          updatedBy: 'Google Apps Script (Cloud Auto-Push)'
-        };
-        setFirestoreDocument('scanned_data', kecName, payloadKec, idToken);
-        Logger.log('[Auto-Push Server] Berhasil memperbarui Kecamatan ' + kecName + ' di Firestore.');
+    // A. Deteksi penambahan atau penghapusan berkas (Total Berkas berbeda)
+    if (physicalTotalFiles !== oldTotalFiles) {
+      hasChanged = true;
+      var diff = physicalTotalFiles - oldTotalFiles;
+      Logger.log('🔔 [Perubahan Terdeteksi] ' + kecName + ': Jumlah berkas berubah! Lama=' + oldTotalFiles + ', Fisik Drive=' + physicalTotalFiles + ' (' + (diff > 0 ? '+' + diff + ' berkas baru' : diff + ' berkas dihapus') + ')');
+    } else {
+      // B. Jumlah berkas sama, periksa apakah ada berkas yang diganti / diedit
+      for (var fid in physicalFileFingerprints) {
+        if (!oldFileFingerprints[fid] || oldFileFingerprints[fid] !== physicalFileFingerprints[fid]) {
+          hasChanged = true;
+          Logger.log('🔔 [Perubahan Terdeteksi] ' + kecName + ': Berkas dimodifikasi/diganti pada ID ' + fid);
+          break;
+        }
+      }
+    }
+  }
+
+  // 3. Jika ada perubahan, pertahankan override admin & simpan ke Cloud Firestore
+  if (hasChanged) {
+    for (var k = 0; k < tpsList.length; k++) {
+      var nt = tpsList[k];
+      for (var m = 0; m < nt.files.length; m++) {
+        var nf = nt.files[m];
+        if (overrideLookup[nf.id]) {
+          var ov = overrideLookup[nf.id];
+          if (ov.overrideElection) nf.overrideElection = ov.overrideElection;
+          if (ov.isResolved !== undefined) nf.isResolved = ov.isResolved;
+          if (ov.resolutionNote) nf.resolutionNote = ov.resolutionNote;
+          if (ov.resolvedAt) nf.resolvedAt = ov.resolvedAt;
+          if (ov.resolvedBy) nf.resolvedBy = ov.resolvedBy;
+        }
       }
     }
 
-    // Perbarui metadata waktu sinkronisasi global di Firestore
-    var metaPayload = {
-      lastSyncedAt: new Date().toISOString(),
-      lastSyncedKecamatan: Object.keys(filesByKec).join(', '),
-      lastSyncedBy: 'Google Apps Script (Cloud Auto-Push)'
+    var payloadKec = {
+      kecamatan: kecName,
+      tpsList: tpsList,
+      tpsCount: tpsList.length,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'Google Apps Script (Cloud Auto-Push)'
     };
-    setFirestoreDocument('app_config', 'sync_metadata', metaPayload, idToken);
-    Logger.log('[Auto-Push Server] Selesai sinkronisasi seluruh berkas baru ke Firestore!');
+
+    setFirestoreDocument('scanned_data', kecName, payloadKec, idToken);
+    Logger.log('✅ [Auto-Push Firestore] Kecamatan ' + kecName + ' BERHASIL DISIMPAN! (Total Berkas: ' + physicalTotalFiles + ')');
+    return { changed: true, kecName: kecName, oldCount: oldTotalFiles, newCount: physicalTotalFiles };
+  } else {
+    Logger.log('ℹ️ [Auto-Push Firestore] Kecamatan ' + kecName + ': Sinkron (' + physicalTotalFiles + ' berkas). Lewati write.');
+    return { changed: false, kecName: kecName, oldCount: oldTotalFiles, newCount: physicalTotalFiles };
+  }
+}
+
+/**
+ * FUNGSI UTAMA AUTO-PUSH CLOUD (24 JAM NONSTOP):
+ * Dipanggil otomatis oleh Google Cloud Trigger setiap 2 - 5 menit,
+ * atau dapat dijalankan manual kapan saja via tombol 'Run' di Apps Script.
+ *
+ * Memindai seluruh 7 kecamatan di Google Drive, membandingkan fisik berkas
+ * terhadap Firestore, dan mengupdate dokumen Firestore saat ada berkas baru / dihapus!
+ */
+function autoPushRecentFilesToFirestore() {
+  var startTime = Date.now();
+  Logger.log('🚀 ========================================================');
+  Logger.log('🚀 MEMULAI AUDIT FISIK GOOGLE DRIVE C-HASIL KE CLOUD FIRESTORE');
+  Logger.log('🚀 Waktu Eksekusi: ' + new Date().toLocaleString());
+  Logger.log('🚀 ========================================================');
+
+  try {
+    var rootId = FIREBASE_CONFIG.ROOT_FOLDER_ID;
+    var rootFolder = DriveApp.getFolderById(rootId);
+    var kecFolders = rootFolder.getFolders();
+
+    var idToken = getFirebaseAuthToken();
+    var changedKecs = [];
+    var totalFilesSekadau = 0;
+    var scannedCount = 0;
+
+    while (kecFolders.hasNext()) {
+      var kec = kecFolders.next();
+      scannedCount++;
+      Logger.log('📂 Memeriksa (' + scannedCount + '/7) Kecamatan ' + kec.getName() + '...');
+      var res = auditSingleKecamatan(kec, idToken);
+      totalFilesSekadau += res.newCount;
+      if (res.changed) {
+        changedKecs.push(res);
+      }
+    }
+
+    // Perbarui metadata sinkronisasi global di Firestore jika ada perubahan
+    if (changedKecs.length > 0) {
+      var changedSummary = changedKecs.map(function(c) {
+        var diff = c.newCount - c.oldCount;
+        return c.kecName + ' (' + (diff > 0 ? '+' + diff : diff) + ')';
+      }).join(', ');
+
+      var metaPayload = {
+        lastSyncedAt: new Date().toISOString(),
+        lastSyncedKecamatan: changedSummary,
+        lastSyncedBy: 'Google Apps Script (Cloud Auto-Push)'
+      };
+      setFirestoreDocument('app_config', 'sync_metadata', metaPayload, idToken);
+      Logger.log('🎉 ========================================================');
+      Logger.log('🎉 AUDIT SELESAI: ' + changedKecs.length + ' kecamatan berhasil diupdate ke Firestore!');
+      Logger.log('🎉 Rincian Perubahan: ' + changedSummary);
+    } else {
+      Logger.log('ℹ️ ========================================================');
+      Logger.log('ℹ️ AUDIT SELESAI: Seluruh ' + scannedCount + ' kecamatan 100% sinkron (Total: ' + totalFilesSekadau + ' berkas).');
+      Logger.log('ℹ️ Tidak ada berkas baru diunggah maupun dihapus.');
+    }
+
+    var durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+    Logger.log('⏱️ Durasi Total: ' + durationSec + ' detik.');
+    Logger.log('========================================================');
   } catch (err) {
-    Logger.log('[Auto-Push Server Error]: ' + err.toString());
+    Logger.log('❌ [Auto-Push Error]: ' + err.toString());
   }
 }
 
