@@ -12,10 +12,11 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  deleteDoc,
   collection,
   onSnapshot,
 } from 'firebase/firestore';
-import { RawTpsData, ElectionType } from '@/types';
+import { RawTpsData, OverrideElectionType } from '@/types';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -230,7 +231,7 @@ export async function updateFileAnomalyStatus(params: {
   kecamatan: string;
   tpsFolderId: string;
   fileId: string;
-  overrideElection?: ElectionType | 'IGNORE';
+  overrideElection?: OverrideElectionType;
   isResolved: boolean;
   resolutionNote?: string;
 }): Promise<void> {
@@ -251,11 +252,19 @@ export async function updateFileAnomalyStatus(params: {
     if (tps) {
       const file = tps.files.find((f) => f.id === params.fileId);
       if (file) {
-        file.overrideElection = params.overrideElection;
-        file.isResolved = params.isResolved;
-        file.resolutionNote = params.resolutionNote || '';
-        file.resolvedAt = new Date().toISOString();
-        file.resolvedBy = auth.currentUser.email || ADMIN_AUTH_EMAIL;
+        if (!params.overrideElection && !params.isResolved) {
+          delete file.overrideElection;
+          file.isResolved = false;
+          delete file.resolutionNote;
+          delete file.resolvedAt;
+          delete file.resolvedBy;
+        } else {
+          file.overrideElection = params.overrideElection;
+          file.isResolved = params.isResolved;
+          file.resolutionNote = params.resolutionNote || '';
+          file.resolvedAt = new Date().toISOString();
+          file.resolvedBy = auth.currentUser.email || ADMIN_AUTH_EMAIL;
+        }
 
         // Simpan kembali ke doc kecamatan di Firestore
         const cleanTpsList = JSON.parse(JSON.stringify(tpsList));
@@ -264,24 +273,44 @@ export async function updateFileAnomalyStatus(params: {
     }
   }
 
-  // Simpan juga ke koleksi permanen file_overrides agar status tetap aman saat sync ulang dari Drive
+  // Simpan juga ke koleksi permanen file_overrides
   const overrideRef = doc(db, 'file_overrides', params.fileId);
-  await setDoc(
-    overrideRef,
-    JSON.parse(
-      JSON.stringify({
-        fileId: params.fileId,
-        kecamatan: cleanKec,
-        tpsFolderId: params.tpsFolderId,
-        overrideElection: params.overrideElection || null,
-        isResolved: params.isResolved,
-        resolutionNote: params.resolutionNote || '',
-        resolvedAt: new Date().toISOString(),
-        resolvedBy: auth.currentUser.email || ADMIN_AUTH_EMAIL,
-      })
-    ),
-    { merge: true }
-  );
+  if (!params.overrideElection && !params.isResolved) {
+    try {
+      await deleteDoc(overrideRef);
+    } catch (e) {
+      console.warn('Gagal menghapus file_overrides doc:', e);
+    }
+  } else {
+    await setDoc(
+      overrideRef,
+      JSON.parse(
+        JSON.stringify({
+          fileId: params.fileId,
+          kecamatan: cleanKec,
+          tpsFolderId: params.tpsFolderId,
+          overrideElection: params.overrideElection || null,
+          isResolved: params.isResolved,
+          resolutionNote: params.resolutionNote || '',
+          resolvedAt: new Date().toISOString(),
+          resolvedBy: auth.currentUser.email || ADMIN_AUTH_EMAIL,
+        })
+      ),
+      { merge: true }
+    );
+  }
+}
+
+/**
+ * Menghapus dokumen override berkas tertentu dari Firestore file_overrides
+ */
+export async function deleteFileOverride(fileId: string): Promise<void> {
+  try {
+    const overrideRef = doc(db, 'file_overrides', fileId);
+    await deleteDoc(overrideRef);
+  } catch (err) {
+    console.warn(`Gagal menghapus file_overrides untuk ${fileId}:`, err);
+  }
 }
 
 /**

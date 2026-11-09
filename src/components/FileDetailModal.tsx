@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile } from '@/types';
+import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType } from '@/types';
 import { updateFileAnomalyStatus } from '@/services/firebase';
 
 interface FileDetailModalProps {
@@ -98,9 +98,14 @@ export function FileDetailModal({
     setEditingFileId(file.id);
     setSelectedElection(
       file.overrideElection ||
-      (file.detectedElection !== 'UNKNOWN' ? file.detectedElection : 'PPWP')
+      (file.detectedElection !== 'UNKNOWN' ? file.detectedElection : 'SUDAH_DIBENARKAN')
     );
-    setResolutionNote(file.resolutionNote || 'Sudah diperbaiki / sesuai');
+    setResolutionNote(
+      file.resolutionNote ||
+      (file.overrideElection === 'SUDAH_DIBENARKAN'
+        ? 'Sudah dibenarkan di Google Drive (Menunggu Sync Ulang)'
+        : 'Sudah diperbaiki / sesuai')
+    );
     setSaveSuccessMsg(null);
     setSaveErrorMsg(null);
   };
@@ -112,12 +117,14 @@ export function FileDetailModal({
 
     try {
       const isReset = selectedElection === 'RESET';
+      const isSudahDibenarkan = selectedElection === 'SUDAH_DIBENARKAN';
+
       await updateFileAnomalyStatus({
         kecamatan: record.kecamatan,
         tpsFolderId: record.tpsFolderId,
         fileId: file.id,
-        overrideElection: isReset ? undefined : (selectedElection as ElectionType),
-        isResolved: !isReset,
+        overrideElection: isReset ? undefined : (selectedElection as OverrideElectionType),
+        isResolved: isSudahDibenarkan ? false : !isReset,
         resolutionNote: isReset ? undefined : resolutionNote,
       });
 
@@ -128,6 +135,12 @@ export function FileDetailModal({
         delete file.resolutionNote;
         delete file.resolvedAt;
         delete file.resolvedBy;
+      } else if (isSudahDibenarkan) {
+        file.overrideElection = 'SUDAH_DIBENARKAN';
+        file.isResolved = false;
+        file.resolutionNote = resolutionNote || 'Sudah dibenarkan di Google Drive (Menunggu Sync Ulang)';
+        file.resolvedAt = new Date().toISOString();
+        file.resolvedBy = currentUserEmail || 'Admin Teknis';
       } else {
         file.overrideElection = selectedElection as ElectionType;
         file.isResolved = true;
@@ -136,11 +149,15 @@ export function FileDetailModal({
         file.resolvedBy = currentUserEmail || 'Admin Teknis';
       }
 
-      setSaveSuccessMsg('Status berkas berhasil disimpan ke Cloud Firestore!');
+      setSaveSuccessMsg(
+        isSudahDibenarkan
+          ? 'Status "Sudah Dibenarkan" tersimpan. Tetap tercatat anomali sampai disinkronkan ulang.'
+          : 'Status berkas berhasil disimpan ke Cloud Firestore!'
+      );
       setTimeout(() => {
         setEditingFileId(null);
         setSaveSuccessMsg(null);
-      }, 1400);
+      }, 1600);
     } catch (err: any) {
       console.error('Gagal update anomali:', err);
       setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan.');
@@ -345,6 +362,7 @@ export function FileDetailModal({
                 </div>
               ) : (
                 record.files.map((file) => {
+                  const isSudahDibenarkan = file.overrideElection === 'SUDAH_DIBENARKAN';
                   const isFileAnomaly =
                     file.detectedElection === 'UNKNOWN' ||
                     (file.anomalies && file.anomalies.length > 0 && !file.isResolved);
@@ -355,6 +373,8 @@ export function FileDetailModal({
                       className={`p-3.5 rounded-2xl border flex flex-col gap-2.5 text-xs transition shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.9)] ${
                         file.isResolved
                           ? 'border-emerald-200 bg-emerald-50/50'
+                          : isSudahDibenarkan
+                          ? 'border-amber-400 border-l-[5px] border-l-amber-500 bg-amber-50/90 shadow-2xs ring-1 ring-amber-400/40'
                           : isFileAnomaly
                           ? 'border-amber-300 border-l-[5px] border-l-amber-500 bg-amber-50/90 shadow-2xs ring-1 ring-amber-400/40'
                           : 'border-slate-200 bg-white hover:bg-slate-50/80'
@@ -365,6 +385,8 @@ export function FileDetailModal({
                           <div className="mt-0.5 shrink-0">
                             {file.isResolved ? (
                               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            ) : isSudahDibenarkan ? (
+                              <Clock className="h-4 w-4 text-amber-600 animate-pulse" />
                             ) : isFileAnomaly ? (
                               <AlertTriangle className="h-4 w-4 text-amber-600" />
                             ) : (
@@ -384,6 +406,10 @@ export function FileDetailModal({
                               {file.isResolved ? (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
                                   ✓ Terverifikasi ({file.detectedElection})
+                                </span>
+                              ) : isSudahDibenarkan ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 border border-amber-400 shadow-2xs">
+                                  ⏳ Sudah Dibenarkan (Menunggu Sync Ulang)
                                 </span>
                               ) : isFileAnomaly && (
                                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 border border-amber-300">
@@ -458,6 +484,22 @@ export function FileDetailModal({
                               </p>
                             )}
 
+                            {/* Info status jika sudah dibenarkan tapi menunggu sync */}
+                            {isSudahDibenarkan && (
+                              <div className="mt-1.5 p-2 rounded-xl bg-amber-100/80 border border-amber-300 text-[11px] text-amber-950 shadow-2xs">
+                                <p className="font-extrabold flex items-center gap-1 text-amber-950">
+                                  <span>⏳</span>
+                                  <span>Status: Sudah Dibenarkan di Google Drive</span>
+                                </p>
+                                <p className="text-[10px] text-amber-900 mt-0.5 leading-snug">
+                                  {file.resolutionNote || 'Sudah dibenarkan di Drive (Data ganda / salah kamar).'}{' '}
+                                  <span className="font-bold underline">
+                                    Tetap tercatat sebagai anomali sampai proses Sinkronkan Google Drive dijalankan.
+                                  </span>
+                                </p>
+                              </div>
+                            )}
+
                             {/* Detail pesan anomali jika belum diselesaikan */}
                             {!file.isResolved &&
                               file.anomalies &&
@@ -492,7 +534,13 @@ export function FileDetailModal({
                               title="Khusus Admin Teknis: Perbarui atau tetapkan status jenis pemilihan"
                             >
                               <Wrench className="h-3 w-3" />
-                              <span>{file.isResolved ? 'Edit Status' : 'Perbarui Status'}</span>
+                              <span>
+                                {isSudahDibenarkan
+                                  ? 'Edit Koreksi'
+                                  : file.isResolved
+                                  ? 'Edit Status'
+                                  : 'Perbarui Status'}
+                              </span>
                             </motion.button>
                           )}
 
@@ -550,9 +598,21 @@ export function FileDetailModal({
                                 </label>
                                 <select
                                   value={selectedElection}
-                                  onChange={(e) => setSelectedElection(e.target.value)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSelectedElection(val);
+                                    if (
+                                      val === 'SUDAH_DIBENARKAN' &&
+                                      (!resolutionNote || resolutionNote === 'Sudah diperbaiki / sesuai')
+                                    ) {
+                                      setResolutionNote('Sudah dibenarkan di Google Drive (Menunggu Sync Ulang)');
+                                    }
+                                  }}
                                   className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 >
+                                  <option value="SUDAH_DIBENARKAN">
+                                    ✅ Sudah Dibenarkan (Data Ganda / Salah Kamar)
+                                  </option>
                                   <option value="PPWP">1. Presiden & Wakil Presiden (PPWP)</option>
                                   <option value="DPR_RI">2. DPR Republik Indonesia (DPR RI)</option>
                                   <option value="DPD">3. DPD Republik Indonesia (DPD)</option>
@@ -570,7 +630,7 @@ export function FileDetailModal({
                                   type="text"
                                   value={resolutionNote}
                                   onChange={(e) => setResolutionNote(e.target.value)}
-                                  placeholder="Misal: Sudah diperbaiki di Drive"
+                                  placeholder="Misal: Sudah dibenarkan di Drive"
                                   className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 />
                               </div>

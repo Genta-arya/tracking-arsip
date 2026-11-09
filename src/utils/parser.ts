@@ -184,13 +184,25 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     let finalElection = detectedType;
     let finalAnomalies = [...anomalies];
 
-    // Jika file sudah diperbaiki / ditetapkan oleh admin teknis:
-    if (file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE')) {
+    const isSudahDibenarkan = file.overrideElection === 'SUDAH_DIBENARKAN';
+
+    // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (bukan SUDAH_DIBENARKAN):
+    if (!isSudahDibenarkan && (file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE'))) {
       if (file.overrideElection && file.overrideElection !== 'IGNORE') {
-        finalElection = file.overrideElection;
+        finalElection = file.overrideElection as ElectionType;
       }
       // Hapus seluruh anomali format/penamaan karena sudah divalidasi dan diperbaiki oleh admin
       finalAnomalies = [];
+    } else if (isSudahDibenarkan) {
+      // Kasus data ganda / salah kamar: status "Sudah dibenarkan"
+      // Tetap dicatat sebagai anomali sampai disinkronkan ulang dari Google Drive
+      if (finalAnomalies.length === 0) {
+        finalAnomalies.push({
+          type: 'DUPLICATE',
+          message: file.resolutionNote || 'Sudah dibenarkan di Drive (Menunggu Sync Ulang)',
+          fileName: file.name,
+        });
+      }
     }
 
     const scannedFile: ScannedFile = {
@@ -201,10 +213,10 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
       uploader: file.uploader,
-      detectedElection: finalElection,
+      detectedElection: isSudahDibenarkan ? 'UNKNOWN' : finalElection,
       anomalies: finalAnomalies,
       overrideElection: file.overrideElection,
-      isResolved: file.isResolved,
+      isResolved: isSudahDibenarkan ? false : file.isResolved,
       resolutionNote: file.resolutionNote,
       resolvedAt: file.resolvedAt,
       resolvedBy: file.resolvedBy,
@@ -213,6 +225,12 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     scannedFiles.push(scannedFile);
     if (finalAnomalies.length > 0) {
       tpsAnomalies.push(...finalAnomalies);
+    }
+
+    // Jika file ditandai SUDAH_DIBENARKAN (kasus data ganda / salah kamar),
+    // jangan masukkan ke slot 5 pemilihan TPS ini agar slot asli/sah tidak terganggu
+    if (isSudahDibenarkan) {
+      return;
     }
 
     // Mapping ke slot pemilihan & deteksi berkas ganda (Duplicate)

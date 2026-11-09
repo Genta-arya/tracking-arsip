@@ -207,8 +207,12 @@ export function DailyAnomalyTable3D({
     let ambiguousCount = 0;
     let mismatchCount = 0;
     let duplicateCount = 0;
+    let sudahDibenarkanCount = 0;
 
     allAnomalies.forEach((a) => {
+      if (a.file.overrideElection === 'SUDAH_DIBENARKAN') {
+        sudahDibenarkanCount++;
+      }
       a.anomalies.forEach((anom) => {
         if (anom.type === 'UNKNOWN_FORMAT') unknownCount++;
         else if (anom.type === 'DPRD_AMBIGUOUS') ambiguousCount++;
@@ -223,6 +227,7 @@ export function DailyAnomalyTable3D({
       ambiguousCount,
       mismatchCount,
       duplicateCount,
+      sudahDibenarkanCount,
     };
   }, [allAnomalies]);
 
@@ -248,11 +253,24 @@ export function DailyAnomalyTable3D({
         const inDesa = item.desa.toLowerCase().includes(q);
         const inTps = `tps ${item.tpsNumber}`.includes(q);
         const inUploader = item.uploader?.toLowerCase().includes(q) || false;
+        const inResolutionNote = item.file.resolutionNote?.toLowerCase().includes(q) || false;
+        const inSudahDibenarkan =
+          item.file.overrideElection === 'SUDAH_DIBENARKAN' &&
+          ('sudah dibenarkan'.includes(q) || 'sync'.includes(q));
         const inMessage = item.anomalies.some((anom) =>
           anom.message.toLowerCase().includes(q)
         );
 
-        if (!inFileName && !inKecamatan && !inDesa && !inTps && !inUploader && !inMessage) {
+        if (
+          !inFileName &&
+          !inKecamatan &&
+          !inDesa &&
+          !inTps &&
+          !inUploader &&
+          !inMessage &&
+          !inResolutionNote &&
+          !inSudahDibenarkan
+        ) {
           return false;
         }
       }
@@ -555,6 +573,13 @@ export function DailyAnomalyTable3D({
                                   <span>{badgeCfg.label}</span>
                                 </span>
 
+                                {item.file.overrideElection === 'SUDAH_DIBENARKAN' && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-950 border border-amber-300 shadow-2xs">
+                                    <span>⏳</span>
+                                    <span>Sudah Dibenarkan (Tunggu Sync)</span>
+                                  </span>
+                                )}
+
                                 {/* Jika ada anomali sekunder pada file yang sama */}
                                 {item.anomalies.length > 1 && (
                                   <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
@@ -595,6 +620,14 @@ export function DailyAnomalyTable3D({
                             <p className="text-xs font-semibold text-slate-700 leading-relaxed">
                               {item.primaryAnomaly.message}
                             </p>
+                            {item.file.overrideElection === 'SUDAH_DIBENARKAN' && (
+                              <div className="mt-1 p-1.5 rounded-lg bg-amber-50 border border-amber-200/80 text-[11px] text-amber-950 font-bold">
+                                <span>💬 Catatan: {item.file.resolutionNote || 'Sudah dibenarkan di Drive'}</span>
+                                <span className="block text-[10px] text-amber-800 font-medium mt-0.5">
+                                  (Tetap tercatat anomali sampai proses Sinkronkan Google Drive dijalankan)
+                                </span>
+                              </div>
+                            )}
                           </td>
 
                           {/* 7. Aksi Cepat (Buka Drive / Koreksi Modal) */}
@@ -621,7 +654,7 @@ export function DailyAnomalyTable3D({
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 border border-amber-300 shadow-[0_2px_4px_rgba(217,119,6,0.25),inset_0_1px_0_rgba(255,255,255,0.4)] active:translate-y-0.5 transition-all cursor-pointer"
                               >
                                 <Wrench className="h-3.5 w-3.5" />
-                                <span>Koreksi</span>
+                                <span>{item.file.overrideElection === 'SUDAH_DIBENARKAN' ? 'Edit Koreksi' : 'Koreksi'}</span>
                               </button>
                             </div>
                           </td>

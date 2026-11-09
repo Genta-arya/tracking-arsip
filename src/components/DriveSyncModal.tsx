@@ -4,7 +4,7 @@ import { RefreshCw, Play, Layers, Maximize2, Minus, CheckCircle2, Clock, FolderO
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
-import { saveKecamatanScanToFirestore, fetchAllFileOverrides } from '@/services/firebase';
+import { saveKecamatanScanToFirestore, fetchAllFileOverrides, deleteFileOverride } from '@/services/firebase';
 import { RawTpsData, AppConfig } from '@/types';
 import { Scan3DAnimation } from '@/components/Scan3DAnimation';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
@@ -110,6 +110,14 @@ export function DriveSyncModal({
         tps.files.forEach((f) => {
           const savedOverride = overrides.get(f.id);
           if (savedOverride) {
+            // Kasus data ganda / salah kamar dengan status "SUDAH_DIBENARKAN":
+            // Saat sinkronisasi ulang Drive dilakukan, status sementara ini dilepas,
+            // sehingga berkas dievaluasi murni dari kondisi fisik Google Drive terkini.
+            // Jika di Drive berkas sudah dihapus atau dipindah ke TPS yang tepat, berkas otomatis hilang dari TPS ini.
+            if (savedOverride.overrideElection === 'SUDAH_DIBENARKAN') {
+              deleteFileOverride(f.id);
+              return;
+            }
             f.overrideElection = savedOverride.overrideElection;
             f.isResolved = savedOverride.isResolved;
             f.resolutionNote = savedOverride.resolutionNote;
@@ -118,6 +126,13 @@ export function DriveSyncModal({
           }
         });
       });
+
+      // Bersihkan juga file_overrides berstatus SUDAH_DIBENARKAN yang mungkin sudah dihapus dari Drive
+      for (const [fId, ov] of overrides.entries()) {
+        if (ov.overrideElection === 'SUDAH_DIBENARKAN' && ov.kecamatan?.toLowerCase() === kec.name.toLowerCase()) {
+          deleteFileOverride(fId);
+        }
+      }
 
       setScanProgress(90);
 
@@ -196,6 +211,11 @@ export function DriveSyncModal({
           tps.files.forEach((f) => {
             const savedOverride = overrides.get(f.id);
             if (savedOverride) {
+              // Jika SUDAH_DIBENARKAN, lepas status sementara ini agar dievaluasi murni dari Drive terkini
+              if (savedOverride.overrideElection === 'SUDAH_DIBENARKAN') {
+                deleteFileOverride(f.id);
+                return;
+              }
               f.overrideElection = savedOverride.overrideElection;
               f.isResolved = savedOverride.isResolved;
               f.resolutionNote = savedOverride.resolutionNote;
@@ -204,6 +224,13 @@ export function DriveSyncModal({
             }
           });
         });
+
+        // Bersihkan file_overrides berstatus SUDAH_DIBENARKAN di kecamatan ini
+        for (const [fId, ov] of overrides.entries()) {
+          if (ov.overrideElection === 'SUDAH_DIBENARKAN' && ov.kecamatan?.toLowerCase() === kec.name.toLowerCase()) {
+            deleteFileOverride(fId);
+          }
+        }
 
         // Simpan per kecamatan ke Cloud Firestore
         try {

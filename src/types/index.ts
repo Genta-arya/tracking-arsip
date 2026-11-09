@@ -34,6 +34,8 @@ export interface AnomalyItem {
   fileName: string;
 }
 
+export type OverrideElectionType = ElectionType | 'IGNORE' | 'SUDAH_DIBENARKAN';
+
 export interface RawFileItem {
   id: string;
   name: string;
@@ -42,7 +44,7 @@ export interface RawFileItem {
   updatedAt?: string; // Tanggal terakhir diedit di Drive
   size?: number;
   uploader?: string; // Nama / email pengunggah berkas di Google Drive
-  overrideElection?: ElectionType | 'IGNORE';
+  overrideElection?: OverrideElectionType;
   isResolved?: boolean;
   resolutionNote?: string;
   resolvedAt?: string;
