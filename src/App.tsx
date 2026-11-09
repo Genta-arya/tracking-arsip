@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, RefreshCw, TrendingUp, Table, MapPin, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ import {
   isFirebaseConfigured,
   subscribeRealtimeScannedData,
   subscribeSyncMetadata,
+  updateFileAnomalyStatus,
   SyncMetadata,
 } from '@/services/firebase';
 import {
@@ -42,6 +43,7 @@ import {
   GlobalStats,
   KecamatanSummary,
   ElectionType,
+  OverrideElectionType,
 } from '@/types';
 
 export function App() {
@@ -65,6 +67,7 @@ export function App() {
 
   // Modals state
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
   const [syncMeta, setSyncMeta] = useState<SyncMetadata | null>(null);
 
@@ -229,6 +232,59 @@ export function App() {
     if (!selectedRecordId) return null;
     return processedRecords.find((r) => r.id === selectedRecordId) || null;
   }, [processedRecords, selectedRecordId]);
+
+  // Handler pembaruan status anomali berkas (Optimistic UI instan + Firestore + IndexedDB)
+  const handleUpdateFileStatus = useCallback(
+    async (params: {
+      kecamatan: string;
+      tpsFolderId: string;
+      fileId: string;
+      overrideElection?: OverrideElectionType;
+      isResolved: boolean;
+      resolutionNote?: string;
+    }) => {
+      // 1. Optimistic Update pada state rawData di App.tsx
+      setRawData((prevRawData) => {
+        const nextRawData = prevRawData.map((tps) => {
+          if (tps.tpsFolderId !== params.tpsFolderId) return tps;
+          return {
+            ...tps,
+            files: tps.files.map((f) => {
+              if (f.id !== params.fileId) return f;
+              const updated = { ...f };
+              if (!params.overrideElection && !params.isResolved) {
+                delete updated.overrideElection;
+                updated.isResolved = false;
+                delete updated.resolutionNote;
+                delete updated.resolvedAt;
+                delete updated.resolvedBy;
+              } else {
+                updated.overrideElection = params.overrideElection;
+                updated.isResolved = params.isResolved;
+                updated.resolutionNote = params.resolutionNote || '';
+                updated.resolvedAt = new Date().toISOString();
+                updated.resolvedBy = currentUserEmail || 'Admin Teknis';
+              }
+              return updated;
+            }),
+          };
+        });
+
+        // Simpan langsung ke IndexedDB agar tidak hilang saat refresh
+        saveStoredRawData(nextRawData).catch((err) =>
+          console.warn('Gagal menyimpan ke IndexedDB:', err)
+        );
+
+        return nextRawData;
+      });
+
+      // 2. Simpan ke Firestore jika bukan demo mode
+      if (!config.isDemoMode) {
+        await updateFileAnomalyStatus(params);
+      }
+    },
+    [currentUserEmail, config.isDemoMode]
+  );
 
   // 4. Ekstrak Daftar Kecamatan & Desa untuk Filter Dropdown
   const kecamatanList = useMemo(() => {
@@ -603,7 +659,12 @@ export function App() {
               {/* 1. Header 1: Fitur Data Anomali Berkas Harian (Bypass Nama Berkas) */}
               <DailyAnomalyTable3D
                 records={processedRecords}
-                onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
+                onOpenFileDetail={(rec, fileId) => {
+                  setSelectedRecordId(rec.id);
+                  setSelectedFileId(fileId || null);
+                }}
+                onUpdateFileStatus={handleUpdateFileStatus}
+                currentUserEmail={currentUserEmail}
               />
 
               {/* 2. Peta Pantauan Wilayah Sekadau (Interaktif & Collapsible) */}
@@ -636,7 +697,10 @@ export function App() {
                 {/* Tracker Matrix Table (Tepat di Bawah Filter) */}
                 <TrackerMatrix
                   records={filteredRecords}
-                  onOpenFileDetail={(rec) => setSelectedRecordId(rec.id)}
+                  onOpenFileDetail={(rec) => {
+                    setSelectedRecordId(rec.id);
+                    setSelectedFileId(null);
+                  }}
                   isDemoMode={config.isDemoMode}
                 />
               </div>
@@ -737,9 +801,14 @@ export function App() {
       <FileDetailModal
         record={activeRecord}
         open={!!activeRecord}
-        onClose={() => setSelectedRecordId(null)}
+        onClose={() => {
+          setSelectedRecordId(null);
+          setSelectedFileId(null);
+        }}
         isDemoMode={config.isDemoMode}
         currentUserEmail={currentUserEmail}
+        initialFileId={selectedFileId}
+        onUpdateFileStatus={handleUpdateFileStatus}
       />
 
       <DriveSyncModal

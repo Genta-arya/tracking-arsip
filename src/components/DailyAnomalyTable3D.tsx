@@ -12,14 +12,24 @@ import {
   CheckCircle2,
   Clock,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { TPSRecord, ScannedFile, AnomalyItem, AnomalyType } from '@/types';
+import { TPSRecord, ScannedFile, AnomalyItem, AnomalyType, OverrideElectionType } from '@/types';
 
 interface DailyAnomalyTable3DProps {
   records: TPSRecord[];
-  onOpenFileDetail: (record: TPSRecord) => void;
+  onOpenFileDetail: (record: TPSRecord, initialFileId?: string) => void;
+  onUpdateFileStatus?: (params: {
+    kecamatan: string;
+    tpsFolderId: string;
+    fileId: string;
+    overrideElection?: OverrideElectionType;
+    isResolved: boolean;
+    resolutionNote?: string;
+  }) => Promise<void>;
+  currentUserEmail?: string | null;
 }
 
 export interface AnomalyFileRow {
@@ -32,6 +42,7 @@ export interface AnomalyFileRow {
   desa: string;
   tpsNumber: number;
   tpsFolderName: string;
+  tpsFolderId: string;
   tpsFolderUrl: string;
   recordId: string;
   record: TPSRecord;
@@ -130,7 +141,38 @@ function parseAnomalyDate(dateStr?: string): {
 export function DailyAnomalyTable3D({
   records,
   onOpenFileDetail,
+  onUpdateFileStatus,
+  currentUserEmail,
 }: DailyAnomalyTable3DProps) {
+  const isAdminTeknis = currentUserEmail?.toLowerCase() === 'teknis.kpusekadau@gmail.com';
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+
+  const handleQuickDelete = async (item: AnomalyFileRow) => {
+    if (
+      !confirm(
+        `Tandai berkas "${item.fileName}" sebagai Hapus / Sudah Dipindahkan dari ${item.tpsFolderName}?\n\nBerkas ini akan hilang dari folder TPS ini dan anomali dinyatakan selesai/fix.`
+      )
+    ) {
+      return;
+    }
+    setDeletingFileId(item.fileId);
+    try {
+      if (onUpdateFileStatus) {
+        await onUpdateFileStatus({
+          kecamatan: item.kecamatan,
+          tpsFolderId: item.tpsFolderId,
+          fileId: item.fileId,
+          overrideElection: 'HAPUS',
+          isResolved: true,
+          resolutionNote: 'Berkas dihapus / dipindahkan dari folder ini (anomali sudah difix)',
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal menghapus status berkas.');
+    } finally {
+      setDeletingFileId(null);
+    }
+  };
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
@@ -159,6 +201,7 @@ export function DailyAnomalyTable3D({
             desa: rec.desa,
             tpsNumber: rec.tpsNumber,
             tpsFolderName: rec.tpsFolderName,
+            tpsFolderId: rec.tpsFolderId,
             tpsFolderUrl: rec.tpsFolderUrl,
             recordId: rec.id,
             record: rec,
@@ -649,13 +692,27 @@ export function DailyAnomalyTable3D({
                               {/* Tombol Koreksi / Tetapkan di Modal */}
                               <button
                                 type="button"
-                                onClick={() => onOpenFileDetail(item.record)}
+                                onClick={() => onOpenFileDetail(item.record, item.fileId)}
                                 title="Buka modal detail untuk koreksi anomali berkas ini"
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 border border-amber-300 shadow-[0_2px_4px_rgba(217,119,6,0.25),inset_0_1px_0_rgba(255,255,255,0.4)] active:translate-y-0.5 transition-all cursor-pointer"
                               >
                                 <Wrench className="h-3.5 w-3.5" />
                                 <span>{item.file.overrideElection === 'SUDAH_DIBENARKAN' ? 'Edit Koreksi' : 'Koreksi'}</span>
                               </button>
+
+                              {/* Tombol Cepat Hapus / Sudah Dipindahkan */}
+                              {isAdminTeknis && onUpdateFileStatus && (
+                                <button
+                                  type="button"
+                                  disabled={deletingFileId === item.fileId}
+                                  onClick={() => handleQuickDelete(item)}
+                                  title="Tandai berkas sudah dipindahkan / hapus dari folder ini (anomali selesai/fix)"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-2xs active:translate-y-0.5 transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>{deletingFileId === item.fileId ? '...' : 'Hapus'}</span>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

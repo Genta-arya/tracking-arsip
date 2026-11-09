@@ -184,7 +184,33 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     let finalElection = detectedType;
     let finalAnomalies = [...anomalies];
 
+    const isHapus = file.overrideElection === 'HAPUS';
     const isSudahDibenarkan = file.overrideElection === 'SUDAH_DIBENARKAN';
+
+    if (isHapus) {
+      // Kasus berkas dihapus / dipindahkan dari folder TPS ini (misal salah kamar / berkas ganda yang sudah dipindahkan)
+      // Ditandai sebagai teratasi, tidak memiliki anomali aktif, tidak dimasukkan ke 5 slot,
+      // dan tidak memicu duplikasi bagi berkas sah lainnya di TPS ini.
+      const deletedScannedFile: ScannedFile = {
+        id: file.id,
+        name: file.name,
+        url: file.url,
+        size: file.size,
+        createdAt: file.createdAt,
+        updatedAt: file.updatedAt,
+        uploader: file.uploader,
+        detectedElection: 'UNKNOWN',
+        anomalies: [],
+        overrideElection: 'HAPUS',
+        isResolved: true,
+        resolutionNote: file.resolutionNote || 'Berkas dihapus / dipindahkan dari folder ini (anomali sudah difix)',
+        resolvedAt: file.resolvedAt,
+        resolvedBy: file.resolvedBy,
+      };
+
+      scannedFiles.push(deletedScannedFile);
+      return;
+    }
 
     // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (bukan SUDAH_DIBENARKAN):
     if (!isSudahDibenarkan && (file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE'))) {
