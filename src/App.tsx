@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, RefreshCw, TrendingUp, Table, MapPin, Building2, CheckCircle2 } from 'lucide-react';
+import { FolderOpen, RefreshCw, TrendingUp, Table, MapPin, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
 import { ProgressDashboard } from '@/components/ProgressDashboard';
@@ -70,8 +70,6 @@ export function App() {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
   const [syncMeta, setSyncMeta] = useState<SyncMetadata | null>(null);
-  const [showSyncToast, setShowSyncToast] = useState<boolean>(false);
-  const isInitialMount = useRef<boolean>(true);
 
   // Tab Utama: 'progress' (Progres & Tren Harian) atau 'rekapitulasi' (Matriks Tabel TPS)
   // Tersinkronisasi secara otomatis dengan query string URL (?tab=progress / ?tab=rekapitulasi)
@@ -198,13 +196,6 @@ export function App() {
         setRawData(cloudData);
         await saveStoredRawData(cloudData);
         setIsLoading(false);
-
-        // Jika bukan pemuatan pertama (artinya ada pembaruan data real-time yang masuk):
-        if (!isInitialMount.current) {
-          setShowSyncToast(true);
-        } else {
-          isInitialMount.current = false;
-        }
       },
       (err) => {
         console.warn('Firestore realtime listener:', err);
@@ -230,16 +221,6 @@ export function App() {
       unsubscribeMeta();
     };
   }, []);
-
-  // Timer otomatis menutup notifikasi toast setelah 3 detik
-  useEffect(() => {
-    if (showSyncToast) {
-      const timer = setTimeout(() => {
-        setShowSyncToast(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSyncToast]);
 
   // 3. Pemrosesan Data Mentah menjadi TPSRecord terstruktur & terurut secara Natural Sort
   const processedRecords = useMemo<TPSRecord[]>(() => {
@@ -852,27 +833,6 @@ export function App() {
         lastSyncedBy={syncMeta?.lastSyncedBy}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
       />
-
-      {/* Toast Notifikasi: Data Telah Tersinkron Otomatis (Muncul 3 detik saat data realtime Firestore berubah) */}
-      <AnimatePresence>
-        {showSyncToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="fixed bottom-20 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900/95 text-white backdrop-blur-md border border-emerald-500/50 rounded-xl shadow-[0_10px_25px_-5px_rgba(16,185,129,0.4)] pointer-events-none"
-          >
-            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              <CheckCircle2 className="w-4 h-4 animate-pulse" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-emerald-300">Sinkronisasi Realtime</p>
-              <p className="text-sm font-medium text-slate-100">Data telah tersinkron otomatis</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
