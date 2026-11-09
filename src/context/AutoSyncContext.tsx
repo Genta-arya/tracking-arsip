@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { RawTpsData, AppConfig } from '@/types';
 import { performFullDriveSync } from '@/services/driveSyncEngine';
 
-const STORAGE_KEY_ENABLED = 'kpu_auto_sync_enabled';
-const STORAGE_KEY_INTERVAL = 'kpu_auto_sync_interval_mins';
 
 interface AutoSyncContextType {
   isAutoSyncEnabled: boolean;
@@ -34,19 +32,9 @@ export function AutoSyncProvider({
   rawData,
   onSyncComplete,
 }: AutoSyncProviderProps) {
-  // 1. Baca konfigurasi awal dari localStorage (default aktif 5 menit)
-  const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    const stored = localStorage.getItem(STORAGE_KEY_ENABLED);
-    return stored !== null ? stored === 'true' : true;
-  });
-
-  const [intervalMinutes, setIntervalMinutesState] = useState<number>(() => {
-    if (typeof window === 'undefined') return 5;
-    const stored = localStorage.getItem(STORAGE_KEY_INTERVAL);
-    const parsed = stored ? parseInt(stored, 10) : 5;
-    return [2, 5, 10, 15].includes(parsed) ? parsed : 5;
-  });
+  // 1. Sinkronisasi otomatis berjalan permanen setiap 5 menit (tidak dapat dimatikan manual)
+  const isAutoSyncEnabled = true;
+  const intervalMinutes = 5;
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [nextSyncCountdown, setNextSyncCountdown] = useState<number>(() => intervalMinutes * 60);
@@ -135,28 +123,9 @@ export function AutoSyncProvider({
     return () => clearInterval(timer);
   }, [isAutoSyncEnabled, intervalMinutes, executeSilentSync]);
 
-  // 4. Ubah interval & simpan ke storage
-  const setIntervalMinutes = (mins: number) => {
-    setIntervalMinutesState(mins);
-    setNextSyncCountdown(mins * 60);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_INTERVAL, mins.toString());
-    }
-  };
-
-  // 5. Toggle ON/OFF Auto-Sync
-  const toggleAutoSync = (enabled?: boolean) => {
-    setIsAutoSyncEnabled((prev) => {
-      const next = enabled !== undefined ? enabled : !prev;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY_ENABLED, next.toString());
-      }
-      if (next) {
-        setNextSyncCountdown(intervalMinutes * 60);
-      }
-      return next;
-    });
-  };
+  // 4. Pengaturan interval & status dikunci (tidak dapat diubah/dimatikan)
+  const setIntervalMinutes = () => {};
+  const toggleAutoSync = () => {};
 
   return (
     <AutoSyncContext.Provider
