@@ -46,23 +46,31 @@ export function TrackerMatrix({
   const startIndex = (validCurrentPage - 1) * pageSize;
   const currentRecords = records.slice(startIndex, startIndex + pageSize);
 
-  // Helper untuk rendering sel 3D pemilihan
+  // Helper untuk rendering sel 3D pemilihan (Dipepetkan agar tabel tidak kepanjangan)
   const renderElectionCell = (
     file: ScannedFile | null,
     label: string,
-    tps: TPSRecord
+    tps: TPSRecord,
+    borderSide?: 'left' | 'right'
   ) => {
+    const borderClass =
+      borderSide === 'left'
+        ? 'border-l border-slate-200/80'
+        : borderSide === 'right'
+        ? 'border-r border-slate-200/80'
+        : '';
+
     if (!file) {
       return (
-        <td className="px-2.5 py-3 text-center">
+        <td className={`px-0.5 py-2 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
           <motion.div
-            whileHover={{ scale: 1.15, y: -2 }}
+            whileHover={{ scale: 1.15, y: -1 }}
             whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center justify-center h-7 w-7 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100 text-rose-500 border border-rose-200/90 shadow-[inset_0_1.5px_2px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,0.9)] cursor-pointer transition-all"
+            className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-gradient-to-b from-rose-50 to-rose-100 text-rose-500 border border-rose-200/90 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.9)] cursor-pointer transition-all mx-auto"
             title={`${label}: BELUM ADA. Klik untuk lihat detail folder.`}
             onClick={() => onOpenFileDetail(tps)}
           >
-            <X className="h-4 w-4 stroke-[2.5]" />
+            <X className="h-3.5 w-3.5 stroke-[2.5]" />
           </motion.div>
         </td>
       );
@@ -71,14 +79,14 @@ export function TrackerMatrix({
     const hasFileAnomaly = file.anomalies.length > 0;
 
     return (
-      <td className="px-2.5 py-3 text-center">
+      <td className={`px-0.5 py-2 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
         <motion.div
-          whileHover={{ scale: 1.15, y: -2 }}
+          whileHover={{ scale: 1.15, y: -1 }}
           whileTap={{ scale: 0.95 }}
-          className={`inline-flex items-center justify-center h-7 w-7 rounded-xl cursor-pointer transition-all ${
+          className={`inline-flex items-center justify-center h-6 w-6 rounded-lg cursor-pointer transition-all mx-auto ${
             hasFileAnomaly
-              ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-500 text-amber-950 border border-amber-300 shadow-[0_3px_8px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-2 ring-amber-400/30'
-              : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-600 text-white border border-emerald-300/90 shadow-[0_3px_8px_rgba(16,185,129,0.35),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.15)]'
+              ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-500 text-amber-950 border border-amber-300 shadow-[0_2px_6px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-amber-400/40'
+              : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-600 text-white border border-emerald-300/90 shadow-[0_2px_6px_rgba(16,185,129,0.3),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.15)]'
           }`}
           title={`${label}: ${file.name} ${
             hasFileAnomaly ? `(⚠️ ${file.anomalies[0].message})` : '(Lengkap & Terverifikasi)'
@@ -86,9 +94,9 @@ export function TrackerMatrix({
           onClick={() => onOpenFileDetail(tps)}
         >
           {hasFileAnomaly ? (
-            <AlertTriangle className="h-3.5 w-3.5 stroke-[2.5]" />
+            <AlertTriangle className="h-3 w-3 stroke-[2.5]" />
           ) : (
-            <Check className="h-4 w-4 stroke-[2.5]" />
+            <Check className="h-3.5 w-3.5 stroke-[2.5]" />
           )}
         </motion.div>
       </td>
@@ -188,18 +196,53 @@ export function TrackerMatrix({
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-gradient-to-r from-slate-100/95 via-slate-50 to-slate-100/95 border-b border-slate-200/90 text-slate-700 font-black uppercase tracking-wider text-[11px]">
-              <th className="py-3.5 px-3 text-center w-12">No</th>
-              <th className="py-3.5 px-3 min-w-[130px]">Kecamatan</th>
-              <th className="py-3.5 px-3 min-w-[150px]">Desa / Kelurahan</th>
-              <th className="py-3.5 px-3 text-center w-24">TPS</th>
-              <th className="py-3.5 px-2 text-center min-w-[85px]">PPWP</th>
-              <th className="py-3.5 px-2 text-center min-w-[85px]">DPR RI</th>
-              <th className="py-3.5 px-2 text-center min-w-[85px]">DPD</th>
-              <th className="py-3.5 px-2 text-center min-w-[95px]">DPRD Prov</th>
-              <th className="py-3.5 px-2 text-center min-w-[95px]">DPRD Kab</th>
-              <th className="py-3.5 px-3 text-center min-w-[105px]">Total File</th>
-              <th className="py-3.5 px-3 text-center min-w-[130px]">Status</th>
-              <th className="py-3.5 px-4 text-center min-w-[150px]">Aksi</th>
+              <th className="py-2.5 px-2 text-center w-10 text-[10px]">No</th>
+              <th className="py-2.5 px-2.5 min-w-[105px] text-[10px]">Kecamatan</th>
+              <th className="py-2.5 px-2.5 min-w-[115px] text-[10px]">Desa / Kelurahan</th>
+              <th className="py-2.5 px-1.5 text-center w-18 text-[10px]">TPS</th>
+              {/* 5 Kolom Tanda C-Hasil (Dipepetkan & Kompak) */}
+              <th
+                className="py-2 px-0.5 text-center w-10 min-w-[38px] max-w-[42px] border-l border-slate-200/80 bg-slate-100/60"
+                title="Presiden dan Wakil Presiden (PPWP)"
+              >
+                <span className="text-[10px] font-black tracking-tight text-slate-800">PPWP</span>
+              </th>
+              <th
+                className="py-2 px-0.5 text-center w-10 min-w-[38px] max-w-[42px] bg-slate-100/60"
+                title="DPR Republik Indonesia (DPR RI)"
+              >
+                <div className="text-[10px] font-black leading-tight text-slate-800">
+                  DPR
+                  <span className="block text-[8px] font-bold text-slate-500">RI</span>
+                </div>
+              </th>
+              <th
+                className="py-2 px-0.5 text-center w-10 min-w-[38px] max-w-[42px] bg-slate-100/60"
+                title="Dewan Perwakilan Daerah (DPD RI)"
+              >
+                <span className="text-[10px] font-black tracking-tight text-slate-800">DPD</span>
+              </th>
+              <th
+                className="py-2 px-0.5 text-center w-10 min-w-[40px] max-w-[44px] bg-slate-100/60"
+                title="DPRD Provinsi Kalimantan Barat"
+              >
+                <div className="text-[10px] font-black leading-tight text-slate-800">
+                  DPRD
+                  <span className="block text-[8px] font-bold text-slate-500">PROV</span>
+                </div>
+              </th>
+              <th
+                className="py-2 px-0.5 text-center w-10 min-w-[40px] max-w-[44px] border-r border-slate-200/80 bg-slate-100/60"
+                title="DPRD Kabupaten Sekadau"
+              >
+                <div className="text-[10px] font-black leading-tight text-slate-800">
+                  DPRD
+                  <span className="block text-[8px] font-bold text-slate-500">KAB</span>
+                </div>
+              </th>
+              <th className="py-2.5 px-2 text-center min-w-[85px] text-[10px]">Total File</th>
+              <th className="py-2.5 px-2 text-center min-w-[110px] text-[10px]">Status</th>
+              <th className="py-2.5 px-2 text-center min-w-[120px] text-[10px]">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/80 text-slate-700">
@@ -239,36 +282,36 @@ export function TrackerMatrix({
                     }`}
                   >
                     {/* No */}
-                    <td className="px-3 py-3 text-center font-bold text-slate-400 text-xs">
+                    <td className="px-2 py-2 text-center font-bold text-slate-400 text-xs">
                       {globalIndex}
                     </td>
 
                     {/* Kecamatan */}
-                    <td className="px-3 py-3 font-extrabold text-slate-900">
+                    <td className="px-2.5 py-2 font-extrabold text-slate-900 text-xs">
                       {tps.kecamatan}
                     </td>
 
                     {/* Desa */}
-                    <td className="px-3 py-3 font-bold text-slate-800">
+                    <td className="px-2.5 py-2 font-bold text-slate-800 text-xs">
                       {tps.desa}
                     </td>
 
                     {/* TPS */}
-                    <td className="px-3 py-3 text-center font-black text-kpu-maroon">
-                      <span className="px-2.5 py-1 rounded-xl bg-gradient-to-b from-red-50 to-rose-100 border border-red-200 text-kpu-maroon shadow-2xs inline-block font-mono font-black text-xs">
+                    <td className="px-1.5 py-2 text-center font-black text-kpu-maroon">
+                      <span className="px-2 py-0.5 rounded-lg bg-gradient-to-b from-red-50 to-rose-100 border border-red-200 text-kpu-maroon shadow-2xs inline-block font-mono font-black text-xs">
                         {tps.tpsFolderName}
                       </span>
                     </td>
 
-                    {/* 5 Kolom Pemilihan 3D */}
-                    {renderElectionCell(tps.slotPPWP, 'Presiden (PPWP)', tps)}
+                    {/* 5 Kolom Pemilihan 3D Dipepetkan */}
+                    {renderElectionCell(tps.slotPPWP, 'Presiden (PPWP)', tps, 'left')}
                     {renderElectionCell(tps.slotDPR_RI, 'DPR RI', tps)}
                     {renderElectionCell(tps.slotDPD, 'DPD RI', tps)}
                     {renderElectionCell(tps.slotDPRD_PROV, 'DPRD Provinsi', tps)}
-                    {renderElectionCell(tps.slotDPRD_KAB, 'DPRD Kab/Ko', tps)}
+                    {renderElectionCell(tps.slotDPRD_KAB, 'DPRD Kab/Ko', tps, 'right')}
 
                     {/* Total File di Folder Drive */}
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-2 py-2 text-center">
                       <div
                         className="inline-flex flex-col items-center cursor-pointer hover:opacity-85 transition"
                         onClick={() => onOpenFileDetail(tps)}
@@ -279,10 +322,10 @@ export function TrackerMatrix({
                         </span>
                         {tps.files.length > tps.completedCount ? (
                           <span
-                            className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-b from-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs"
+                            className="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-black bg-gradient-to-b from-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs whitespace-nowrap"
                             title={`${tps.files.length - tps.completedCount} file di folder belum teridentifikasi (kemungkinan salah penamaan/typo)`}
                           >
-                            ⚠️ {tps.files.length - tps.completedCount} salah nama
+                            ⚠️ {tps.files.length - tps.completedCount} salah
                           </span>
                         ) : tps.files.length === 0 ? (
                           <span className="text-[10px] text-slate-400 font-semibold">
@@ -297,10 +340,10 @@ export function TrackerMatrix({
                     </td>
 
                     {/* Status Badge 3D */}
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-2 py-2 text-center">
                       {isComplete && !tps.hasAnomaly && (
                         <span
-                          className="inline-block px-3 py-1 rounded-xl text-[10px] sm:text-[11px] font-black bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200 text-emerald-950 border border-emerald-300 shadow-[0_2px_4px_rgba(16,185,129,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                          className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200 text-emerald-950 border border-emerald-300 shadow-2xs whitespace-nowrap"
                           title="Seluruh 5 berkas lengkap dan valid"
                         >
                           ✓ Lengkap 5/5
@@ -308,7 +351,7 @@ export function TrackerMatrix({
                       )}
                       {isComplete && tps.hasAnomaly && (
                         <span
-                          className="inline-block px-3 py-1 rounded-xl text-[10px] sm:text-[11px] font-black bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-[0_2px_4px_rgba(245,158,11,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                          className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs whitespace-nowrap"
                           title={`Lengkap 5 berkas, namun terdapat ${tps.anomalies.length} anomali penamaan/berkas ganda`}
                         >
                           ⚠️ 5/5 (Anomali)
@@ -316,7 +359,7 @@ export function TrackerMatrix({
                       )}
                       {!isComplete && !isEmpty && !tps.hasAnomaly && (
                         <span
-                          className="inline-block px-3 py-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-gradient-to-b from-orange-50 via-orange-100 to-orange-200 text-orange-950 border border-orange-300 shadow-[0_2px_4px_rgba(234,88,12,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                          className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-b from-orange-50 via-orange-100 to-orange-200 text-orange-950 border border-orange-300 shadow-2xs whitespace-nowrap"
                           title={`Belum lengkap: kurang ${5 - tps.completedCount} berkas`}
                         >
                           Kurang {5 - tps.completedCount} File
@@ -324,15 +367,15 @@ export function TrackerMatrix({
                       )}
                       {!isComplete && !isEmpty && tps.hasAnomaly && (
                         <span
-                          className="inline-block px-3 py-1 rounded-xl text-[10px] sm:text-[11px] font-black bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-[0_2px_4px_rgba(245,158,11,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                          className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs whitespace-nowrap"
                           title={`Kurang ${5 - tps.completedCount} berkas sah, dan ada ${tps.anomalies.length} berkas yang salah nama / typo`}
                         >
-                          ⚠️ Kurang {5 - tps.completedCount} (Anomali)
+                          ⚠️ Kurang {5 - tps.completedCount}
                         </span>
                       )}
                       {isEmpty && !tps.hasAnomaly && (
                         <span
-                          className="inline-block px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-bold bg-gradient-to-b from-slate-100 to-slate-200 text-slate-600 border border-slate-300 shadow-2xs"
+                          className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-b from-slate-100 to-slate-200 text-slate-600 border border-slate-300 shadow-2xs whitespace-nowrap"
                           title="Belum ada berkas scan yang diunggah"
                         >
                           Kosong 0/5
@@ -340,7 +383,7 @@ export function TrackerMatrix({
                       )}
                       {isEmpty && tps.hasAnomaly && (
                         <span
-                          className="inline-block px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-black bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs"
+                          className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs whitespace-nowrap"
                           title="Folder kosong dari berkas sah, tetapi ada berkas dengan format salah"
                         >
                           ⚠️ Kosong (Anomali)
@@ -349,15 +392,15 @@ export function TrackerMatrix({
                     </td>
 
                     {/* Aksi 3D */}
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                    <td className="px-2 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         {/* Tombol Lihat Berkas Detail (Tactile 3D) */}
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95, y: 1 }}
                           type="button"
                           onClick={() => onOpenFileDetail(tps)}
-                          className="h-7 px-3 text-[11px] font-black rounded-xl border border-slate-300/90 bg-gradient-to-b from-white via-slate-50 to-slate-150 text-slate-800 shadow-[0_2px_0_#cbd5e1,0_2px_4px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] active:translate-y-[1px] active:shadow-none hover:border-kpu-maroon hover:text-kpu-maroon transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="h-6.5 px-2.5 text-[10.5px] font-black rounded-lg border border-slate-300/90 bg-gradient-to-b from-white via-slate-50 to-slate-150 text-slate-800 shadow-[0_1.5px_0_#cbd5e1,0_1.5px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] active:translate-y-[1px] active:shadow-none hover:border-kpu-maroon hover:text-kpu-maroon transition-all flex items-center justify-center gap-1 cursor-pointer"
                           title="Lihat rincian berkas & anomali nama"
                         >
                           <FileText className="h-3 w-3 text-slate-500" />
@@ -372,7 +415,7 @@ export function TrackerMatrix({
                             href={tps.tpsFolderUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center h-7 px-3 rounded-xl text-[11px] font-black bg-gradient-to-b from-kpu-maroon via-red-900 to-red-950 text-white border border-red-800 shadow-[0_2px_0_#4a0200,0_2px_5px_rgba(102,3,0,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer"
+                            className="inline-flex items-center justify-center h-6.5 px-2.5 rounded-lg text-[10.5px] font-black bg-gradient-to-b from-kpu-maroon via-red-900 to-red-950 text-white border border-red-800 shadow-[0_1.5px_0_#4a0200,0_1.5px_4px_rgba(102,3,0,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer"
                             title="Buka folder TPS di Google Drive"
                           >
                             <FolderOpen className="h-3 w-3 mr-1 text-amber-300" />
