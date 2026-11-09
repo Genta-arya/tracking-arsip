@@ -69,7 +69,7 @@ function doGet(e) {
         if (folderId) {
           try {
             targetFolder = DriveApp.getFolderById(folderId);
-          } catch (errF) {}
+          } catch (errF) { }
         }
         var files = targetFolder ? targetFolder.searchFiles(query) : DriveApp.searchFiles(query);
 
@@ -98,7 +98,7 @@ function doGet(e) {
           try {
             if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
             if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-          } catch (err) {}
+          } catch (err) { }
 
           seenIds[fileId] = true;
           recentFiles.push({
@@ -118,7 +118,7 @@ function doGet(e) {
           });
           count++;
         }
-      } catch (errSearch) {}
+      } catch (errSearch) { }
 
       // 2. Fallback pencarian lanjutan jika menggunakan Google Shared Drive
       if (count === 0) {
@@ -166,11 +166,11 @@ function doGet(e) {
                     });
                     count++;
                   }
-                } catch (eF) {}
+                } catch (eF) { }
               }
             }
           }
-        } catch (eAdv) {}
+        } catch (eAdv) { }
       }
 
       return responseJSON({ status: 'success', count: recentFiles.length, data: recentFiles });
@@ -219,7 +219,7 @@ function doGet(e) {
             try {
               if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
               if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-            } catch (err) {}
+            } catch (err) { }
 
             fileList.push({
               id: file.getId(),
@@ -288,7 +288,7 @@ function extractFileUploader(file) {
     if (owner) {
       uploaderName = owner.getName() || owner.getEmail() || '';
     }
-  } catch (err) {}
+  } catch (err) { }
 
   // 2. Jika di Google Drive Bersama (Shared Drive) di mana getOwner bernilai null
   if (!uploaderName) {
@@ -304,7 +304,7 @@ function extractFileUploader(file) {
           uploaderName = meta.owners[0].displayName || meta.owners[0].emailAddress || '';
         }
       }
-    } catch (err) {}
+    } catch (err) { }
   }
 
   // 3. Fallback editor jika email akun disembunyikan oleh domain
@@ -314,7 +314,7 @@ function extractFileUploader(file) {
       if (editors && editors.length > 0) {
         uploaderName = editors[0].getName() || editors[0].getEmail() || '';
       }
-    } catch (err) {}
+    } catch (err) { }
   }
 
   return uploaderName;
@@ -538,7 +538,7 @@ function auditSingleKecamatan(kecFolder, idToken) {
           try {
             if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
             if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-          } catch (e) {}
+          } catch (e) { }
 
           var uploader = extractFileUploader(file);
 
@@ -659,7 +659,7 @@ function autoPushRecentFilesToFirestore() {
 
     // Perbarui metadata sinkronisasi global di Firestore jika ada perubahan
     if (changedKecs.length > 0) {
-      var changedSummary = changedKecs.map(function(c) {
+      var changedSummary = changedKecs.map(function (c) {
         var diff = c.newCount - c.oldCount;
         return c.kecName + ' (' + (diff > 0 ? '+' + diff : diff) + ')';
       }).join(', ');
