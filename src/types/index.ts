@@ -34,7 +34,7 @@ export interface AnomalyItem {
   fileName: string;
 }
 
-export type OverrideElectionType = ElectionType | 'IGNORE' | 'SUDAH_DIBENARKAN';
+export type OverrideElectionType = ElectionType | 'IGNORE' | 'SUDAH_DIBENARKAN' | 'HAPUS';
 
 export interface RawFileItem {
   id: string;

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ExternalLink,
@@ -12,6 +12,8 @@ import {
   Check,
   User,
   Clock,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,15 @@ interface FileDetailModalProps {
   onClose: () => void;
   isDemoMode?: boolean;
   currentUserEmail?: string | null;
+  initialFileId?: string | null;
+  onUpdateFileStatus?: (params: {
+    kecamatan: string;
+    tpsFolderId: string;
+    fileId: string;
+    overrideElection?: OverrideElectionType;
+    isResolved: boolean;
+    resolutionNote?: string;
+  }) => Promise<void>;
 }
 
 // Konfigurasi tema warna 3D untuk 5 jenis surat suara resmi
@@ -72,6 +83,8 @@ export function FileDetailModal({
   onClose,
   isDemoMode = false,
   currentUserEmail = null,
+  initialFileId = null,
+  onUpdateFileStatus,
 }: FileDetailModalProps) {
   // Simpan record terakhir untuk mendukung animasi keluar (exit animation) AnimatePresence
   const lastRecordRef = useRef<TPSRecord | null>(null);
@@ -88,8 +101,6 @@ export function FileDetailModal({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
 
-  if (!record) return null;
-
   const handleStartEdit = (file: ScannedFile) => {
     if (editingFileId === file.id) {
       setEditingFileId(null);
@@ -104,11 +115,25 @@ export function FileDetailModal({
       file.resolutionNote ||
       (file.overrideElection === 'SUDAH_DIBENARKAN'
         ? 'Sudah dibenarkan di Google Drive (Menunggu Sync Ulang)'
+        : file.overrideElection === 'HAPUS'
+        ? 'Berkas dihapus / dipindahkan dari folder ini (anomali sudah difix)'
         : 'Sudah diperbaiki / sesuai')
     );
     setSaveSuccessMsg(null);
     setSaveErrorMsg(null);
   };
+
+  // Otomatis buka form edit jika diarahkan langsung dari tabel anomali dengan initialFileId
+  useEffect(() => {
+    if (open && initialFileId && record) {
+      const targetFile = record.files.find((f) => f.id === initialFileId);
+      if (targetFile) {
+        handleStartEdit(targetFile);
+      }
+    }
+  }, [open, initialFileId, record?.id]);
+
+  if (!record) return null;
 
   const handleSaveStatus = async (file: ScannedFile) => {
     setIsSaving(true);
@@ -118,39 +143,42 @@ export function FileDetailModal({
     try {
       const isReset = selectedElection === 'RESET';
       const isSudahDibenarkan = selectedElection === 'SUDAH_DIBENARKAN';
+      const isHapus = selectedElection === 'HAPUS';
 
-      await updateFileAnomalyStatus({
+      const targetOverride: OverrideElectionType | undefined = isReset
+        ? undefined
+        : isHapus
+        ? 'HAPUS'
+        : isSudahDibenarkan
+        ? 'SUDAH_DIBENARKAN'
+        : (selectedElection as OverrideElectionType);
+
+      const targetIsResolved = isSudahDibenarkan ? false : isReset ? false : true;
+      const targetNote = isReset
+        ? undefined
+        : isHapus
+        ? resolutionNote || 'Berkas dihapus / dipindahkan dari folder ini (anomali sudah difix)'
+        : resolutionNote;
+
+      const params = {
         kecamatan: record.kecamatan,
         tpsFolderId: record.tpsFolderId,
         fileId: file.id,
-        overrideElection: isReset ? undefined : (selectedElection as OverrideElectionType),
-        isResolved: isSudahDibenarkan ? false : !isReset,
-        resolutionNote: isReset ? undefined : resolutionNote,
-      });
+        overrideElection: targetOverride,
+        isResolved: targetIsResolved,
+        resolutionNote: targetNote,
+      };
 
-      // Update state lokal
-      if (isReset) {
-        delete file.overrideElection;
-        file.isResolved = false;
-        delete file.resolutionNote;
-        delete file.resolvedAt;
-        delete file.resolvedBy;
-      } else if (isSudahDibenarkan) {
-        file.overrideElection = 'SUDAH_DIBENARKAN';
-        file.isResolved = false;
-        file.resolutionNote = resolutionNote || 'Sudah dibenarkan di Google Drive (Menunggu Sync Ulang)';
-        file.resolvedAt = new Date().toISOString();
-        file.resolvedBy = currentUserEmail || 'Admin Teknis';
+      if (onUpdateFileStatus) {
+        await onUpdateFileStatus(params);
       } else {
-        file.overrideElection = selectedElection as ElectionType;
-        file.isResolved = true;
-        file.resolutionNote = resolutionNote;
-        file.resolvedAt = new Date().toISOString();
-        file.resolvedBy = currentUserEmail || 'Admin Teknis';
+        await updateFileAnomalyStatus(params);
       }
 
       setSaveSuccessMsg(
-        isSudahDibenarkan
+        isHapus
+          ? 'Berkas ditandai "Hapus / Dipindahkan". Berkas hilang dari folder & anomali selesai!'
+          : isSudahDibenarkan
           ? 'Status "Sudah Dibenarkan" tersimpan. Tetap tercatat anomali sampai disinkronkan ulang.'
           : 'Status berkas berhasil disimpan ke Cloud Firestore!'
       );
@@ -161,6 +189,80 @@ export function FileDetailModal({
     } catch (err: any) {
       console.error('Gagal update anomali:', err);
       setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleQuickDelete = async (file: ScannedFile) => {
+    if (
+      !confirm(
+        `Tandai berkas "${file.name}" sebagai Hapus / Sudah Dipindahkan dari ${record.tpsFolderName}?\n\nBerkas ini akan hilang dari folder TPS ini dan anomali dinyatakan selesai/fix.`
+      )
+    ) {
+      return;
+    }
+    setIsSaving(true);
+    setSaveErrorMsg(null);
+    setSaveSuccessMsg(null);
+
+    try {
+      const params = {
+        kecamatan: record.kecamatan,
+        tpsFolderId: record.tpsFolderId,
+        fileId: file.id,
+        overrideElection: 'HAPUS' as OverrideElectionType,
+        isResolved: true,
+        resolutionNote: 'Berkas dihapus / dipindahkan dari folder ini (anomali sudah difix)',
+      };
+
+      if (onUpdateFileStatus) {
+        await onUpdateFileStatus(params);
+      } else {
+        await updateFileAnomalyStatus(params);
+      }
+
+      setSaveSuccessMsg('Berkas berhasil ditandai Hapus / Dipindahkan!');
+      setTimeout(() => {
+        setEditingFileId(null);
+        setSaveSuccessMsg(null);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Gagal menghapus berkas:', err);
+      setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menghapus berkas.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRestoreFile = async (file: ScannedFile) => {
+    setIsSaving(true);
+    setSaveErrorMsg(null);
+    setSaveSuccessMsg(null);
+
+    try {
+      const params = {
+        kecamatan: record.kecamatan,
+        tpsFolderId: record.tpsFolderId,
+        fileId: file.id,
+        overrideElection: undefined,
+        isResolved: false,
+        resolutionNote: undefined,
+      };
+
+      if (onUpdateFileStatus) {
+        await onUpdateFileStatus(params);
+      } else {
+        await updateFileAnomalyStatus(params);
+      }
+
+      setSaveSuccessMsg('Berkas berhasil dipulihkan kembali ke folder TPS!');
+      setTimeout(() => {
+        setSaveSuccessMsg(null);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Gagal memulihkan berkas:', err);
+      setSaveErrorMsg(err.message || 'Terjadi kesalahan saat memulihkan berkas.');
     } finally {
       setIsSaving(false);
     }
@@ -351,21 +453,28 @@ export function FileDetailModal({
           </div>
 
           {/* Seluruh Berkas Terdeteksi (termasuk file extra / unrecognized) */}
-          <div className="pt-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
-              Daftar Seluruh File di Folder ({record.files.length} Berkas):
-            </h4>
-            <div className="space-y-2">
-              {record.files.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">
-                  Folder Google Drive ini masih kosong (0 file).
-                </div>
-              ) : (
-                record.files.map((file) => {
-                  const isSudahDibenarkan = file.overrideElection === 'SUDAH_DIBENARKAN';
-                  const isFileAnomaly =
-                    file.detectedElection === 'UNKNOWN' ||
-                    (file.anomalies && file.anomalies.length > 0 && !file.isResolved);
+          {(() => {
+            const activeFiles = record.files.filter((f) => f.overrideElection !== 'HAPUS');
+            const deletedFiles = record.files.filter((f) => f.overrideElection === 'HAPUS');
+
+            return (
+              <div className="pt-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                  Daftar Seluruh File di Folder ({activeFiles.length} Berkas Aktif):
+                </h4>
+                <div className="space-y-2">
+                  {activeFiles.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">
+                      {deletedFiles.length > 0
+                        ? 'Seluruh berkas di folder ini telah ditandai dihapus/dipindahkan.'
+                        : 'Folder Google Drive ini masih kosong (0 file).'}
+                    </div>
+                  ) : (
+                    activeFiles.map((file) => {
+                      const isSudahDibenarkan = file.overrideElection === 'SUDAH_DIBENARKAN';
+                      const isFileAnomaly =
+                        file.detectedElection === 'UNKNOWN' ||
+                        (file.anomalies && file.anomalies.length > 0 && !file.isResolved);
 
                   return (
                     <div
@@ -544,6 +653,21 @@ export function FileDetailModal({
                             </motion.button>
                           )}
 
+                          {/* Tombol Cepat Hapus / Sudah Dipindahkan */}
+                          {!isDemoMode && isAdminTeknis && (
+                            <motion.button
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.96, y: 1 }}
+                              type="button"
+                              onClick={() => handleQuickDelete(file)}
+                              className="h-7 px-2.5 text-[11px] font-bold rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Tandai berkas ini sudah dipindahkan / hapus dari folder TPS ini (anomali fix)"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              <span>Hapus</span>
+                            </motion.button>
+                          )}
+
                           {file.url && !isDemoMode && (
                             <motion.a
                               whileHover={{ scale: 1.04 }}
@@ -610,6 +734,9 @@ export function FileDetailModal({
                                   }}
                                   className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 >
+                                  <option value="HAPUS">
+                                    🗑️ Hapus Berkas / Sudah Dipindahkan (Sembunyikan dari Folder Ini)
+                                  </option>
                                   <option value="SUDAH_DIBENARKAN">
                                     ✅ Sudah Dibenarkan (Data Ganda / Salah Kamar)
                                   </option>
@@ -676,8 +803,53 @@ export function FileDetailModal({
                 })
               )}
             </div>
+
+            {/* Bagian Berkas yang Ditandai Hapus / Dipindahkan */}
+            {deletedFiles.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-dashed border-slate-300">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                    <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                    Berkas Dihapus / Dipindahkan dari Folder Ini ({deletedFiles.length})
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    ✓ Anomali Selesai/Fix
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {deletedFiles.map((delFile) => (
+                    <div
+                      key={delFile.id}
+                      className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600"
+                    >
+                      <div className="truncate pr-2">
+                        <span className="line-through font-semibold text-slate-500">
+                          {delFile.name}
+                        </span>
+                        <span className="block text-[10px] text-slate-400">
+                          {delFile.resolutionNote || 'Dihapus dari folder TPS ini'}
+                        </span>
+                      </div>
+                      {isAdminTeknis && !isDemoMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreFile(delFile)}
+                          title="Batalkan penghapusan dan kembalikan berkas ke folder TPS ini"
+                          className="shrink-0 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white border border-slate-300 text-slate-700 hover:text-kpu-maroon hover:border-kpu-maroon transition shadow-2xs cursor-pointer flex items-center gap-1"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Pulihkan</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        );
+      })()}
+    </div>
 
         {/* Footer Modal 3D: Tombol Taktil */}
         <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-slate-50/90 rounded-b-2xl sm:rounded-b-3xl flex flex-col sm:flex-row items-center justify-between gap-3 backdrop-blur-xs">
