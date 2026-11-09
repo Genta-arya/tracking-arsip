@@ -341,6 +341,28 @@ var FIREBASE_CONFIG = {
 };
 
 /**
+ * ⚠️ FUNGSI OTORISASI IZIN GOOGLE (JALANKAN SEKALI INI SAJA):
+ * Jika muncul pesan error "Anda tidak memiliki izin untuk memanggil UrlFetchApp.fetch",
+ * pilih fungsi 'authorizeAppScript' di dropdown Apps Script lalu klik 'Run' (Jalankan).
+ * Google akan menampilkan pop-up "Otorisasi Diperlukan" -> Klik 'Tinjau Izin' -> 'Izinkan'.
+ */
+function authorizeAppScript() {
+  // Panggilan langsung tanpa try-catch untuk memicu jendela pop-up otorisasi izin OAuth Google
+  var testUrl = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FIREBASE_CONFIG.API_KEY;
+  var res = UrlFetchApp.fetch(testUrl, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({}),
+    muteHttpExceptions: true
+  });
+  Logger.log('🎉 ========================================================');
+  Logger.log('🎉 OTORISASI BERHASIL! Izin UrlFetchApp telah aktif.');
+  Logger.log('🎉 Kode status respon Google: ' + res.getResponseCode());
+  Logger.log('🎉 Sekarang Anda dapat menjalankan autoPushRecentFilesToFirestore atau installAutoTrigger.');
+  Logger.log('========================================================');
+}
+
+/**
  * 1-CLICK INSTALL TRIGGER (DEFAULT 5 MENIT - REKOMENDASI KUOTA GOOGLE):
  * Jalankan fungsi ini SEKALI di editor Google Apps Script (klik 'Run' / 'Jalankan')
  * untuk mengaktifkan pemindaian otomatis di server Google setiap 5 menit.
