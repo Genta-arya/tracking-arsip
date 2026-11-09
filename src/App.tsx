@@ -10,6 +10,7 @@ import { TrackerMatrix } from '@/components/TrackerMatrix';
 import { DailyAnomalyTable3D } from '@/components/DailyAnomalyTable3D';
 import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
+import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
 import { AuthGate } from '@/components/AuthGate';
 import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
@@ -32,6 +33,7 @@ import {
   subscribeRealtimeScannedData,
   subscribeSyncMetadata,
   updateFileAnomalyStatus,
+  SyncMetadata,
 } from '@/services/firebase';
 import {
   RawTpsData,
@@ -67,6 +69,7 @@ export function App() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
+  const [syncMeta, setSyncMeta] = useState<SyncMetadata | null>(null);
   const [showSyncToast, setShowSyncToast] = useState<boolean>(false);
   const isInitialMount = useRef<boolean>(true);
 
@@ -211,11 +214,14 @@ export function App() {
 
     // Dengarkan metadata waktu terakhir disinkronkan oleh admin
     const unsubscribeMeta = subscribeSyncMetadata((meta) => {
-      if (meta && meta.lastSyncedAt) {
-        setConfig((prev) => ({
-          ...prev,
-          lastSyncedAt: meta.lastSyncedAt,
-        }));
+      if (meta) {
+        setSyncMeta(meta);
+        if (meta.lastSyncedAt) {
+          setConfig((prev) => ({
+            ...prev,
+            lastSyncedAt: meta.lastSyncedAt,
+          }));
+        }
       }
     });
 
@@ -839,6 +845,14 @@ export function App() {
         currentRawData={rawData}
       />
 
+      {/* 5. Floating Widget Status Waktu Terakhir Sinkronisasi Drive (Bisa dibuka/dikecilkan) */}
+      <SyncStatusFloatingToast
+        lastSyncedAt={syncMeta?.lastSyncedAt || config.lastSyncedAt || null}
+        lastSyncedKecamatan={syncMeta?.lastSyncedKecamatan}
+        lastSyncedBy={syncMeta?.lastSyncedBy}
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
+      />
+
       {/* Toast Notifikasi: Data Telah Tersinkron Otomatis (Muncul 3 detik saat data realtime Firestore berubah) */}
       <AnimatePresence>
         {showSyncToast && (
@@ -847,7 +861,7 @@ export function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.9 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900/90 text-white backdrop-blur-md border border-emerald-500/40 rounded-xl shadow-[0_10px_25px_-5px_rgba(16,185,129,0.3)] pointer-events-none"
+            className="fixed bottom-20 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900/95 text-white backdrop-blur-md border border-emerald-500/50 rounded-xl shadow-[0_10px_25px_-5px_rgba(16,185,129,0.4)] pointer-events-none"
           >
             <div className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               <CheckCircle2 className="w-4 h-4 animate-pulse" />

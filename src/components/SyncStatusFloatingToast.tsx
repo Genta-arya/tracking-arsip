@@ -1,21 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, X, RefreshCw, ChevronUp, Zap, FolderSearch } from 'lucide-react';
+import { Clock, X, ChevronUp, FolderSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAutoSync } from '@/context/AutoSyncContext';
 
 interface SyncStatusFloatingToastProps {
   lastSyncedAt: string | null;
   lastSyncedKecamatan?: string;
   lastSyncedBy?: string;
   onOpenSyncModal?: () => void;
-}
-
-function formatCountdown(seconds: number): string {
-  if (seconds < 0) return '00:00';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export function SyncStatusFloatingToast({
@@ -26,15 +18,6 @@ export function SyncStatusFloatingToast({
 }: SyncStatusFloatingToastProps) {
   // Kontrol buka/tutup floating message (Default tertutup/minimized agar tidak menutupi layar)
   const [isOpen, setIsOpen] = useState(false);
-
-  // Hook Auto-Sync Context untuk hitungan mundur 2 menit & status silent fetch
-  const {
-    nextSyncCountdown,
-    isSyncing,
-    triggerManualAutoSync,
-    newFilesNotice,
-    dismissNewFilesNotice,
-  } = useAutoSync();
 
   // Format Hari, Tanggal, Jam, dan Detik (WIB)
   const formattedSync = (() => {
@@ -70,39 +53,9 @@ export function SyncStatusFloatingToast({
 
   return (
     <div className="fixed bottom-4 right-4 z-[9990] flex flex-col items-end pointer-events-none select-none">
-      {/* Banner Pop-up Taktil Saat Ditemukan Berkas C-Hasil Baru */}
-      <AnimatePresence>
-        {newFilesNotice !== null && newFilesNotice > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 14, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 14, scale: 0.92 }}
-            className="mb-2 pointer-events-auto bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 text-white px-3.5 py-2.5 rounded-2xl shadow-[0_8px_24px_rgba(5,150,105,0.35)] border border-emerald-400/60 flex items-center gap-2.5 text-xs font-bold max-w-sm"
-          >
-            <span className="text-base shrink-0 animate-bounce">✨</span>
-            <div className="min-w-0">
-              <p className="leading-tight text-white font-extrabold">
-                {newFilesNotice} Berkas C-Hasil Baru Masuk!
-              </p>
-              <p className="text-[10px] text-emerald-100 font-normal">
-                Data dashboard telah diperbarui otomatis.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={dismissNewFilesNotice}
-              className="ml-auto p-1 text-emerald-200 hover:text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
-              title="Tutup notifikasi"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <AnimatePresence mode="wait">
         {!isOpen ? (
-          /* Tombol Pill Kecil Mengambang: (🟢 Auto-Sync: 02:00) */
+          /* Tombol Pill Kecil Mengambang: Info Last Sync Realtime */
           <motion.div
             key="minimized-pill"
             initial={{ opacity: 0, scale: 0.8, y: 16 }}
@@ -116,44 +69,22 @@ export function SyncStatusFloatingToast({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setIsOpen(true)}
-              className={`flex items-center gap-2.5 px-3.5 py-2 rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.3)] backdrop-blur-md text-xs font-semibold transition group cursor-pointer border ${
-                isSyncing
-                  ? 'bg-amber-950/95 text-amber-200 border-amber-500/70 ring-2 ring-amber-400/40 animate-pulse'
-                  : 'bg-slate-900/95 text-white hover:bg-slate-900 border-slate-700/80'
-              }`}
-              title="Klik untuk membuka status sinkronisasi berkas otomatis"
+              className="flex items-center gap-2.5 px-3.5 py-2 rounded-full shadow-[0_8px_20px_rgba(0,0,0,0.3)] backdrop-blur-md text-xs font-semibold transition group cursor-pointer border bg-slate-900/95 text-white hover:bg-slate-900 border-slate-700/80"
+              title="Klik untuk membuka status sinkronisasi terakhir"
             >
-              {/* Live Status Orb Dot */}
+              {/* Live Status Indicator Dot */}
               <span className="relative flex h-2 w-2 shrink-0">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    isSyncing ? 'bg-amber-400' : 'bg-emerald-400'
-                  }`}
-                ></span>
-                <span
-                  className={`relative inline-flex rounded-full h-2 w-2 ${
-                    isSyncing ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                ></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
 
-              {isSyncing ? (
-                <div className="flex items-center gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-300" />
-                  <span className="text-[11px] font-black text-amber-200">
-                    Fetch Berkas Baru...
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-emerald-400 font-bold flex items-center gap-1">
-                    Auto-Sync:
-                  </span>
-                  <span className="font-mono font-black text-amber-300 bg-black/50 px-1.5 py-0.5 rounded-md border border-white/10 shadow-inner">
-                    {formatCountdown(nextSyncCountdown)}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <Clock className="h-3.5 w-3.5 text-amber-300" />
+                <span className="text-slate-300 font-medium">Sinkron:</span>
+                <span className="font-mono font-bold text-amber-300">
+                  {formattedSync ? formattedSync.waktuLengkap : 'Real-time Aktif'}
+                </span>
+              </div>
 
               <ChevronUp className="h-3 w-3 text-slate-400 group-hover:text-white transition shrink-0 ml-0.5" />
             </motion.button>
@@ -179,7 +110,7 @@ export function SyncStatusFloatingToast({
                   <div className="flex items-center gap-1.5 truncate">
                     <Clock className="h-3.5 w-3.5 text-amber-300 shrink-0" />
                     <span className="text-xs font-black tracking-wide truncate uppercase">
-                      SINKRONISASI C-HASIL DRIVE
+                      STATUS SINKRONISASI C-HASIL
                     </span>
                   </div>
                 </div>
@@ -197,22 +128,19 @@ export function SyncStatusFloatingToast({
 
               {/* Konten Status Sinkronisasi */}
               <div className="p-3.5 space-y-3 text-xs">
-                {/* Status Countdown Box 2 Menit */}
+                {/* Status Cloud Auto-Push Aktif */}
                 <div className="bg-gradient-to-r from-emerald-50 via-teal-50/50 to-slate-50 border border-emerald-200/90 rounded-xl p-2.5 flex items-center justify-between">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">
-                      Auto-Sync 2 Menit (Quick-Fetch)
+                      Google Cloud Auto-Push (24 Jam)
                     </span>
                     <p className="text-[11px] text-slate-600 font-medium">
-                      Pindai berkas baru berikutnya:
+                      Status koneksi server:
                     </p>
                   </div>
-                  <div className="font-mono text-base font-black px-2.5 py-1 rounded-lg bg-emerald-800 text-amber-300 shadow-inner border border-emerald-700/60 flex items-center gap-1">
-                    {isSyncing ? (
-                      <RefreshCw className="h-4 w-4 animate-spin text-amber-300" />
-                    ) : (
-                      formatCountdown(nextSyncCountdown)
-                    )}
+                  <div className="font-mono text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-800 text-emerald-100 shadow-inner border border-emerald-700/60 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Live 24 Jam</span>
                   </div>
                 </div>
 
@@ -228,7 +156,7 @@ export function SyncStatusFloatingToast({
 
                     <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
                       <span className="text-slate-500 text-[11px] font-medium">
-                        Jam &amp; Detik:
+                        Jam &amp; Detik Terakhir:
                       </span>
                       <span className="font-black text-xs text-kpu-maroon font-mono tracking-wider bg-red-50 px-2 py-0.5 rounded border border-red-200/60">
                         {formattedSync.waktuLengkap}
@@ -237,13 +165,15 @@ export function SyncStatusFloatingToast({
 
                     {lastSyncedKecamatan && (
                       <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5 text-[11px]">
-                        <span className="text-slate-400">Wilayah Terakhir:</span>
-                        <strong className="text-slate-800">{lastSyncedKecamatan}</strong>
+                        <span className="text-slate-400">Wilayah Diperbarui:</span>
+                        <strong className="text-slate-800 truncate max-w-[170px]" title={lastSyncedKecamatan}>
+                          {lastSyncedKecamatan}
+                        </strong>
                       </div>
                     )}
                     {lastSyncedBy && (
-                      <div className="flex items-center justify-between text-[11px] truncate">
-                        <span className="text-slate-400">Petugas Terakhir:</span>
+                      <div className="flex items-center justify-between text-[11px] truncate border-t border-slate-200/60 pt-1.5">
+                        <span className="text-slate-400">Oleh:</span>
                         <span
                           className="font-medium text-slate-700 truncate max-w-[170px]"
                           title={lastSyncedBy}
@@ -255,55 +185,41 @@ export function SyncStatusFloatingToast({
                   </div>
                 ) : (
                   <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs text-center space-y-1">
-                    <p className="font-bold">Belum Ada Riwayat Pemindaian</p>
+                    <p className="font-bold">Menunggu Pemindaian Pertama</p>
                     <p className="text-[11px] text-slate-600">
-                      Sistem akan memindai berkas baru secara otomatis sesuai countdown.
+                      Sistem Google Cloud akan menyinkronkan data secara otomatis.
                     </p>
                   </div>
                 )}
 
-                {/* Action Buttons: Quick-Fetch Sekarang & Pemindaian Lengkap */}
-                <div className="space-y-2 pt-1 border-t border-slate-100">
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Tombol Pindai Lengkap Manual */}
+                {onOpenSyncModal && (
+                  <div className="pt-1 border-t border-slate-100 flex flex-col gap-2">
                     <Button
                       type="button"
-                      variant="gold"
+                      variant="outline"
                       size="sm"
-                      onClick={() => triggerManualAutoSync()}
-                      disabled={isSyncing}
-                      className="h-8 text-[11px] font-bold bg-amber-400 hover:bg-amber-500 text-amber-950 border border-amber-500/40 shadow-xs cursor-pointer"
+                      onClick={() => {
+                        setIsOpen(false);
+                        onOpenSyncModal();
+                      }}
+                      className="w-full h-8 text-[11px] font-semibold text-kpu-maroon border-red-200 hover:bg-red-50 hover:text-kpu-darkMaroon cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <Zap className="h-3 w-3 mr-1 text-amber-900" />
-                      <span>{isSyncing ? 'Fetching...' : 'Fetch Sekarang'}</span>
+                      <FolderSearch className="h-3.5 w-3.5" />
+                      <span>Buka Pemindaian Manual Drive</span>
                     </Button>
 
-                    {onOpenSyncModal && (
-                      <Button
+                    <div className="text-center">
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setIsOpen(false);
-                          onOpenSyncModal();
-                        }}
-                        className="h-8 text-[11px] font-semibold text-kpu-maroon border-red-200 hover:bg-red-50 hover:text-kpu-darkMaroon cursor-pointer"
+                        onClick={() => setIsOpen(false)}
+                        className="text-[11px] font-medium text-slate-400 hover:text-slate-700 transition cursor-pointer"
                       >
-                        <FolderSearch className="h-3 w-3 mr-1" />
-                        <span>Pindai Lengkap</span>
-                      </Button>
-                    )}
+                        Kecilkan Panel
+                      </button>
+                    </div>
                   </div>
-
-                  <div className="text-center pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setIsOpen(false)}
-                      className="text-[11px] font-medium text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                    >
-                      Kecilkan Panel
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>
