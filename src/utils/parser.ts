@@ -279,7 +279,6 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     let finalAnomalies = [...anomalies];
 
     const isHapus = file.overrideElection === 'HAPUS';
-    const isSudahDibenarkan = file.overrideElection === 'SUDAH_DIBENARKAN';
 
     if (isHapus) {
       // Kasus berkas dihapus / dipindahkan dari folder TPS ini (misal salah kamar / berkas ganda yang sudah dipindahkan)
@@ -306,23 +305,13 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       return;
     }
 
-    // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (bukan SUDAH_DIBENARKAN):
-    if (!isSudahDibenarkan && (file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE'))) {
-      if (file.overrideElection && file.overrideElection !== 'IGNORE') {
+    // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (termasuk SUDAH_DIBENARKAN):
+    if (file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE')) {
+      if (file.overrideElection && file.overrideElection !== 'IGNORE' && file.overrideElection !== 'SUDAH_DIBENARKAN') {
         finalElection = file.overrideElection as ElectionType;
       }
-      // Hapus seluruh anomali format/penamaan karena sudah divalidasi dan diperbaiki oleh admin
+      // Hapus seluruh anomali format/penamaan/duplikat karena sudah divalidasi dan diperbaiki oleh admin
       finalAnomalies = [];
-    } else if (isSudahDibenarkan) {
-      // Kasus data ganda / salah kamar: status "Sudah dibenarkan"
-      // Tetap dicatat sebagai anomali sampai disinkronkan ulang dari Google Drive
-      if (finalAnomalies.length === 0) {
-        finalAnomalies.push({
-          type: 'DUPLICATE',
-          message: file.resolutionNote || 'Sudah dibenarkan di Drive (Menunggu Sync Ulang)',
-          fileName: file.name,
-        });
-      }
     }
 
     const scannedFile: ScannedFile = {
@@ -333,10 +322,10 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       createdAt: file.createdAt,
       updatedAt: file.updatedAt,
       uploader: file.uploader,
-      detectedElection: isSudahDibenarkan ? 'UNKNOWN' : finalElection,
+      detectedElection: finalElection,
       anomalies: finalAnomalies,
       overrideElection: file.overrideElection,
-      isResolved: isSudahDibenarkan ? false : file.isResolved,
+      isResolved: true,
       resolutionNote: file.resolutionNote,
       resolvedAt: file.resolvedAt,
       resolvedBy: file.resolvedBy,
@@ -345,12 +334,6 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     scannedFiles.push(scannedFile);
     if (finalAnomalies.length > 0) {
       tpsAnomalies.push(...finalAnomalies);
-    }
-
-    // Jika file ditandai SUDAH_DIBENARKAN (kasus data ganda / salah kamar),
-    // jangan masukkan ke slot 5 pemilihan TPS ini agar slot asli/sah tidak terganggu
-    if (isSudahDibenarkan) {
-      return;
     }
 
     // Mapping ke slot pemilihan & deteksi berkas ganda (Duplicate)

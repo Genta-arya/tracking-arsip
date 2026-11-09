@@ -142,23 +142,21 @@ export function FileDetailModal({
 
     try {
       const isReset = selectedElection === 'RESET';
-      const isSudahDibenarkan = selectedElection === 'SUDAH_DIBENARKAN';
       const isHapus = selectedElection === 'HAPUS';
 
       const targetOverride: OverrideElectionType | undefined = isReset
         ? undefined
         : isHapus
         ? 'HAPUS'
-        : isSudahDibenarkan
-        ? 'SUDAH_DIBENARKAN'
         : (selectedElection as OverrideElectionType);
 
-      const targetIsResolved = isSudahDibenarkan ? false : isReset ? false : true;
+      // Selalu tandai isResolved = true saat admin mengoreksi (kecuali tombol Reset) agar anomali langsung tuntas
+      const targetIsResolved = isReset ? false : true;
       const targetNote = isReset
         ? undefined
         : isHapus
         ? resolutionNote || 'Berkas dihapus / dipindahkan dari folder ini (anomali sudah difix)'
-        : resolutionNote;
+        : resolutionNote || 'Sudah dikoreksi & divalidasi oleh Admin Teknis';
 
       const params = {
         kecamatan: record.kecamatan,
@@ -178,9 +176,7 @@ export function FileDetailModal({
       setSaveSuccessMsg(
         isHapus
           ? 'Berkas ditandai "Hapus / Dipindahkan". Berkas hilang dari folder & anomali selesai!'
-          : isSudahDibenarkan
-          ? 'Status "Sudah Dibenarkan" tersimpan. Tetap tercatat anomali sampai disinkronkan ulang.'
-          : 'Status berkas berhasil disimpan ke Cloud Firestore!'
+          : 'Koreksi berhasil disimpan! Anomali langsung tuntas & bersih.'
       );
       setTimeout(() => {
         setEditingFileId(null);
@@ -735,10 +731,7 @@ export function FileDetailModal({
                                   className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 >
                                   <option value="HAPUS">
-                                    🗑️ Hapus Berkas / Sudah Dipindahkan (Sembunyikan dari Folder Ini)
-                                  </option>
-                                  <option value="SUDAH_DIBENARKAN">
-                                    ✅ Sudah Dibenarkan (Data Ganda / Salah Kamar)
+                                    🗑️ Hapus Berkas / Sudah Dipindahkan (Selesaikan & Sembunyikan)
                                   </option>
                                   <option value="PPWP">1. Presiden & Wakil Presiden (PPWP)</option>
                                   <option value="DPR_RI">2. DPR Republik Indonesia (DPR RI)</option>
