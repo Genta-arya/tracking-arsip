@@ -250,6 +250,7 @@ export function DailyAnomalyTable3D({
     let ambiguousCount = 0;
     let mismatchCount = 0;
     let duplicateCount = 0;
+    let mismatchDesaCount = 0;
     let sudahDibenarkanCount = 0;
 
     allAnomalies.forEach((a) => {
@@ -261,6 +262,7 @@ export function DailyAnomalyTable3D({
         else if (anom.type === 'DPRD_AMBIGUOUS') ambiguousCount++;
         else if (anom.type === 'MISMATCH_TPS') mismatchCount++;
         else if (anom.type === 'DUPLICATE') duplicateCount++;
+        else if (anom.type === 'MISMATCH_DESA') mismatchDesaCount++;
       });
     });
 
@@ -270,6 +272,7 @@ export function DailyAnomalyTable3D({
       ambiguousCount,
       mismatchCount,
       duplicateCount,
+      mismatchDesaCount,
       sudahDibenarkanCount,
     };
   }, [allAnomalies]);
@@ -389,7 +392,7 @@ export function DailyAnomalyTable3D({
             {/* Summary Metric Strip & Filter Bar */}
             <div className="p-4 sm:p-5 bg-gradient-to-b from-amber-50/30 to-white border-b border-slate-200/80 space-y-4">
               {/* Metric Breakdown Capsules */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSelectedType('UNKNOWN_FORMAT')}
@@ -448,6 +451,26 @@ export function DailyAnomalyTable3D({
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-0.5">Angka file beda dengan folder</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedType('MISMATCH_DESA')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedType === 'MISMATCH_DESA'
+                      ? 'bg-red-50 border-red-400 ring-2 ring-red-400/40 shadow-xs'
+                      : 'bg-white hover:bg-red-50/50 border-slate-200/90 shadow-2xs'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-red-800 flex items-center gap-1">
+                      <span>📍</span> Salah Folder Desa
+                    </span>
+                    <span className="font-black text-red-950 px-1.5 py-0.2 rounded bg-red-100 text-[11px]">
+                      {stats.mismatchDesaCount}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Nama desa beda dengan folder</p>
                 </button>
 
                 <button

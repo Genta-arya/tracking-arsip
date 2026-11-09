@@ -160,6 +160,7 @@ export function FilterSection({
               <option value="PARTIAL">⏳ Belum Lengkap (1-4 Berkas)</option>
               <option value="EMPTY">❌ Masih Kosong (0 Berkas)</option>
               <option value="ANOMALY">⚠️ Ada Anomali / Typo</option>
+              <option value="MISMATCH_DESA">📍 Salah Folder Desa (Mismatch Desa)</option>
             </select>
           </div>
         </div>
