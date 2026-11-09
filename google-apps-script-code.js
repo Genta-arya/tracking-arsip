@@ -271,60 +271,121 @@ function uninstallAutoTrigger() {
  */
 function autoPushRecentFilesToFirestore() {
   try {
-    // 1. Cari berkas yang baru diunggah / dimodifikasi dalam 15 menit terakhir
-    var pastIso = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    // 1. Cari berkas yang baru diunggah / dimodifikasi dalam 30 menit terakhir
+    var pastIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     var query = "trashed = false and mimeType != 'application/vnd.google-apps.folder' and modifiedDate > '" + pastIso + "'";
 
-    var files = DriveApp.searchFiles(query);
     var recentFiles = [];
     var seenIds = {};
     var count = 0;
 
-    while (files.hasNext() && count < 60) {
-      var file = files.next();
-      var fileId = file.getId();
-      if (seenIds[fileId]) continue;
+    // 1A. Jika Advanced Drive API aktif, cari di seluruh Shared Drive & My Drive
+    try {
+      if (typeof Drive !== 'undefined' && Drive.Files && Drive.Files.list) {
+        var sharedResp = Drive.Files.list({
+          q: query,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          corpora: 'allDrives',
+          maxResults: 60,
+          fields: 'items(id,title,alternateLink,createdDate,modifiedDate,fileSize,owners,lastModifyingUser,parents)'
+        });
 
-      var parents = file.getParents();
-      var tpsFolder = parents.hasNext() ? parents.next() : null;
-      var tpsName = tpsFolder ? tpsFolder.getName().trim() : '';
-      var tpsId = tpsFolder ? tpsFolder.getId() : '';
+        if (sharedResp && sharedResp.items && sharedResp.items.length > 0) {
+          for (var s = 0; s < sharedResp.items.length; s++) {
+            var sItem = sharedResp.items[s];
+            var sId = sItem.id;
+            if (seenIds[sId]) continue;
 
-      var desaFolder = (tpsFolder && tpsFolder.getParents().hasNext()) ? tpsFolder.getParents().next() : null;
-      var desaName = desaFolder ? desaFolder.getName().trim() : '';
+            // Dapatkan hirarki parent folder via DriveApp
+            try {
+              var sFile = DriveApp.getFileById(sId);
+              var sParents = sFile.getParents();
+              var sTpsFolder = sParents.hasNext() ? sParents.next() : null;
+              var sTpsName = sTpsFolder ? sTpsFolder.getName().trim() : '';
+              var sTpsId = sTpsFolder ? sTpsFolder.getId() : '';
 
-      var kecFolder = (desaFolder && desaFolder.getParents().hasNext()) ? desaFolder.getParents().next() : null;
-      var kecName = kecFolder ? kecFolder.getName().trim() : '';
+              var sDesaFolder = (sTpsFolder && sTpsFolder.getParents().hasNext()) ? sTpsFolder.getParents().next() : null;
+              var sDesaName = sDesaFolder ? sDesaFolder.getName().trim() : '';
 
-      // Abaikan berkas di luar struktur folder TPS -> Desa -> Kecamatan
-      if (!tpsName || !desaName || !kecName) continue;
+              var sKecFolder = (sDesaFolder && sDesaFolder.getParents().hasNext()) ? sDesaFolder.getParents().next() : null;
+              var sKecName = sKecFolder ? sKecFolder.getName().trim() : '';
 
-      var uploaderName = extractFileUploader(file);
-      var createdAt = '';
-      var updatedAt = '';
-      try {
-        if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
-        if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-      } catch (err) {}
+              if (sTpsName && sDesaName && sKecName) {
+                var sUploader = extractFileUploader(sFile);
+                seenIds[sId] = true;
+                recentFiles.push({
+                  file: {
+                    id: sId,
+                    name: sItem.title || sFile.getName(),
+                    url: sItem.alternateLink || sFile.getUrl(),
+                    createdAt: sItem.createdDate || '',
+                    updatedAt: sItem.modifiedDate || '',
+                    size: sItem.fileSize ? parseInt(sItem.fileSize, 10) : sFile.getSize(),
+                    uploader: sUploader
+                  },
+                  tpsFolderName: sTpsName,
+                  tpsFolderId: sTpsId,
+                  desa: sDesaName,
+                  kecamatan: sKecName
+                });
+                count++;
+              }
+            } catch (errParent) {}
+          }
+        }
+      }
+    } catch (errAdv) {}
 
-      seenIds[fileId] = true;
-      recentFiles.push({
-        file: {
-          id: fileId,
-          name: file.getName(),
-          url: file.getUrl(),
-          createdAt: createdAt,
-          updatedAt: updatedAt,
-          size: file.getSize(),
-          uploader: uploaderName
-        },
-        tpsFolderName: tpsName,
-        tpsFolderId: tpsId,
-        desa: desaName,
-        kecamatan: kecName
-      });
-      count++;
-    }
+    // 1B. Pencarian standar DriveApp (My Drive & Accessible Folders)
+    try {
+      var files = DriveApp.searchFiles(query);
+      while (files.hasNext() && count < 60) {
+        var file = files.next();
+        var fileId = file.getId();
+        if (seenIds[fileId]) continue;
+
+        var parents = file.getParents();
+        var tpsFolder = parents.hasNext() ? parents.next() : null;
+        var tpsName = tpsFolder ? tpsFolder.getName().trim() : '';
+        var tpsId = tpsFolder ? tpsFolder.getId() : '';
+
+        var desaFolder = (tpsFolder && tpsFolder.getParents().hasNext()) ? tpsFolder.getParents().next() : null;
+        var desaName = desaFolder ? desaFolder.getName().trim() : '';
+
+        var kecFolder = (desaFolder && desaFolder.getParents().hasNext()) ? desaFolder.getParents().next() : null;
+        var kecName = kecFolder ? kecFolder.getName().trim() : '';
+
+        // Abaikan berkas di luar struktur folder TPS -> Desa -> Kecamatan
+        if (!tpsName || !desaName || !kecName) continue;
+
+        var uploaderName = extractFileUploader(file);
+        var createdAt = '';
+        var updatedAt = '';
+        try {
+          if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
+          if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
+        } catch (err) {}
+
+        seenIds[fileId] = true;
+        recentFiles.push({
+          file: {
+            id: fileId,
+            name: file.getName(),
+            url: file.getUrl(),
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            size: file.getSize(),
+            uploader: uploaderName
+          },
+          tpsFolderName: tpsName,
+          tpsFolderId: tpsId,
+          desa: desaName,
+          kecamatan: kecName
+        });
+        count++;
+      }
+    } catch (errSearch) {}
 
     // Jika tidak ada berkas baru: selesai seketika (0 detik)
     if (recentFiles.length === 0) {
