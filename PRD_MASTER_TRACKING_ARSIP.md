@@ -128,6 +128,10 @@ Total cakupan wilayah: **7 Kecamatan**, **87 Desa**, dan tepat **698 TPS**.
      - Hanya kecamatan yang bersangkutan yang di-update ke Cloud Firestore.
      - Tampil notifikasi mengambang: `✨ {N} Berkas C-Hasil Baru Masuk!`.
      - Seluruh HP/laptop staf lain langsung ter-update secara *real-time* via listener Firestore `onSnapshot`.
+4. **Server-Side Cloud Auto-Push 24 Jam Nonstop (GAS ke Firestore):**
+   - Dilengkapi fungsi `installAutoTrigger()` di [google-apps-script-code.js](file:///d:/Tracking%20Hasil%20Scan/google-apps-script-code.js).
+   - Berjalan mandiri setiap 1 menit di cloud Google Apps Script via Time-driven Trigger.
+   - Menggunakan Firebase Authentication REST API untuk otorisasi dan langsung menulis ke Firestore saat mendeteksi upload baru di Drive, bahkan saat seluruh laptop dan browser kantor sedang tertutup.
 
 ---
 
