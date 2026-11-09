@@ -5,6 +5,7 @@ import type {
   RawTpsData,
   TPSRecord,
 } from '../types/index.ts';
+import { MOCK_DESA_MAP } from '../data/mockSekadauData.ts';
 
 /**
  * Membersihkan ekstensi file dan karakter non-esensial untuk parsing
@@ -111,13 +112,96 @@ export function detectElectionCategory(cleanName: string): {
   return { type: 'UNKNOWN' };
 }
 
+// Kumpulan seluruh 87 nama resmi desa di Kabupaten Sekadau, diurutkan dari nama terpanjang
+const ALL_SEKADAU_DESA_NAMES: string[] = Array.from(
+  new Set(Object.values(MOCK_DESA_MAP).flat())
+).sort((a, b) => b.length - a.length);
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Normalisasi nama desa: hilangkan kata 'desa/kelurahan/ds', samakan format angka (1 -> satu)
+ */
+export function normalizeDesaName(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/\b(desa|kelurahan|kel|ds)\b\.?/gi, ' ')
+    .replace(/[_\-]+/g, ' ')
+    .replace(/\b1\b/g, 'satu')
+    .replace(/\b2\b/g, 'dua')
+    .replace(/\b3\b/g, 'tiga')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Deteksi jika berkas berada di folder desa yang salah (Salah Kamar Desa / Mismatch Desa)
+ */
+export function detectMismatchDesa(
+  cleanName: string,
+  expectedDesaName: string
+): { isMismatch: boolean; detectedDesaName?: string; message?: string } {
+  if (!expectedDesaName || expectedDesaName.trim() === '') {
+    return { isMismatch: false };
+  }
+
+  const expectedNorm = normalizeDesaName(expectedDesaName);
+  const cleanNorm = normalizeDesaName(cleanName);
+
+  // Jika nama file sudah memuat nama desa yang diharapkan, berkas sah dan tidak salah kamar
+  if (expectedNorm.length > 1 && cleanNorm.includes(expectedNorm)) {
+    return { isMismatch: false };
+  }
+
+  // Pola 1: Eksplisit kata kunci "Desa <Nama>" atau "Ds. <Nama>" atau "Kelurahan <Nama>"
+  const desaKeywordMatch = cleanName.match(
+    /\b(?:desa|kelurahan|kel|ds)\b\.?\s*([a-zA-Z0-9]+(?:\s+[a-zA-Z0-9]+)?)/i
+  );
+  if (desaKeywordMatch && desaKeywordMatch[1]) {
+    const rawExtracted = desaKeywordMatch[1].trim();
+    // Abaikan jika kata berikutnya adalah kata kunci pemilihan / tps (misal: "desa tps 01" atau "desa ppwp")
+    if (!/^(tps|ppwp|dpr|dpd|dprd|hasil|salinan|c1|c[\s\-_.]*hasil)/i.test(rawExtracted)) {
+      const extractedNorm = normalizeDesaName(rawExtracted);
+      if (extractedNorm && extractedNorm !== expectedNorm) {
+        return {
+          isMismatch: true,
+          detectedDesaName: rawExtracted,
+          message: `Terdeteksi nama "Desa ${rawExtracted}", padahal berada di folder Desa "${expectedDesaName}"`,
+        };
+      }
+    }
+  }
+
+  // Pola 2: Cocokkan dengan daftar seluruh nama resmi desa di Kabupaten Sekadau
+  for (const knownDesa of ALL_SEKADAU_DESA_NAMES) {
+    const knownNorm = normalizeDesaName(knownDesa);
+    // Lewati jika desa yang cocok adalah desa yang memang diharapkan
+    if (knownNorm === expectedNorm) continue;
+
+    // Cek keberadaan nama desa dengan batas kata (word boundary)
+    const regex = new RegExp(`\\b${escapeRegExp(knownNorm)}\\b`, 'i');
+    if (regex.test(cleanNorm)) {
+      return {
+        isMismatch: true,
+        detectedDesaName: knownDesa,
+        message: `Terdeteksi nama Desa "${knownDesa}", padahal berada di folder Desa "${expectedDesaName}"`,
+      };
+    }
+  }
+
+  return { isMismatch: false };
+}
+
 /**
  * Deteksi Anomali pada file scan
  */
 export function analyzeFileAnomalies(
   rawFileName: string,
   expectedTpsNumber: number,
-  _expectedDesaName: string
+  expectedDesaName: string
 ): { detectedType: ElectionType | 'UNKNOWN'; anomalies: AnomalyItem[] } {
   const anomalies: AnomalyItem[] = [];
   const cleaned = cleanFileName(rawFileName);
@@ -148,6 +232,16 @@ export function analyzeFileAnomalies(
     anomalies.push({
       type: 'MISMATCH_TPS',
       message: `Terdeteksi angka TPS ${fileTpsNumber}, padahal berada di folder TPS ${expectedTpsNumber}`,
+      fileName: rawFileName,
+    });
+  }
+
+  // Anomali 4: Salah Kamar / Folder Desa (Mismatch Desa)
+  const desaCheck = detectMismatchDesa(cleaned, expectedDesaName);
+  if (desaCheck.isMismatch && desaCheck.message) {
+    anomalies.push({
+      type: 'MISMATCH_DESA',
+      message: desaCheck.message,
       fileName: rawFileName,
     });
   }

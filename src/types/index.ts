@@ -115,7 +115,7 @@ export interface GlobalStats {
   anomalyFilesCount: number;   // Jumlah berkas anomali / belum dikenali
 }
 
-export type StatusFilterOption = 'ALL' | 'COMPLETE' | 'PARTIAL' | 'EMPTY' | 'ANOMALY';
+export type StatusFilterOption = 'ALL' | 'COMPLETE' | 'PARTIAL' | 'EMPTY' | 'ANOMALY' | 'MISMATCH_DESA';
 
 export interface FilterState {
   kecamatan: string;

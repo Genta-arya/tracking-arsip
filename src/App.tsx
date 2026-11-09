@@ -434,6 +434,12 @@ export function App() {
       }
       if (filter.status === 'EMPTY' && r.completedCount > 0) return false;
       if (filter.status === 'ANOMALY' && !r.hasAnomaly) return false;
+      if (
+        filter.status === 'MISMATCH_DESA' &&
+        !r.anomalies.some((a) => a.type === 'MISMATCH_DESA')
+      ) {
+        return false;
+      }
 
       // Filter Missing Election
       if (filter.missingElection !== 'ALL') {
