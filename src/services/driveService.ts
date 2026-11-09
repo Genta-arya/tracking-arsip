@@ -74,3 +74,57 @@ export async function scanKecamatanFolder(
   return json.data;
 }
 
+export interface GasQuickScanItem {
+  file: {
+    id: string;
+    name: string;
+    url: string;
+    createdAt?: string;
+    updatedAt?: string;
+    size?: number;
+    uploader?: string;
+  };
+  tpsFolderName: string;
+  tpsFolderId: string;
+  desa: string;
+  kecamatan: string;
+}
+
+export interface GasQuickScanResponse {
+  status: 'success' | 'error';
+  count?: number;
+  data?: GasQuickScanItem[];
+  message?: string;
+}
+
+/**
+ * Smart Quick-Scan: Memindai berkas yang baru dimodifikasi/diunggah dalam kurun waktu tertentu (menit)
+ */
+export async function quickScanRecentFiles(
+  webAppUrl: string,
+  rootFolderId: string,
+  sinceMinutes: number = 20
+): Promise<GasQuickScanItem[] | null> {
+  try {
+    const url = new URL(webAppUrl);
+    url.searchParams.set('action', 'quickScan');
+    url.searchParams.set('folderId', rootFolderId);
+    url.searchParams.set('minutes', sinceMinutes.toString());
+
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+    });
+
+    if (!res.ok) return null;
+    const json: GasQuickScanResponse = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+
