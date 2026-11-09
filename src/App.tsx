@@ -14,6 +14,7 @@ import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
 import { AuthGate } from '@/components/AuthGate';
 import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
+import { AutoSyncProvider } from '@/context/AutoSyncContext';
 import { MOCK_DESA_MAP } from '@/data/mockSekadauData';
 import {
   processRawTps,
@@ -507,7 +508,12 @@ export function App() {
 
   // Tampilan Dashboard Penuh (Hanya Tampil Jika Sudah Login)
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900 font-sans">
+    <AutoSyncProvider
+      config={config}
+      rawData={rawData}
+      onSyncComplete={handleSyncComplete}
+    >
+      <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900 font-sans">
       {/* 1. Header / Navbar */}
       <Navbar
         config={config}
@@ -834,6 +840,7 @@ export function App() {
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
       />
     </div>
+    </AutoSyncProvider>
   );
 }
 
