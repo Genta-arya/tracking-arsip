@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { RawTpsData, AppConfig } from '@/types';
-import { performFullDriveSync, performSmartQuickSync } from '@/services/driveSyncEngine';
+import { performSmartQuickSync } from '@/services/driveSyncEngine';
 
 interface AutoSyncContextType {
   isAutoSyncEnabled: boolean;
@@ -11,6 +11,8 @@ interface AutoSyncContextType {
   lastSyncStatus: 'idle' | 'syncing' | 'success' | 'error';
   syncCurrentKecamatan: string | null;
   syncError: string | null;
+  newFilesNotice: number | null;
+  dismissNewFilesNotice: () => void;
   toggleAutoSync: (enabled?: boolean) => void;
   setIntervalMinutes: (mins: number) => void;
   triggerManualAutoSync: () => Promise<void>;
@@ -31,12 +33,13 @@ export function AutoSyncProvider({
   rawData,
   onSyncComplete,
 }: AutoSyncProviderProps) {
-  // 1. Sinkronisasi otomatis berjalan permanen setiap 2 menit (tanpa indikator UI)
+  // 1. Sinkronisasi otomatis berjalan permanen setiap 2 menit (Silent Quick-Fetch)
   const isAutoSyncEnabled = true;
   const intervalMinutes = 2;
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [nextSyncCountdown, setNextSyncCountdown] = useState<number>(() => intervalMinutes * 60);
+  const [newFilesNotice, setNewFilesNotice] = useState<number | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(() => {
     if (config.lastSyncedAt) {
       const parsed = new Date(config.lastSyncedAt);
@@ -61,7 +64,7 @@ export function AutoSyncProvider({
   const onSyncCompleteRef = useRef(onSyncComplete);
   onSyncCompleteRef.current = onSyncComplete;
 
-  // 2. Fungsi eksekusi sinkronisasi senyap (Silent Background Sync)
+  // 2. Fungsi eksekusi pemindaian berkas baru (Silent Quick-Fetch 2 Menit Sekali)
   const executeSilentSync = useCallback(async () => {
     if (isSyncingRef.current) return;
     const currentCfg = configRef.current;
@@ -74,43 +77,37 @@ export function AutoSyncProvider({
     setSyncError(null);
 
     try {
-      // 1. Prioritaskan Smart Quick-Scan (hanya berkas baru 25 menit terakhir, super kilat 1-2 detik)
+      // Prioritaskan Smart Quick-Scan: Hanya berkas baru 30 menit terakhir (super kilat 1-2 detik)
       const quickResult = await performSmartQuickSync(
         currentCfg.gasWebAppUrl,
         currentCfg.rootFolderId,
         rawDataRef.current
       );
 
-      if (quickResult && quickResult.length > 0) {
-        onSyncCompleteRef.current(quickResult);
+      if (quickResult.success) {
+        if (quickResult.hasChanges && quickResult.updatedRawData.length > 0) {
+          onSyncCompleteRef.current(quickResult.updatedRawData);
+          if (quickResult.newFilesCount > 0) {
+            setNewFilesNotice(quickResult.newFilesCount);
+          }
+        }
         setLastSyncAt(new Date());
         setLastSyncStatus('success');
         setNextSyncCountdown(intervalMinutes * 60);
         return;
       }
 
-      // 2. Jika tidak ada berkas cepat atau belum didukung, jalankan pemindaian normal secara senyap
-      const result = await performFullDriveSync(
-        currentCfg.gasWebAppUrl,
-        currentCfg.rootFolderId,
-        rawDataRef.current,
-        (_progress, _msg, currentKec) => {
-          setSyncCurrentKecamatan(currentKec || null);
-        }
-      );
-
-      if (result.updatedRawData && result.updatedRawData.length > 0) {
-        onSyncCompleteRef.current(result.updatedRawData);
+      // Jika Quick-Scan mengembalikan info khusus
+      if (quickResult.error) {
+        console.info('[Silent Quick-Fetch Info]:', quickResult.error);
       }
-
-      setLastSyncAt(new Date());
-      setLastSyncStatus('success');
+      setLastSyncStatus('idle');
       setNextSyncCountdown(intervalMinutes * 60);
     } catch (err: any) {
       console.warn('Background auto-sync warning:', err);
-      setSyncError(err.message || 'Sinkronisasi latar belakang tertunda');
+      setSyncError(err.message || 'Sinkronisasi berkas baru tertunda');
       setLastSyncStatus('error');
-      // Retry dalam 60 detik jika gagal
+      // Retry dalam 60 detik jika ada gangguan jaringan
       setNextSyncCountdown(60);
     } finally {
       setIsSyncing(false);
@@ -153,6 +150,8 @@ export function AutoSyncProvider({
         lastSyncStatus,
         syncCurrentKecamatan,
         syncError,
+        newFilesNotice,
+        dismissNewFilesNotice: () => setNewFilesNotice(null),
         toggleAutoSync,
         setIntervalMinutes,
         triggerManualAutoSync: executeSilentSync,

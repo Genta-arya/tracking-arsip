@@ -127,26 +127,70 @@ export async function performFullDriveSync(
  * Memindai berkas yang baru diunggah/diubah dalam 25 menit terakhir dari Google Drive
  * dan memperbarui data TPS & Firestore seketika (hanya 1-2 detik eksekusi).
  */
+export interface QuickSyncResult {
+  success: boolean;
+  hasChanges: boolean;
+  newFilesCount: number;
+  updatedRawData: RawTpsData[];
+  error?: string;
+}
+
+/**
+ * Smart Quick-Scan: Memindai berkas yang baru diunggah/diubah dalam 30 menit terakhir.
+ * Berjalan super kilat (1-2 detik) dan hanya mengupdate data TPS/Kecamatan yang terpengaruh ke Firestore.
+ * Tidak melakukan full scan 7 kecamatan sehingga sangat hemat kuota dan tidak membuat lemot.
+ */
 export async function performSmartQuickSync(
   gasWebAppUrl: string,
   rootFolderId: string,
   currentRawData: RawTpsData[]
-): Promise<RawTpsData[] | null> {
-  if (!gasWebAppUrl || !rootFolderId) return null;
+): Promise<QuickSyncResult> {
+  if (!gasWebAppUrl || !rootFolderId) {
+    return {
+      success: false,
+      hasChanges: false,
+      newFilesCount: 0,
+      updatedRawData: currentRawData,
+      error: 'URL Google Apps Script atau ID Folder belum terkonfigurasi.',
+    };
+  }
 
-  const recentItems = await quickScanRecentFiles(gasWebAppUrl, rootFolderId, 25);
-  if (!recentItems || recentItems.length === 0) return null;
+  // Pindai berkas 30 menit terakhir (cepat 1-2 detik)
+  const recentItems = await quickScanRecentFiles(gasWebAppUrl, rootFolderId, 30);
+  
+  // Jika recentItems null (gagal HTTP atau action quickScan belum didukung di GAS lama)
+  if (recentItems === null) {
+    return {
+      success: false,
+      hasChanges: false,
+      newFilesCount: 0,
+      updatedRawData: currentRawData,
+      error: 'Respon quickScan tidak valid dari server Google Apps Script.',
+    };
+  }
+
+  // Jika tidak ada berkas baru dalam 30 menit terakhir: SELESAI SUKSES (0 berkas baru)
+  if (recentItems.length === 0) {
+    return {
+      success: true,
+      hasChanges: false,
+      newFilesCount: 0,
+      updatedRawData: currentRawData,
+    };
+  }
 
   const overrides = await fetchAllFileOverrides();
   let updatedData = [...currentRawData];
   let hasChanges = false;
+  let newFilesCount = 0;
   const changedKecamatans = new Set<string>();
 
   for (const item of recentItems) {
     const { file, tpsFolderName, tpsFolderId, desa, kecamatan } = item;
     if (!tpsFolderId && !tpsFolderName) continue;
+    if (!desa || !kecamatan) continue;
 
-    // Temukan TPS dalam data
+    // Temukan TPS dalam database
     const tpsIndex = updatedData.findIndex(
       (t) =>
         (tpsFolderId && t.tpsFolderId === tpsFolderId) ||
@@ -167,27 +211,56 @@ export async function performSmartQuickSync(
       const existingTps = updatedData[tpsIndex];
       const existingFileIdx = existingTps.files.findIndex((f) => f.id === file.id);
       let nextFiles = [...existingTps.files];
+
       if (existingFileIdx >= 0) {
-        nextFiles[existingFileIdx] = { ...nextFiles[existingFileIdx], ...enrichedFile };
+        // Periksa apakah ada perubahan metadata (nama, waktu update, atau ukuran)
+        const oldFile = nextFiles[existingFileIdx];
+        if (
+          oldFile.updatedAt !== enrichedFile.updatedAt ||
+          oldFile.size !== enrichedFile.size ||
+          oldFile.name !== enrichedFile.name
+        ) {
+          nextFiles[existingFileIdx] = { ...oldFile, ...enrichedFile };
+          hasChanges = true;
+          changedKecamatans.add(existingTps.kecamatan);
+        }
       } else {
+        // Berkas C-Hasil baru ditambahkan ke TPS ini!
         nextFiles.push(enrichedFile as any);
         hasChanges = true;
+        newFilesCount++;
+        changedKecamatans.add(existingTps.kecamatan);
       }
+
       updatedData[tpsIndex] = { ...existingTps, files: nextFiles };
-      changedKecamatans.add(existingTps.kecamatan);
     }
   }
 
+  // Jika ada perubahan, simpan HANYA kecamatan yang berubah ke Cloud Firestore
   if (hasChanges && changedKecamatans.size > 0) {
     for (const kec of changedKecamatans) {
       const kecData = updatedData.filter(
         (t) => t.kecamatan.toLowerCase() === kec.toLowerCase()
       );
-      await saveKecamatanScanToFirestore(kec, kecData);
+      try {
+        await saveKecamatanScanToFirestore(kec, kecData);
+      } catch (dbErr) {
+        console.warn(`Gagal menyimpan quick-sync ${kec} ke Firestore:`, dbErr);
+      }
     }
-    return updatedData;
+    return {
+      success: true,
+      hasChanges: true,
+      newFilesCount,
+      updatedRawData: updatedData,
+    };
   }
 
-  return null;
+  return {
+    success: true,
+    hasChanges: false,
+    newFilesCount: 0,
+    updatedRawData: currentRawData,
+  };
 }
 
