@@ -159,6 +159,9 @@ export function SummaryCards({
             {kecamatanSummaries.map((kec) => {
               const isSelected = selectedKecamatan === kec.name;
               const isPerfect = kec.percentage === 100;
+              const missingFiles =
+                kec.missingFiles ??
+                Math.max(0, kec.expectedFiles - (kec.validFiles ?? kec.totalFiles));
 
               return (
                 <div
@@ -201,7 +204,7 @@ export function SummaryCards({
                     className="h-1.5 mb-2"
                   />
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
                     <span>
                       {kec.completedTPS} / {kec.totalTPS} TPS Lengkap
                     </span>
@@ -211,6 +214,21 @@ export function SummaryCards({
                       </span>
                     ) : (
                       <span className="text-emerald-600 font-medium">✓ Valid</span>
+                    )}
+                  </div>
+
+                  <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">
+                      Berkas: <strong className="text-slate-700">{kec.validFiles ?? kec.totalFiles}</strong> / {kec.expectedFiles}
+                    </span>
+                    {missingFiles > 0 ? (
+                      <span className="font-bold text-rose-600 bg-rose-50 border border-rose-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                        Kurang {missingFiles} berkas
+                      </span>
+                    ) : (
+                      <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                        ✓ Lengkap
+                      </span>
                     )}
                   </div>
                 </div>

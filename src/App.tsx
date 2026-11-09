@@ -299,6 +299,7 @@ export function App() {
           .map((r) => r.desa.toLowerCase())
       );
       item.totalDesa = desaSet.size;
+      item.missingFiles = Math.max(0, item.expectedFiles - (item.validFiles || 0));
       item.percentage =
         item.expectedFiles > 0
           ? ((item.validFiles || item.totalFiles) / item.expectedFiles) * 100

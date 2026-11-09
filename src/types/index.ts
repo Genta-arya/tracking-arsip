@@ -97,6 +97,7 @@ export interface KecamatanSummary {
   expectedFiles: number; // totalTPS * 5
   percentage: number;
   validFiles?: number;   // Jumlah berkas yang sah mengisi 5 slot
+  missingFiles?: number; // Jumlah berkas yang masih kurang (expectedFiles - validFiles)
 }
 
 export interface GlobalStats {

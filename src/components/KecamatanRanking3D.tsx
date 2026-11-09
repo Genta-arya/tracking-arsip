@@ -71,6 +71,10 @@ export function KecamatanRanking3D({
             ? 'bg-gradient-to-b from-amber-600 to-amber-800 shadow-[0_0_6px_rgba(180,83,9,0.4)]'
             : 'bg-slate-200';
 
+          const missingFiles =
+            kec.missingFiles ??
+            Math.max(0, kec.expectedFiles - (kec.validFiles ?? kec.totalFiles));
+
           return (
             <motion.div
               key={kec.name}
@@ -113,12 +117,25 @@ export function KecamatanRanking3D({
 
                 <div className="flex items-center gap-2.5 shrink-0">
                   <div className="text-right">
-                    <span className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-kpu-maroon transition flex items-center justify-end gap-1">
-                      <AnimatedCounter value={kec.totalFiles} /> berkas
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-500 flex items-center justify-end">
-                      (<AnimatedCounter value={kec.percentage} decimals={1} suffix="%" />)
-                    </span>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-kpu-maroon transition flex items-center justify-end gap-1">
+                        <AnimatedCounter value={kec.totalFiles} /> berkas
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-500 flex items-center justify-end">
+                        (<AnimatedCounter value={kec.percentage} decimals={1} suffix="%" />)
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex justify-end">
+                      {missingFiles > 0 ? (
+                        <span className="text-[10px] font-extrabold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs">
+                          Kurang {missingFiles} berkas
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+                          ✓ Lengkap
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* 3D Arrow Action Pod */}
@@ -154,9 +171,9 @@ export function KecamatanRanking3D({
                 </motion.div>
               </div>
 
-              {/* Footer Meta: Completed TPS & Anomaly Badge */}
-              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 pl-2 flex-wrap gap-1">
-                <span className="font-medium text-slate-600">
+              {/* Footer Meta: Completed TPS, Missing Files, & Anomaly Badge */}
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2.5 pl-2 flex-wrap gap-1.5">
+                <span className="font-medium text-slate-600 flex items-center gap-1.5 flex-wrap">
                   <strong className="text-slate-800 font-bold">
                     <AnimatedCounter value={kec.totalFiles} />
                   </strong> berkas scan •{' '}
@@ -165,12 +182,26 @@ export function KecamatanRanking3D({
                   </span>
                 </span>
 
-                {kec.anomalyTPS > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/90 shadow-[0_2px_4px_rgba(225,29,72,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]">
-                    <AlertTriangle className="h-3 w-3 text-rose-600" />
-                    <span>{kec.anomalyTPS} TPS Anomali</span>
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {missingFiles > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold bg-gradient-to-r from-amber-50 to-orange-50 text-amber-900 border border-amber-300 shadow-2xs">
+                      <span>📉</span>
+                      <span>Kurang <strong>{missingFiles}</strong> Berkas</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                      <span>✓</span>
+                      <span>Berkas Lengkap</span>
+                    </span>
+                  )}
+
+                  {kec.anomalyTPS > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/90 shadow-[0_2px_4px_rgba(225,29,72,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]">
+                      <AlertTriangle className="h-3 w-3 text-rose-600" />
+                      <span>{kec.anomalyTPS} TPS Anomali</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </motion.div>
           );
