@@ -195,6 +195,25 @@ function doGet(e) {
     // -------------------------------------------------------------
     if (action === 'scanKecamatan') {
       var kecFolder = DriveApp.getFolderById(folderId);
+      var kecName = kecFolder.getName().trim();
+
+      // OPTIMASI TURBO: Ambil data cache Firestore kecamatan ini lebih dulu (0ms lookup)
+      var cachedDoc = null;
+      var fileCache = {};
+      try {
+        var idTok = getFirebaseAuthToken();
+        cachedDoc = getFirestoreDocument('scanned_data', kecName, idTok);
+        if (cachedDoc && Array.isArray(cachedDoc.tpsList)) {
+          for (var ci = 0; ci < cachedDoc.tpsList.length; ci++) {
+            var cTps = cachedDoc.tpsList[ci];
+            var cFiles = cTps.files || [];
+            for (var cf = 0; cf < cFiles.length; cf++) {
+              fileCache[cFiles[cf].id] = cFiles[cf];
+            }
+          }
+        }
+      } catch (eCache) { }
+
       var desaFolders = kecFolder.getFolders();
       var result = [];
 
@@ -211,29 +230,39 @@ function doGet(e) {
 
           while (files.hasNext()) {
             var file = files.next();
-            var uploaderName = extractFileUploader(file);
+            var fid = file.getId();
+            var fname = file.getName();
+            var fsize = file.getSize();
 
-            // Waktu Upload & Waktu Terakhir Diedit
-            var createdAt = '';
-            var updatedAt = '';
-            try {
-              if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
-              if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
-            } catch (err) { }
+            // Jika berkas sudah ada di cache Firestore, pakai datanya (0ms, tanpa getEditors yang lambat!)
+            var cached = fileCache[fid];
+            if (cached && cached.name === fname && cached.size === fsize) {
+              fileList.push(cached);
+            } else {
+              // Hanya berkas BARU yang mengambil metadata detail
+              var createdAt = '';
+              var updatedAt = '';
+              try {
+                if (file.getDateCreated()) createdAt = file.getDateCreated().toISOString();
+                if (file.getLastUpdated()) updatedAt = file.getLastUpdated().toISOString();
+              } catch (err) { }
 
-            fileList.push({
-              id: file.getId(),
-              name: file.getName(),
-              url: file.getUrl(),
-              createdAt: createdAt,
-              updatedAt: updatedAt,
-              size: file.getSize(),
-              uploader: uploaderName
-            });
+              var uploaderName = extractFileUploader(file);
+
+              fileList.push({
+                id: fid,
+                name: fname,
+                url: file.getUrl(),
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                size: fsize,
+                uploader: uploaderName
+              });
+            }
           }
 
           result.push({
-            kecamatan: kecFolder.getName().trim(),
+            kecamatan: kecName,
             desa: desaName,
             tpsFolderName: tpsName,
             tpsFolderId: tps.getId(),
@@ -244,7 +273,7 @@ function doGet(e) {
       }
       return responseJSON({
         status: 'success',
-        kecamatan: kecFolder.getName().trim(),
+        kecamatan: kecName,
         data: result
       });
     }
