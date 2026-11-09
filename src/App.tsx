@@ -10,11 +10,9 @@ import { TrackerMatrix } from '@/components/TrackerMatrix';
 import { DailyAnomalyTable3D } from '@/components/DailyAnomalyTable3D';
 import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
-import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
 import { AuthGate } from '@/components/AuthGate';
 import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
-import { AutoSyncProvider } from '@/context/AutoSyncContext';
 import { MOCK_DESA_MAP } from '@/data/mockSekadauData';
 import {
   processRawTps,
@@ -34,7 +32,6 @@ import {
   subscribeRealtimeScannedData,
   subscribeSyncMetadata,
   updateFileAnomalyStatus,
-  SyncMetadata,
 } from '@/services/firebase';
 import {
   RawTpsData,
@@ -70,7 +67,6 @@ export function App() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
-  const [syncMeta, setSyncMeta] = useState<SyncMetadata | null>(null);
 
   // Tab Utama: 'progress' (Progres & Tren Harian) atau 'rekapitulasi' (Matriks Tabel TPS)
   // Tersinkronisasi secara otomatis dengan query string URL (?tab=progress / ?tab=rekapitulasi)
@@ -206,14 +202,11 @@ export function App() {
 
     // Dengarkan metadata waktu terakhir disinkronkan oleh admin
     const unsubscribeMeta = subscribeSyncMetadata((meta) => {
-      if (meta) {
-        setSyncMeta(meta);
-        if (meta.lastSyncedAt) {
-          setConfig((prev) => ({
-            ...prev,
-            lastSyncedAt: meta.lastSyncedAt,
-          }));
-        }
+      if (meta && meta.lastSyncedAt) {
+        setConfig((prev) => ({
+          ...prev,
+          lastSyncedAt: meta.lastSyncedAt,
+        }));
       }
     });
 
@@ -508,12 +501,7 @@ export function App() {
 
   // Tampilan Dashboard Penuh (Hanya Tampil Jika Sudah Login)
   return (
-    <AutoSyncProvider
-      config={config}
-      rawData={rawData}
-      onSyncComplete={handleSyncComplete}
-    >
-      <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900 font-sans">
+    <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900 font-sans">
       {/* 1. Header / Navbar */}
       <Navbar
         config={config}
@@ -831,16 +819,7 @@ export function App() {
         onSyncComplete={handleSyncComplete}
         currentRawData={rawData}
       />
-
-      {/* 5. Floating Message Jam Terakhir Sinkronisasi Drive (Bisa di-close) */}
-      <SyncStatusFloatingToast
-        lastSyncedAt={syncMeta?.lastSyncedAt || config.lastSyncedAt || null}
-        lastSyncedKecamatan={syncMeta?.lastSyncedKecamatan}
-        lastSyncedBy={syncMeta?.lastSyncedBy}
-        onOpenSyncModal={() => setIsSyncModalOpen(true)}
-      />
     </div>
-    </AutoSyncProvider>
   );
 }
 
