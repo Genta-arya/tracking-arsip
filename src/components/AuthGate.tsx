@@ -7,7 +7,7 @@ import {
   EyeOff,
   ShieldCheck,
   AlertCircle,
-  Sparkles,
+  ArrowRight,
   Building,
   UserCheck,
   Fingerprint,
@@ -415,10 +415,10 @@ export function AuthGate({ onLoginSuccess, onBypassDemo }: AuthGateProps) {
                 <button
                   type="button"
                   onClick={onBypassDemo}
-                  className="text-xs font-medium text-slate-400 hover:text-amber-300 hover:underline inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-gradient-to-b from-amber-200 via-amber-300 to-amber-400 px-4 py-3 text-sm font-extrabold text-kpu-darkMaroon shadow-[0_3px_0_#a16207,0_6px_16px_rgba(0,0,0,0.2)] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer"
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                  <span>Buka dalam Mode Preview (Demo)</span>
+                  <span>Lanjutkan tanpa login</span>
+                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
                 </button>
               </div>
             )}
