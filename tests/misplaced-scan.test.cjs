@@ -87,6 +87,7 @@ test('PDF client follows pages, counts candidates and deduplicates folders', asy
   const result = await scan('https://script.google.com/exec', 'root', new AbortController().signal, () => {});
   assert.equal(calls, 2);
   assert.equal(result.examinedFiles, 200);
+  assert.equal(result.completedBatches, 2);
   assert.equal(result.scannedFolders, 2);
   assert.equal(result.failures.length, 0);
 });

@@ -143,6 +143,7 @@ export interface MisplacedScanProgress {
   files: MisplacedFile[];
   scannedFolders: number;
   examinedFiles: number;
+  completedBatches: number;
   failures: string[];
 }
 
@@ -158,8 +159,9 @@ export async function scanMisplacedFiles(
   const failures: string[] = [];
   const seenCursors = new Set<string>();
   let examinedFiles = 0;
+  let completedBatches = 0;
   let cursor = '';
-  const snapshot = () => ({ files: [...found.values()], scannedFolders: folders.size, examinedFiles, failures: [...failures] });
+  const snapshot = () => ({ files: [...found.values()], scannedFolders: folders.size, examinedFiles, completedBatches, failures: [...failures] });
   try {
     do {
       signal.throwIfAborted();
@@ -184,6 +186,7 @@ export async function scanMisplacedFiles(
       page.data.forEach((file: MisplacedFile) => found.set(`${file.id}:${file.folderId}`, file));
       page.checkedFolderIds.forEach((id: string) => folders.add(id));
       examinedFiles += page.examinedFiles;
+      completedBatches++;
       failures.push(...page.failures);
       cursor = page.nextCursor;
       if (cursor && seenCursors.has(cursor)) throw new Error('Token lanjutan berulang');
