@@ -431,7 +431,7 @@ export function DailyIncomingBreakdownCard({
                 role="group" aria-label={`Berkas ${el.shortLabel}`}
                 whileHover={{ y: -4, scale: 1.02 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                className={`relative rounded-2xl p-3.5 sm:p-4 bg-white border ${theme.border} shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden group cursor-pointer`}
+                className={`relative last:col-span-2 sm:last:col-span-1 rounded-2xl p-3.5 sm:p-4 bg-white border ${theme.border} shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden group cursor-pointer`}
                 onClick={() => onNavigateToRekap?.()}
                 title={`Klik untuk lihat berkas ${el.label}`}
               >
