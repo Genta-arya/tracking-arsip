@@ -418,7 +418,7 @@ export function DailyIncomingBreakdownCard({
           />
 
         {/* 5 Card Mini Breakdown Jenis Pemilihan (Presiden, DPR RI, DPD, DPRD Prov, DPRD Kab) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-6 lg:grid-cols-5 gap-3 sm:gap-4">
           {ELECTION_LIST.map((el) => {
             const count = activeDay.breakdown[el.key] || 0;
             const locations = districtActivity.byElection[el.key];
@@ -430,7 +430,7 @@ export function DailyIncomingBreakdownCard({
                 role="group" aria-label={`Berkas ${el.shortLabel}`}
                 whileHover={{ y: -4, scale: 1.02 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                className={`relative last:col-span-2 sm:last:col-span-1 rounded-2xl p-3.5 sm:p-4 bg-white border ${theme.border} shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden group cursor-pointer`}
+                className={`relative last:col-span-2 sm:col-span-2 sm:last:col-span-3 sm:[&:nth-last-child(2)]:col-span-3 lg:col-span-1 lg:last:col-span-1 lg:[&:nth-last-child(2)]:col-span-1 rounded-2xl p-3.5 sm:p-4 bg-white border ${theme.border} shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden group cursor-pointer`}
                 onClick={() => onNavigateToRekap?.()}
                 title={`Klik untuk lihat berkas ${el.label}`}
               >
