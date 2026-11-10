@@ -1,4 +1,4 @@
-import { useState, useMemo, useId } from 'react';
+import { useState, useMemo, useId, useEffect } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   TrendingUp,
@@ -10,6 +10,8 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
 } from 'lucide-react';
+import { ScanCompletionSimulator } from '@/components/ScanCompletionSimulator';
+import { readDashboardRoute, dashboardTabUrl, DASHBOARD_NAVIGATION_EVENT, type DashboardTab } from '@/utils/dashboardNavigation';
 import { useArchiveToday } from '@/hooks/useArchiveToday';
 import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
 import { buildActivityChart, dailyActivityCounts, formatArchiveDay, isActiveArchiveFile, cumulativeUploadCount, previousActiveDay } from '@/utils/progressAnalytics';
@@ -38,12 +40,27 @@ export function ProgressDashboard({
   onNavigateToRekap,
 }: ProgressDashboardProps) {
   const tabsId = useId();
-  const [dashboardTab, setDashboardTab] = useState<'summary' | 'daily' | 'analysis'>('summary');
-  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['summary']));
-  const openTab = (tab: 'summary' | 'daily' | 'analysis') => {
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>(() => typeof window === 'undefined' ? 'summary' : readDashboardRoute(window.location.search).dashboardTab);
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set<DashboardTab>([dashboardTab]));
+  const openTab = (tab: DashboardTab) => {
     setDashboardTab(tab);
     setVisitedTabs(previous => new Set([...previous, tab]));
+    const nextUrl = dashboardTabUrl(window.location.href, tab);
+    if (nextUrl !== window.location.href) window.history.pushState({}, '', nextUrl);
   };
+  useEffect(() => {
+    const navigate = () => {
+      const tab = readDashboardRoute(window.location.search).dashboardTab;
+      setDashboardTab(tab);
+      setVisitedTabs(previous => new Set([...previous, tab]));
+    };
+    window.addEventListener('popstate', navigate);
+    window.addEventListener(DASHBOARD_NAVIGATION_EVENT, navigate);
+    return () => {
+      window.removeEventListener('popstate', navigate);
+      window.removeEventListener(DASHBOARD_NAVIGATION_EVENT, navigate);
+    };
+  }, []);
   // Pilihan rentang waktu chart
   const [chartRange, setChartRange] = useState<'THIS_MONTH' | 'LAST_30' | 'ALL'>('THIS_MONTH');
 
@@ -361,6 +378,7 @@ export function ProgressDashboard({
       </div>
 
       <div role="tabpanel" id={`${tabsId}-summary-panel`} aria-labelledby={`${tabsId}-summary-tab`} hidden={dashboardTab !== 'summary'} className="space-y-6">
+      {visitedTabs.has('summary') && <>
       <div className="grid gap-4 lg:grid-cols-2">
         <ArchiveComparisonCard title="Berkas masuk · dibandingkan hari aktif sebelumnya" current={countsByDate.get(todayKey) || 0} previous={comparisonDay?.count ?? null}
           currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={comparisonDay ? `Hari aktif · ${formatArchiveDay(comparisonDay.date)}` : 'Belum ada hari aktif sebelumnya'}
@@ -380,7 +398,7 @@ export function ProgressDashboard({
         chartRange={chartRange}
         onRangeChange={setChartRange}
       />
-
+      </>}
       </div>
 
       <div role="tabpanel" id={`${tabsId}-daily-panel`} aria-labelledby={`${tabsId}-daily-tab`} hidden={dashboardTab !== 'daily'}>
@@ -389,6 +407,7 @@ export function ProgressDashboard({
 
       <div role="tabpanel" id={`${tabsId}-analysis-panel`} aria-labelledby={`${tabsId}-analysis-tab`} hidden={dashboardTab !== 'analysis'} className="space-y-6">
       {visitedTabs.has('analysis') && <>
+      <ScanCompletionSimulator expectedFiles={stats.expectedFilesTotal} validFiles={stats.validFilesCount} />
       {/* 3. Dua Kolom: Peringkat 7 Kecamatan & Kelengkapan 5 Jenis Surat Suara (3D Command Decks) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Kolom Kiri: Peringkat Progres 7 Kecamatan (3D Micro-Cards) */}
