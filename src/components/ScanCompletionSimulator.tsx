@@ -8,19 +8,21 @@ export function ScanCompletionSimulator({ expectedFiles, validFiles }: { expecte
   const today = useArchiveToday();
   const remaining = Math.max(0, expectedFiles - validFiles);
   const [quantityOverride, setQuantityOverride] = useState<string | null>(null);
-  const [target, setTarget] = useState('150');
+  const [targetOverride, setTargetOverride] = useState<string | null>(null);
   const [dateOverride, setDateOverride] = useState<string | null>(null);
   const [workWeek, setWorkWeek] = useState<WorkWeek>(5);
   useEffect(() => {
     setQuantityOverride(value => value !== null && Number(value) > remaining ? String(remaining) : value);
+    setTargetOverride(value => remaining === 0 ? null : value !== null && Number(value) > remaining ? String(remaining) : value);
   }, [remaining]);
   const quantity = quantityOverride !== null && Number(quantityOverride) > remaining ? String(remaining) : quantityOverride ?? String(remaining);
+  const target = remaining === 0 ? '0' : targetOverride !== null && Number(targetOverride) > remaining ? String(remaining) : targetOverride ?? String(Math.min(150, remaining));
   const startDate = dateOverride ?? today;
   let plan: ReturnType<typeof calculateScanPlan> | null = null;
   let error = '';
   try {
     if (quantity.trim() === '' || target.trim() === '') throw new Error('Isi jumlah berkas dan target harian terlebih dahulu.');
-    plan = calculateScanPlan(Number(quantity), Number(target), startDate, workWeek);
+    plan = calculateScanPlan(Number(quantity), remaining === 0 ? 1 : Number(target), startDate, workWeek);
   } catch (value) { error = value instanceof Error ? value.message : String(value); }
   const number = (value: number) => value.toLocaleString('id-ID');
   const inputClass = 'mt-1.5 h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kpu-maroon';
@@ -39,7 +41,7 @@ export function ScanCompletionSimulator({ expectedFiles, validFiles }: { expecte
         <div><label htmlFor={`${id}-quantity`} className="text-xs font-bold text-slate-700">Berkas yang ingin diselesaikan</label><input id={`${id}-quantity`} type="number" inputMode="numeric" min={0} max={remaining} step={1} value={quantity} onChange={event => setQuantityOverride(Number(event.target.value) > remaining ? String(remaining) : event.target.value)} className={inputClass} />
           <button type="button" onClick={() => setQuantityOverride(null)} className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-kpu-maroon underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kpu-maroon"><RotateCcw className="h-3 w-3" aria-hidden="true" />Gunakan sisa arsip ({number(remaining)})</button>
         </div>
-        <div><label htmlFor={`${id}-target`} className="text-xs font-bold text-slate-700">Target harian (berkas/hari)</label><input id={`${id}-target`} type="number" inputMode="numeric" min={1} step={1} value={target} onChange={event => setTarget(event.target.value)} className={inputClass} /></div>
+        <div><label htmlFor={`${id}-target`} className="text-xs font-bold text-slate-700">Target harian (berkas/hari)</label><input id={`${id}-target`} type="number" inputMode="numeric" min={remaining === 0 ? 0 : 1} max={remaining} disabled={remaining === 0} step={1} value={target} onChange={event => setTargetOverride(Number(event.target.value) > remaining ? String(remaining) : event.target.value)} className={inputClass} /></div>
         <div><label htmlFor={`${id}-date`} className="text-xs font-bold text-slate-700">Tanggal mulai</label><input id={`${id}-date`} type="date" value={startDate} onChange={event => setDateOverride(event.target.value)} className={inputClass} /></div>
         <div><label htmlFor={`${id}-week`} className="text-xs font-bold text-slate-700">Jadwal kerja</label><select id={`${id}-week`} value={workWeek} onChange={event => setWorkWeek(Number(event.target.value) as WorkWeek)} className={inputClass}><option value={5}>Senin–Jumat (5 hari)</option><option value={6}>Senin–Sabtu (6 hari)</option><option value={7}>Setiap hari (7 hari)</option></select></div>
       </div>
@@ -47,7 +49,7 @@ export function ScanCompletionSimulator({ expectedFiles, validFiles }: { expecte
         <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-kpu-lightGold"><Target className="h-3.5 w-3.5" aria-hidden="true" />Estimasi waktu</p><p className="mt-1 text-3xl font-black tabular-nums">{number(plan.workingDays)}<span className="ml-2 text-sm font-semibold text-white/80">hari kerja</span></p></div><p className="text-xs leading-relaxed text-white/80">{number(Number(quantity))} berkas<br />dengan target {number(Number(target))} per hari</p></div>
         <div className="mt-3 border-t border-white/15 pt-3"><p className="flex items-center gap-1.5 text-xs font-bold text-kpu-lightGold"><CalendarCheck className="h-4 w-4" aria-hidden="true" />{finishLabel ? `Perkiraan selesai: ${finishLabel}` : 'Tidak ada pekerjaan tersisa pada simulasi ini.'}</p>{plan.workingDays > 0 && <p className="mt-1 text-[11px] text-white/70">Hari terakhir: {number(plan.lastDayFiles)} berkas. Tanggal mulai dihitung sebagai hari pertama jika termasuk jadwal kerja.</p>}</div>
       </div>}
-      <p className="text-[10px] leading-relaxed text-slate-500">Sisa kebutuhan mengikuti target arsip dikurangi berkas sah. Jumlah simulasi maksimal sebesar sisa kebutuhan. Hari libur nasional belum diperhitungkan; input simulasi tidak disimpan.</p>
+      <p className="text-[10px] leading-relaxed text-slate-500">Sisa kebutuhan mengikuti target arsip dikurangi berkas sah. Jumlah simulasi dan target harian maksimal sebesar sisa kebutuhan. Hari libur nasional belum diperhitungkan; input simulasi tidak disimpan.</p>
     </div>
   </section>;
 }
