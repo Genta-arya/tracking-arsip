@@ -10,6 +10,7 @@ import {
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
+import { DailyIncomingBreakdownCard } from '@/components/DailyIncomingBreakdownCard';
 import { MobileStackCards3D } from '@/components/MobileStackCards3D';
 import { KecamatanRanking3D } from '@/components/KecamatanRanking3D';
 import { ElectionBreakdown3D } from '@/components/ElectionBreakdown3D';
@@ -466,6 +467,12 @@ export function ProgressDashboard({
         anomalyFilesCount={stats.anomalyFilesCount}
         chartRange={chartRange}
         onRangeChange={setChartRange}
+      />
+
+      {/* 2b. Card Pantauan Berkas Masuk Per Hari dengan Breakdown Jenis Pemilihan & Visual Chart */}
+      <DailyIncomingBreakdownCard
+        records={records}
+        onNavigateToRekap={onNavigateToRekap}
       />
 
       {/* 3. Dua Kolom: Peringkat 7 Kecamatan & Kelengkapan 5 Jenis Surat Suara (3D Command Decks) */}
