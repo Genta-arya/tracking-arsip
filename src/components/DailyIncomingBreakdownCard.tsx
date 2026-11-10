@@ -143,18 +143,24 @@ export function DailyIncomingBreakdownCard({
     // Loop semua file di semua TPS
     records.forEach((record) => {
       record.files.forEach((file) => {
-        const dateStr = file.createdAt || file.updatedAt;
-        let dateKey = todayKey;
-
-        if (dateStr) {
-          const d = new Date(dateStr);
-          if (!isNaN(d.getTime())) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            dateKey = `${y}-${m}-${day}`;
-          }
+        // BUG FIX #2: Skip berkas yang ditandai HAPUS atau IGNORE — tidak tampil di rekap apapun
+        if (file.overrideElection === 'HAPUS' || file.overrideElection === 'IGNORE') {
+          return;
         }
+
+        const dateStr = file.createdAt || file.updatedAt;
+
+        // BUG FIX #1: Skip berkas tanpa timestamp valid — jangan di-assign ke hari ini
+        // Berkas tanpa tanggal adalah berkas lama yang belum disinkronkan ulang, 
+        // tidak ada cara mengetahui tanggal masuknya, jadi tidak dihitung di manapun.
+        if (!dateStr) return;
+        const parsedDate = new Date(dateStr);
+        if (isNaN(parsedDate.getTime())) return;
+
+        const y = parsedDate.getFullYear();
+        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${day}`;
 
         const current = dateMap.get(dateKey) || {
           total: 0,
@@ -168,8 +174,8 @@ export function DailyIncomingBreakdownCard({
           unknown: 0,
         };
 
-        // Identifikasi jenis pemilihan yang sah/terdeteksi
-        const elType = file.overrideElection && file.overrideElection !== 'IGNORE' && file.overrideElection !== 'SUDAH_DIBENARKAN' && file.overrideElection !== 'HAPUS'
+        // Gunakan overrideElection jika sudah ditetapkan admin, selain itu pakai deteksi otomatis
+        const elType = file.overrideElection && file.overrideElection !== 'SUDAH_DIBENARKAN'
           ? file.overrideElection
           : file.detectedElection;
 
