@@ -27,7 +27,7 @@ import {
 } from 'recharts';
 import { useArchiveToday } from '@/hooks/useArchiveToday';
 import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
-import { dailyDistrictActivity, fileActivityDay, formatArchiveDay, isActiveArchiveFile, previousCalendarDay } from '@/utils/progressAnalytics';
+import { dailyDistrictActivity, fileActivityDay, formatArchiveDay, isActiveArchiveFile, previousActiveDay } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TPSRecord, ElectionType, ELECTION_LIST, FilterState } from '@/types';
 
@@ -258,8 +258,7 @@ export function DailyIncomingBreakdownCard({
   };
 
   const isToday = activeDay.rawDate === todayKey;
-  const previousDayKey = previousCalendarDay(activeDay.rawDate);
-  const previousDay = allDays.find(day => day.rawDate === previousDayKey);
+  const previousDay = useMemo(() => previousActiveDay(new Map(allDays.map(day => [day.rawDate, day.total])), activeDay.rawDate), [allDays, activeDay.rawDate]);
 
 
   return (
@@ -414,9 +413,9 @@ export function DailyIncomingBreakdownCard({
           </div>}
         </div>
 
-        <ArchiveComparisonCard title="Perubahan penerimaan · tanggal terpilih" current={activeDay.total} previous={previousDay?.total ?? 0}
-          currentLabel={formatArchiveDay(activeDay.rawDate)} previousLabel={formatArchiveDay(previousDayKey)}
-          note="Dibandingkan sehari sebelumnya menurut kalender WIB, bukan hari aktif sebelumnya. Persentase = (sekarang − sebelumnya) / sebelumnya × 100%. Kenaikan dari 0 ditandai baru, tanpa persentase tak terhingga." />
+        <ArchiveComparisonCard title="Perubahan penerimaan · tanggal terpilih" current={activeDay.total} previous={previousDay?.count ?? null}
+          currentLabel={formatArchiveDay(activeDay.rawDate)} previousLabel={previousDay ? formatArchiveDay(previousDay.date) : 'Belum ada hari aktif sebelumnya'}
+          />
 
         {/* 5 Card Mini Breakdown Jenis Pemilihan (Presiden, DPR RI, DPD, DPRD Prov, DPRD Kab) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
