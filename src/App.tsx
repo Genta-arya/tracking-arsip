@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, RefreshCw, TrendingUp, Table, MapPin, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
+import { readDashboardRoute, DASHBOARD_NAVIGATION_EVENT } from '@/utils/dashboardNavigation';
 import { ProgressDashboard } from '@/components/ProgressDashboard';
 import { FilterSection } from '@/components/FilterSection';
 import { SekadauInteractiveMap } from '@/components/SekadauInteractiveMap';
@@ -72,23 +73,18 @@ export function App() {
   const [syncMeta, setSyncMeta] = useState<SyncMetadata | null>(null);
 
   // Tab Utama: 'progress' (Progres & Tren Harian) atau 'rekapitulasi' (Matriks Tabel TPS)
-  // Tersinkronisasi secara otomatis dengan query string URL (?tab=progress / ?tab=rekapitulasi)
-  const [activeTab, setActiveTabState] = useState<'progress' | 'rekapitulasi'>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab')?.toLowerCase();
-      if (tabParam === 'rekapitulasi') return 'rekapitulasi';
-      if (tabParam === 'progress') return 'progress';
-    }
-    return 'progress';
-  });
+  // URL tab mendukung progress/rekapitulasi serta ringkasan/harian/analisis.
+  const [activeTab, setActiveTabState] = useState<'progress' | 'rekapitulasi'>(() =>
+    typeof window === 'undefined' ? 'progress' : readDashboardRoute(window.location.search).mainTab
+  );
 
   const setActiveTab = (newTab: 'progress' | 'rekapitulasi') => {
     setActiveTabState(newTab);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', newTab);
-      window.history.pushState({}, '', url.toString());
+      if (url.toString() !== window.location.href) window.history.pushState({}, '', url.toString());
+      window.dispatchEvent(new Event(DASHBOARD_NAVIGATION_EVENT));
     }
   };
 
@@ -104,13 +100,7 @@ export function App() {
     }
 
     const handlePopState = () => {
-      const currentParams = new URLSearchParams(window.location.search);
-      const tabParam = currentParams.get('tab')?.toLowerCase();
-      if (tabParam === 'rekapitulasi') {
-        setActiveTabState('rekapitulasi');
-      } else if (tabParam === 'progress') {
-        setActiveTabState('progress');
-      }
+      setActiveTabState(readDashboardRoute(window.location.search).mainTab);
     };
 
     window.addEventListener('popstate', handlePopState);
