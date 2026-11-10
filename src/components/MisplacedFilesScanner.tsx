@@ -10,13 +10,13 @@ function driveLink(value: string): string | undefined {
   } catch { return undefined; }
 }
 
-export function MisplacedFilesScanner({ config, disabled = false }: { config: AppConfig; disabled?: boolean }) {
-  const [result, setResult] = useState<MisplacedScanProgress>({ files: [], scannedFolders: 0, examinedFiles: 0, failures: [] });
+export function MisplacedFilesScanner({ config, disabled = false, onBusyChange }: { config: AppConfig; disabled?: boolean; onBusyChange?: (busy: boolean) => void }) {
+  const [result, setResult] = useState<MisplacedScanProgress>({ files: [], scannedFolders: 0, examinedFiles: 0, completedBatches: 0, failures: [] });
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'stopped' | 'error'>('idle');
   const [search, setSearch] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
-    setResult({ files: [], scannedFolders: 0, examinedFiles: 0, failures: [] });
+    setResult({ files: [], scannedFolders: 0, examinedFiles: 0, completedBatches: 0, failures: [] });
     setStatus('idle');
     setSearch('');
     return () => { controller.current?.abort(); };
@@ -26,7 +26,7 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
-    setResult({ files: [], scannedFolders: 0, examinedFiles: 0, failures: [] });
+    setResult({ files: [], scannedFolders: 0, examinedFiles: 0, completedBatches: 0, failures: [] });
     setStatus('running');
     setSearch('');
     try {
@@ -41,6 +41,10 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
   };
 
   const running = status === 'running';
+  useEffect(() => {
+    onBusyChange?.(running);
+    return () => onBusyChange?.(false);
+  }, [running, onBusyChange]);
   const hasConnection = Boolean(config.gasWebAppUrl && config.rootFolderId);
   const locations = new Set(result.files.map(file => file.folderId)).size;
   const query = search.trim().toLocaleLowerCase('id');
@@ -107,7 +111,14 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
             <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${running ? 'bg-kpu-orange motion-safe:animate-pulse' : status === 'done' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
             {stateLabel}{(status === 'stopped' || status === 'error') && ' · Hasil belum lengkap'}
           </p>
-          {running && <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-amber-100"><div className="h-full w-full origin-left rounded-full bg-gradient-to-r from-kpu-maroon via-kpu-orange to-kpu-gold motion-safe:animate-pulse" /></div>}
+          {status !== 'idle' && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-700">Progres PDF massal</span><strong className="font-mono text-lg font-black text-kpu-maroon">{status === 'done' ? '100%' : '—%'}</strong></div>
+            <div role="progressbar" aria-label="Progres PDF massal" aria-valuemin={0} aria-valuemax={100} aria-valuenow={status === 'done' ? 100 : undefined} aria-valuetext={status === 'done' ? '100 persen, selesai' : `${result.completedBatches} batch selesai; total PDF belum diketahui`} className="h-2 overflow-hidden rounded-full bg-slate-200">
+              <div className={`h-full rounded-full bg-gradient-to-r from-kpu-maroon via-kpu-orange to-kpu-gold ${running ? 'w-full motion-safe:animate-pulse' : status === 'done' ? 'w-full' : 'w-0'}`} />
+            </div>
+            <p className="mt-2 text-[11px] font-semibold text-slate-600">{result.completedBatches} batch selesai · {result.examinedFiles.toLocaleString('id-ID')} PDF diperiksa</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{status === 'done' ? 'Seluruh halaman PDF berhasil diperiksa.' : 'Drive belum memberikan total PDF. Persentase belum dapat dihitung; jumlah batch dan PDF diperbarui selama proses.'}</p>
+          </div>}
         </div>
 
         {result.failures.length > 0 && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
