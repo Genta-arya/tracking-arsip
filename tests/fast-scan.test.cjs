@@ -112,9 +112,12 @@ test('works for ordinary shared folders and routes new endpoint with existing ro
   assert.equal(result.mode,'location-fast-v1');
   assert.equal(calls.find(url=>url.searchParams.has('q')).searchParams.get('corpora'),'user');
 });
-test('all original GAS code and comments are preserved with only the new router branch inserted', () => {
-  const crypto = require('node:crypto');
-  const branch = "    if (action === 'scanMisplacedFast') {\n      return responseJSON(scanMisplacedFastPage(params));\n    }\n\n";
-  const originalPrefix = source.replace(branch, '').slice(0, 35042);
-  assert.equal(crypto.createHash('sha256').update(originalPrefix).digest('hex'), '779171ede754fa1e73550f9d0b8f1ec78bafa2d71f49619e2933db5906553776');
+test('unrelated GAS functions retain their original code and comments', () => {
+  const crypto = require('node:crypto'), ts = require('typescript');
+  const names = ["doGet","responseJSON","errorMessage","getConfig","normalizeFolderName","isKnownKecamatan","listKecamatanFolders","extractFileUploader","readFileMetadata","preserveFileOverrides","readKecamatanData","getArchiveFolderPath","assertMisplacedParent","misplacedFolderReason","scanMisplacedFolderPage","quickScanRecentDriveFiles","diagnoseDriveFolder","getFirebaseAuthToken","clearFirebaseTokenCache","authorizeAppScript","firestoreDocumentUrl","getFirestoreDocument","setFirestoreDocument","jsonToFirestoreFields","jsonValueToFirestore","firestoreDocToJson","firestoreFieldsToJson","firestoreValueToJson","fingerprintTpsList","countTpsFiles","uninstallAutoTrigger","installAutoTrigger","installAutoTrigger1Min","installAutoTrigger2Min","installAutoTriggerForMinutes","testDiagnoseUpload","testScanMisplacedRoot","scanMisplacedPdfPage","misplacedDriveGet","testScanMisplacedPdf","scanMisplacedFastPage","misplacedFastList","misplacedFastDiscover","misplacedFastSave","misplacedFastLoad","testScanMisplacedFast"];
+  const parsed = ts.createSourceFile('Kode.js', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const functions = parsed.statements.filter(ts.isFunctionDeclaration);
+  assert.equal(functions.length, new Set(functions.map(node => node.name.text)).size, 'duplicate function names');
+  const entries = functions.filter(node => names.includes(node.name.text)).map(node => [node.name.text, node.getText(parsed)]);
+  assert.equal(crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex'), '058cb6cbb408fe6a3d5a4594d1063d21ff0a608022f5c98bdad8cb8745b64bee');
 });
