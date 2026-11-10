@@ -128,3 +128,81 @@ export async function quickScanRecentFiles(
 }
 
 
+
+export interface MisplacedFile {
+  id: string;
+  name: string;
+  url: string;
+  folderId: string;
+  folderUrl: string;
+  path: string;
+  reason: string;
+}
+
+export interface MisplacedScanProgress {
+  files: MisplacedFile[];
+  scannedFolders: number;
+  failures: string[];
+}
+
+/** Penelusuran terpisah dari scan TPS; hasil tidak masuk scanned_data. */
+export async function scanMisplacedFiles(
+  webAppUrl: string,
+  rootFolderId: string,
+  signal: AbortSignal,
+  onProgress: (progress: MisplacedScanProgress) => void,
+): Promise<MisplacedScanProgress> {
+  const queue = [{ id: rootFolderId, name: 'Root arsip' }];
+  const seenFolders = new Set([rootFolderId]);
+  const found = new Map<string, MisplacedFile>();
+  const failures: string[] = [];
+  let scannedFolders = 0;
+  const snapshot = () => ({ files: [...found.values()], scannedFolders, failures: [...failures] });
+  for (let index = 0; index < queue.length; index++) {
+    const folder = queue[index];
+    let fileToken = '';
+    let folderToken = '';
+    let filesDone = false;
+    let foldersDone = false;
+    const seenPages = new Set<string>();
+    try {
+      do {
+        signal.throwIfAborted();
+        const url = new URL(webAppUrl);
+        const params = { action: 'scanMisplaced', rootFolderId, folderId: folder.id,
+          fileToken, folderToken, filesDone: String(filesDone), foldersDone: String(foldersDone) };
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+        const response = await fetch(url, { signal, redirect: 'follow' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const page = await response.json();
+        if (page.status !== 'success') throw new Error(page.message || 'Perbarui deployment Apps Script (action scanMisplaced).');
+        if (!Array.isArray(page.data) || !Array.isArray(page.children) ||
+          typeof page.filesDone !== 'boolean' || typeof page.foldersDone !== 'boolean' ||
+          page.data.some((item: MisplacedFile) => !item || !['id', 'name', 'url', 'folderId', 'folderUrl', 'path', 'reason'].every(key => typeof (item as unknown as Record<string, unknown>)[key] === 'string')) ||
+          page.children.some((item: GasKecamatanItem) => !item || typeof item.id !== 'string' || typeof item.name !== 'string')) {
+          throw new Error('Respons tidak sesuai. Perbarui deployment Apps Script untuk scanMisplaced.');
+        }
+        signal.throwIfAborted();
+        page.data.forEach((item: MisplacedFile) => found.set(`${item.id}:${item.folderId}`, item));
+        page.children.forEach((child: GasKecamatanItem) => {
+          if (!seenFolders.has(child.id)) { seenFolders.add(child.id); queue.push(child); }
+        });
+        filesDone = page.filesDone;
+        foldersDone = page.foldersDone;
+        fileToken = page.fileToken || '';
+        folderToken = page.folderToken || '';
+        if ((!filesDone && !fileToken) || (!foldersDone && !folderToken)) throw new Error('Token lanjutan tidak tersedia');
+        const key = JSON.stringify([filesDone, foldersDone, fileToken, folderToken]);
+        if ((!filesDone || !foldersDone) && seenPages.has(key)) throw new Error('Token lanjutan berulang');
+        seenPages.add(key);
+        onProgress(snapshot());
+      } while (!filesDone || !foldersDone);
+      scannedFolders++;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      failures.push(`${folder.name}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    onProgress(snapshot());
+  }
+  return snapshot();
+}
