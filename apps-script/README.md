@@ -1,51 +1,30 @@
-## Cara paling mudah: satu file lengkap
+# Versi terbaru: scan cepat berdasarkan lokasi
 
-Buka `Kode.gs` dalam folder ini. Ganti seluruh isi Kode.gs pada proyek Apps Script dengan isinya. File lengkap sudah berisi router, Firebase/Firestore, trigger lama, pemindaian lama, dan PDF massal. Jangan memasang file helper di bawah sebagai tambahan jika menggunakan file lengkap, agar fungsi tidak terduplikasi. Hapus file helper `scan-misplaced.gs` / `scan-misplaced-pdf.gs` dari proyek Apps Script jika sebelumnya sudah ditambahkan; seluruh fungsinya kini ada di Kode.gs. Pertahankan file/properti lain milik pengguna.
+Gunakan **Kode.gs** di folder ini untuk mengganti seluruh isi Kode.gs di Apps Script. Seluruh kode lama dan formatnya dipertahankan; router ditambah action `scanMisplacedFast`, lalu fungsi baru ditambahkan di akhir file. Fungsi scan lama tetap tersedia untuk kompatibilitas. Jangan memasang helper `scan-misplaced*.gs` sebagai tambahan jika menggunakan file lengkap: seluruh fungsi sudah digabung.
 
-Script Properties tetap dipakai; sandi tidak perlu diisi ulang jika sudah tersimpan. Jalankan `testScanMisplacedPdf` dari editor untuk menguji halaman pertama dan menyelesaikan otorisasi jika diminta. Jika Drive API belum aktif, aktifkan Google Drive API pada Google Cloud project yang terhubung dengan Apps Script (atau tambahkan layanan Drive API dari menu Services). Bila memakai manifest scope eksplisit, lihat ketentuan scope di bawah. Lalu Deploy → Manage Deployments → Edit → New version → Deploy pada deployment dengan URL yang sama. Tes lokal: `GAS_TEST_SOURCE=apps-script/Kode.gs node --test tests/misplaced-scan.test.cjs`.
+## Pemasangan
 
----
+1. Salin seluruh isi `Kode.gs` ke Kode.gs di proyek Apps Script yang sama.
+2. Pertahankan Script Properties, termasuk `FIREBASE_AUTH_PASSWORD`. Tidak perlu mengisi ulang sandi atau memasang ulang trigger.
+3. Jika sebelumnya memasang file helper terpisah, hapus hanya helper duplikat yang fungsinya kini sudah ada dalam Kode.gs lengkap.
+4. Jalankan `testScanMisplacedFast` dari editor. Tes ini membaca halaman pertama pendataan lokasi, bukan seluruh scan.
+5. Deploy → Manage Deployments → Edit → New version → Deploy, memakai URL deployment yang sama.
 
-# Pemindaian berkas tersesat
+Google Drive API harus aktif pada Google Cloud project terkait Apps Script. Mesin menggunakan REST v3 lewat UrlFetchApp dan OAuth Apps Script; tidak membutuhkan password baru. Jika manifest memakai oauthScopes eksplisit, pertahankan scope yang digunakan fungsi lama dan pastikan `https://www.googleapis.com/auth/drive.readonly` serta `https://www.googleapis.com/auth/script.external_request` tersedia. Selesaikan otorisasi ulang jika diminta.
 
-**Jika Kode.gs lengkap dengan action `scanMisplaced` sudah dipasang dan di-deploy, langsung gunakan tombol di aplikasi. Jangan menambahkan fungsi yang sama lagi dari file tambahan ini.**
+## Cakupan dan persentase
 
-Untuk memperbarui script lama secara terpisah:
+- Tahap 1: daftar folder langsung di root, lalu daftar folder langsung di bawah tingkat kecamatan. Folder dengan nama tidak dikenal pada kedua tingkat tetap masuk daftar lokasi. Root/kecamatan/desa ditentukan oleh posisi; validitas nama desa belum diperiksa.
+- Tahap 2: cari PDF langsung di root, kecamatan, dan desa secara berkelompok, maksimal 20 ID parent per request dan 1.000 hasil per halaman API. Semua halaman sebuah kelompok harus selesai sebelum lokasi dalam kelompok itu dihitung selesai.
+- Persentase tahap pendataan baru tersedia setelah daftar folder root selesai dibaca; dihitung dari root dan tingkat kecamatan yang selesai didata. Saat pindah ke tahap pemeriksaan, persentase tahap baru dimulai dari 0, dengan jumlah lokasi tetap yang sudah didata.
+- Persentase pemeriksaan = floor(lokasi selesai × 100 / total lokasi). Penyebutnya mencakup root, folder tingkat kecamatan, dan folder tingkat desa, bukan jumlah PDF. Contoh 20 dari 50 lokasi = 40%. Setelah seluruh kelompok dan seluruh halamannya selesai, hasilnya 100%.
+- Isi folder TPS sama sekali tidak dibaca oleh scan cepat. Salah TPS, subfolder di dalam TPS, shortcut, dan berkas non-PDF berada di luar cakupan. Endpoint lama tetap ada tetapi bukan mesin yang digunakan tab Berkas Tersesat terbaru.
+- Pencarian selalu dibatasi oleh ID parent di dalam root; tidak lagi mencari seluruh PDF akun. Shared Drive dan folder biasa yang dibagikan didukung.
+- Sesi sementara disimpan dalam CacheService selama maksimal 20 menit per langkah, dalam potongan kecil. Cache Google dapat terhapus lebih awal; jika hilang, pemindaian berhenti dengan pesan untuk mulai ulang. Tidak ada scan yang diam-diam di-reset menjadi hasil bersih. Membuka ulang scan membuat sesi baru.
+- Izin gagal, incompleteSearch, dan halaman gagal menghentikan scan dengan hasil belum lengkap. Data yang berubah saat scan berjalan memerlukan scan ulang; API bukan snapshot atomik. Kecepatan deployment nyata belum diukur.
 
-1. Tambahkan isi `scan-misplaced.gs` sebagai file baru di proyek Google Apps Script yang sudah digunakan aplikasi. Pertahankan Kode.gs dan trigger yang ada.
-2. Di dalam blok `try` fungsi `doGet(e)` yang ada, **sebelum cabang diagnose**, tambahkan:
+## Validasi
 
-```js
-if (action === 'scanMisplaced') {
-  return responseJSON(scanMisplacedFolderPage(e.parameter));
-}
-```
+`node --test tests/fast-scan.test.cjs tests/misplaced-scan.test.cjs` memeriksa scope lokasi, pengecualian isi TPS, pengelompokan parent, pagination, persentase, cache kedaluwarsa, izin gagal, kompatibilitas, dan pelestarian fungsi lama pada file lengkap. Browser dapat diuji dengan respons simulasi. Validasi Drive asli memerlukan deployment pengguna.
 
-3. Deploy → Manage Deployments → Edit → New Version → Deploy. URL deployment yang digunakan aplikasi tetap sama.
-4. Buka dialog sinkronisasi Drive di aplikasi, lalu klik **Pindai Berkas Tersesat**.
-
-Endpoint ini hanya membaca Drive; tidak memindahkan, menghapus, menulis Firestore, atau menjalankan auditAll. Tidak memerlukan kredensial Firebase tambahan. Jangan menyalin password Firebase ke repositori.
-
-Cakupan: seluruh turunan root arsip yang dapat dibaca akun deployment, tanpa batas waktu modifikasi. Jalur normal adalah root → salah satu dari tujuh kecamatan Sekadau → desa → TPS bernomor → berkas langsung. TPS menerima nama seperti TPS 001, TPS_1, TPS-01, dan TPS1. Folder kecamatan dibandingkan tanpa membedakan kapital/spasi berulang. Nama desa mengikuti struktur posisi; validitas nama desa atau kecocokan isi berkas dengan TPS tidak dipastikan oleh audit ini. Itu tetap ditangani pemeriksaan anomali aplikasi. Berkas pendukung di luar TPS juga akan ditampilkan untuk ditinjau.
-
-Penelusuran dibagi per folder dan halaman maksimal 100 berkas/100 subfolder; token Drive melanjutkan folder besar. Hasil bertambah selama proses; kegagalan folder dilaporkan sebagai hasil belum lengkap dan tidak dianggap bersih. Pemindaian dapat dihentikan dan dimulai ulang. Menutup dialog membatalkan scan; hasil sesi tidak disimpan. Shortcut tidak diikuti (shortcut di lokasi salah tetap dilaporkan sebagai berkas); berkas di luar root, trash, dan folder yang tidak dapat diakses tidak dicari. Hasil merupakan pembacaan bertahap, sehingga pemindahan berkas selama scan memerlukan pemindaian ulang. Tidak ada penentuan otomatis tujuan pemindahan yang belum diketahui.
-
-Validasi lokal menggunakan mock DriveApp tersedia dengan `node --test tests/misplaced-scan.test.cjs`. Validasi deployment nyata tetap membutuhkan pembaruan Apps Script dan akses Drive.
-
-## Pembaruan: PDF massal
-
-Tambahkan `scan-misplaced-pdf.gs` ke proyek Apps Script. Fungsi `misplacedFolderReason` dari script sebelumnya tetap diperlukan (sudah ada dalam Kode.gs lengkap atau `scan-misplaced.gs`). Jangan menduplikasi fungsi lama.
-
-Di dalam `try` pada `doGet`, tambahkan sebelum cabang action lainnya:
-
-```js
-if (action === 'scanMisplacedPdf') {
-  return responseJSON(scanMisplacedPdfPage(e.parameter));
-}
-```
-
-Deploy versi baru. Mesin menggunakan Drive REST API v3 lewat UrlFetchApp dan token OAuth Apps Script; tidak memerlukan password baru atau mengubah audit/trigger Firestore. Drive API harus aktif pada Google Cloud project terkait. Jika manifest memakai oauthScopes eksplisit, pastikan mencakup `https://www.googleapis.com/auth/drive.readonly` dan `https://www.googleapis.com/auth/script.external_request`; pertahankan scope lama yang masih digunakan. Lakukan otorisasi ulang jika Google memintanya.
-
-Root di Shared Drive dideteksi otomatis lewat driveId dan pencarian dibatasi ke Drive tersebut. Root di folder biasa memakai corpora=user. Hasil tetap divalidasi berdasarkan rantai induk sampai root; metadata folder di-cache selama lima menit per sesi. Pemindaian ulang membuat sesi baru agar perpindahan folder tidak memakai cache sesi lama.
-
-Setiap request mengambil maksimal 100 PDF (dipilih lebih kecil daripada batas API 1.000 untuk menjaga waktu eksekusi saat cache masih kosong). Halaman berlanjut melalui nextPageToken; jika pemeriksaan metadata memakan waktu, cursor melanjutkan offset pada halaman yang sama. Isi PDF tidak diunduh. Jumlah PDF diperiksa mencakup kandidat di luar root, tetapi daftar temuan hanya berisi PDF di dalam root. IncompleteSearch, masalah izin, dan token gagal menghasilkan status belum lengkap, bukan laporan bersih. Pemindahan atau perubahan akses selama pemindaian memerlukan scan ulang; API ini bukan snapshot atomik. Kecepatan nyata perlu diukur pada deployment pengguna.
+Helper `scan-misplaced.gs`, `scan-misplaced-pdf.gs`, dan `scan-misplaced-fast.gs` disediakan sebagai sumber modul; pilih pemasangan modular atau satu file lengkap, bukan keduanya.

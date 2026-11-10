@@ -69,7 +69,7 @@ export function MisplacedFilesScanner({ config, disabled = false, onBusyChange }
               <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 tracking-normal text-white/90"><ShieldCheck className="h-3 w-3" aria-hidden="true" />Hanya membaca</span>
             </div>
             <h3 className="text-lg font-black tracking-tight sm:text-xl">Temukan berkas tersesat.</h3>
-            <p className="mt-1 max-w-sm text-xs leading-relaxed text-rose-100/85">Cari PDF sekaligus, periksa susunan foldernya, dan temukan lokasi berkas yang tersesat.</p>
+            <p className="mt-1 max-w-sm text-xs leading-relaxed text-rose-100/85">Temukan PDF di root, kecamatan, atau desa. Scan cepat tanpa membuka isi folder TPS.</p>
           </div>
         </div>
         <div className="relative mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-white/70" aria-label="Susunan folder yang benar">
@@ -86,7 +86,7 @@ export function MisplacedFilesScanner({ config, disabled = false, onBusyChange }
           {[
             { label: 'Perlu ditinjau', value: result.files.length, icon: FileSearch, accent: true },
             { label: 'Lokasi temuan', value: locations, icon: MapPin, accent: false },
-            { label: 'PDF diperiksa', value: result.examinedFiles, icon: FileText, accent: false },
+            { label: 'PDF tersesat', value: result.examinedFiles, icon: FileText, accent: false },
           ].map(stat => <div key={stat.label} className={`min-w-0 rounded-xl border px-2.5 py-3 sm:px-3 ${stat.accent ? 'border-amber-200 bg-amber-50/80' : 'border-slate-100 bg-slate-50'}`}>
             <stat.icon className={`mb-2 h-4 w-4 ${stat.accent ? 'text-amber-700' : 'text-slate-400'}`} aria-hidden="true" />
             <p className={`text-xl font-black tabular-nums leading-none sm:text-2xl ${stat.accent ? 'text-amber-950' : 'text-slate-900'}`}>{status === 'idle' ? '—' : stat.value.toLocaleString('id-ID')}</p>
@@ -112,12 +112,12 @@ export function MisplacedFilesScanner({ config, disabled = false, onBusyChange }
             {stateLabel}{(status === 'stopped' || status === 'error') && ' · Hasil belum lengkap'}
           </p>
           {status !== 'idle' && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-700">Progres PDF massal</span><strong className="font-mono text-lg font-black text-kpu-maroon">{status === 'done' ? '100%' : '—%'}</strong></div>
-            <div role="progressbar" aria-label="Progres PDF massal" aria-valuemin={0} aria-valuemax={100} aria-valuenow={status === 'done' ? 100 : undefined} aria-valuetext={status === 'done' ? '100 persen, selesai' : `${result.completedBatches} batch selesai; total PDF belum diketahui`} className="h-2 overflow-hidden rounded-full bg-slate-200">
-              <div className={`h-full rounded-full bg-gradient-to-r from-kpu-maroon via-kpu-orange to-kpu-gold ${running ? 'w-full motion-safe:animate-pulse' : status === 'done' ? 'w-full' : 'w-0'}`} />
+            <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-700">{result.progress?.phase === 'inventory' || !result.progress ? 'Tahap 1 · Pendataan lokasi' : 'Tahap 2 · Pemeriksaan PDF'}</span><strong className="font-mono text-lg font-black text-kpu-maroon">{result.progress?.percent !== null && result.progress?.percent !== undefined ? `${result.progress.percent}%` : '—%'}</strong></div>
+            <div role="progressbar" aria-label="Progres scan cepat" aria-valuemin={0} aria-valuemax={100} aria-valuenow={result.progress?.percent ?? undefined} aria-valuetext={result.progress ? `${result.progress.phase === 'inventory' ? 'Pendataan lokasi' : 'Pemeriksaan PDF'}: ${result.progress.processedFolders} dari ${result.progress.totalFolders ?? 'total belum diketahui'} lokasi selesai` : 'Mendata lokasi; total belum diketahui'} className="h-2 overflow-hidden rounded-full bg-slate-200">
+              <div className={`h-full rounded-full bg-gradient-to-r from-kpu-maroon via-kpu-orange to-kpu-gold transition-[width] ${running && result.progress?.percent == null ? 'motion-safe:animate-pulse' : ''}`} style={{ width: result.progress?.percent == null ? (running ? '100%' : '0%') : `${result.progress.percent}%` }} />
             </div>
-            <p className="mt-2 text-[11px] font-semibold text-slate-600">{result.completedBatches} batch selesai · {result.examinedFiles.toLocaleString('id-ID')} PDF diperiksa</p>
-            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{status === 'done' ? 'Seluruh halaman PDF berhasil diperiksa.' : 'Drive belum memberikan total PDF. Persentase belum dapat dihitung; jumlah batch dan PDF diperbarui selama proses.'}</p>
+            <p className="mt-2 text-[11px] font-semibold text-slate-600">{result.progress?.processedFolders ?? 0} / {result.progress?.totalFolders ?? '…'} lokasi · {result.examinedFiles.toLocaleString('id-ID')} PDF tersesat diperiksa</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{result.progress?.phase === 'inventory' || !result.progress ? 'Mendata folder root, kecamatan, dan desa. Persentase tahap ini tersedia setelah daftar folder root selesai dibaca.' : 'Persentase berdasarkan lokasi yang selesai diperiksa, bukan jumlah PDF. Isi folder TPS tidak dibaca.'}</p>
           </div>}
         </div>
 
@@ -166,7 +166,7 @@ export function MisplacedFilesScanner({ config, disabled = false, onBusyChange }
 
         <details className="border-t border-slate-100 pt-3 text-[10px] text-slate-500">
           <summary className={`flex cursor-pointer list-none items-center gap-1.5 font-medium ${focusRing}`}><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />Berkas tetap aman di lokasi semula<ChevronRight className="ml-auto h-3 w-3" aria-hidden="true" /></summary>
-          <p className="mt-2 leading-relaxed">Hasil sesi ini tidak masuk hitungan TPS dan tidak disimpan. Menutup dialog menghentikan pemindaian. Hanya PDF yang diperiksa. Daftar PDF diambil dari Shared Drive (atau Drive akun), lalu hasil disaring ke root arsip. Shortcut tidak ditelusuri. Jumlah PDF diperiksa dapat mencakup PDF di luar root.</p>
+          <p className="mt-2 leading-relaxed">Hasil sesi ini tidak masuk hitungan TPS dan tidak disimpan. Menutup dialog menghentikan pemindaian. Hanya PDF langsung di root, kecamatan, dan desa yang diperiksa. Isi folder TPS, subfolder di dalam TPS, dan shortcut tidak ditelusuri. Scan ini tidak mendeteksi berkas yang masuk ke TPS lain.</p>
         </details>
       </div>
     </section>

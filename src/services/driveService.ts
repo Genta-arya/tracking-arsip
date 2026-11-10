@@ -139,11 +139,19 @@ export interface MisplacedFile {
   reason: string;
 }
 
+export interface MisplacedLocationProgress {
+  phase: 'inventory' | 'scan' | 'done';
+  processedFolders: number;
+  totalFolders: number | null;
+  percent: number | null;
+}
+
 export interface MisplacedScanProgress {
   files: MisplacedFile[];
   scannedFolders: number;
   examinedFiles: number;
   completedBatches: number;
+  progress?: MisplacedLocationProgress;
   failures: string[];
 }
 
@@ -161,18 +169,19 @@ export async function scanMisplacedFiles(
   let examinedFiles = 0;
   let completedBatches = 0;
   let cursor = '';
-  const snapshot = () => ({ files: [...found.values()], scannedFolders: folders.size, examinedFiles, completedBatches, failures: [...failures] });
+  let progress: MisplacedLocationProgress | undefined;
+  const snapshot = () => ({ files: [...found.values()], scannedFolders: folders.size, examinedFiles, completedBatches, progress, failures: [...failures] });
   try {
     do {
       signal.throwIfAborted();
       const url = new URL(webAppUrl);
-      Object.entries({ action: 'scanMisplacedPdf', folderId: rootFolderId, rootFolderId, cursor })
+      Object.entries({ action: 'scanMisplacedFast', folderId: rootFolderId, rootFolderId, cursor })
         .forEach(([key, value]) => url.searchParams.set(key, value));
       const response = await fetch(url, { signal, redirect: 'follow' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const page = await response.json();
-      if (page?.status !== 'success' || page.mode !== 'pdf-batch-v1') {
-        throw new Error(`${page?.message || 'Respons tidak sesuai'}. Perbarui GAS untuk action scanMisplacedPdf dan deploy versi baru.`);
+      if (page?.status !== 'success' || page.mode !== 'location-fast-v1') {
+        throw new Error(`${page?.message || 'Respons tidak sesuai'}. Perbarui GAS untuk action scanMisplacedFast dan deploy versi baru.`);
       }
       if (!Array.isArray(page.data) || !Array.isArray(page.failures) || !Array.isArray(page.checkedFolderIds) ||
         !Number.isInteger(page.examinedFiles) || page.examinedFiles < 0 || typeof page.nextCursor !== 'string' ||
@@ -182,7 +191,19 @@ export async function scanMisplacedFiles(
           .every(key => typeof (item as unknown as Record<string, unknown>)[key] === 'string'))) {
         throw new Error('Respons pemindaian PDF tidak valid; hasil belum lengkap.');
       }
+      const locationProgress = page.progress;
+      if (!locationProgress || !['inventory', 'scan', 'done'].includes(locationProgress.phase) ||
+        !Number.isInteger(locationProgress.processedFolders) || locationProgress.processedFolders < 0 ||
+        (locationProgress.totalFolders !== null && (!Number.isInteger(locationProgress.totalFolders) || locationProgress.totalFolders < 1 || locationProgress.processedFolders > locationProgress.totalFolders)) ||
+        (locationProgress.percent !== null && (!Number.isInteger(locationProgress.percent) || locationProgress.percent < 0 || locationProgress.percent > 100)) ||
+        (locationProgress.totalFolders === null ? locationProgress.percent !== null : locationProgress.percent !== Math.floor(locationProgress.processedFolders * 100 / locationProgress.totalFolders)) ||
+        (locationProgress.phase !== 'inventory' && locationProgress.totalFolders === null) ||
+        (!page.nextCursor && (locationProgress.phase !== 'done' || locationProgress.percent !== 100)) ||
+        (page.nextCursor && locationProgress.phase === 'done')) {
+        throw new Error('Respons progres scan tidak valid; hasil belum lengkap.');
+      }
       signal.throwIfAborted();
+      progress = locationProgress;
       page.data.forEach((file: MisplacedFile) => found.set(`${file.id}:${file.folderId}`, file));
       page.checkedFolderIds.forEach((id: string) => folders.add(id));
       examinedFiles += page.examinedFiles;

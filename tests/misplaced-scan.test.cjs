@@ -75,12 +75,12 @@ function service(fetch) {
   return context.exports.scanMisplacedFiles;
 }
 
-const ok = page => ({ ok: true, json: async () => ({ status: 'success', mode: 'pdf-batch-v1', data: [], failures: [], checkedFolderIds: [], examinedFiles: 0, nextCursor: '', ...page }) });
+const ok = page => ({ ok: true, json: async () => ({ status: 'success', mode: 'location-fast-v1', data: [], failures: [], checkedFolderIds: [], examinedFiles: 0, nextCursor: '', progress: { phase: page.nextCursor ? 'scan' : 'done', processedFolders: page.nextCursor ? 1 : 2, totalFolders: 2, percent: page.nextCursor ? 50 : 100 }, ...page }) });
 test('PDF client follows pages, counts candidates and deduplicates folders', async () => {
   let calls = 0;
   const scan = service(async url => {
     calls++;
-    assert.equal(url.searchParams.get('action'), 'scanMisplacedPdf');
+    assert.equal(url.searchParams.get('action'), 'scanMisplacedFast');
     assert.equal(url.searchParams.get('rootFolderId'), 'root');
     return ok({ examinedFiles: 100, checkedFolderIds: ['root', 'desa'], nextCursor: calls === 1 ? 'next' : '' });
   });
