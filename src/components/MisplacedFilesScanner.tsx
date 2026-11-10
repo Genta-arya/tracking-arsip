@@ -11,12 +11,12 @@ function driveLink(value: string): string | undefined {
 }
 
 export function MisplacedFilesScanner({ config, disabled = false }: { config: AppConfig; disabled?: boolean }) {
-  const [result, setResult] = useState<MisplacedScanProgress>({ files: [], scannedFolders: 0, failures: [] });
+  const [result, setResult] = useState<MisplacedScanProgress>({ files: [], scannedFolders: 0, examinedFiles: 0, failures: [] });
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'stopped' | 'error'>('idle');
   const [search, setSearch] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
-    setResult({ files: [], scannedFolders: 0, failures: [] });
+    setResult({ files: [], scannedFolders: 0, examinedFiles: 0, failures: [] });
     setStatus('idle');
     setSearch('');
     return () => { controller.current?.abort(); };
@@ -26,7 +26,7 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
-    setResult({ files: [], scannedFolders: 0, failures: [] });
+    setResult({ files: [], scannedFolders: 0, examinedFiles: 0, failures: [] });
     setStatus('running');
     setSearch('');
     try {
@@ -65,7 +65,7 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
               <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 tracking-normal text-white/90"><ShieldCheck className="h-3 w-3" aria-hidden="true" />Hanya membaca</span>
             </div>
             <h3 className="text-lg font-black tracking-tight sm:text-xl">Temukan berkas tersesat.</h3>
-            <p className="mt-1 max-w-sm text-xs leading-relaxed text-rose-100/85">Lacak berkas di luar susunan folder yang semestinya dan lihat lokasi persisnya.</p>
+            <p className="mt-1 max-w-sm text-xs leading-relaxed text-rose-100/85">Cari PDF sekaligus, periksa susunan foldernya, dan temukan lokasi berkas yang tersesat.</p>
           </div>
         </div>
         <div className="relative mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-white/70" aria-label="Susunan folder yang benar">
@@ -82,7 +82,7 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
           {[
             { label: 'Perlu ditinjau', value: result.files.length, icon: FileSearch, accent: true },
             { label: 'Lokasi temuan', value: locations, icon: MapPin, accent: false },
-            { label: 'Folder diperiksa', value: result.scannedFolders, icon: FolderOpen, accent: false },
+            { label: 'PDF diperiksa', value: result.examinedFiles, icon: FileText, accent: false },
           ].map(stat => <div key={stat.label} className={`min-w-0 rounded-xl border px-2.5 py-3 sm:px-3 ${stat.accent ? 'border-amber-200 bg-amber-50/80' : 'border-slate-100 bg-slate-50'}`}>
             <stat.icon className={`mb-2 h-4 w-4 ${stat.accent ? 'text-amber-700' : 'text-slate-400'}`} aria-hidden="true" />
             <p className={`text-xl font-black tabular-nums leading-none sm:text-2xl ${stat.accent ? 'text-amber-950' : 'text-slate-900'}`}>{status === 'idle' ? '—' : stat.value.toLocaleString('id-ID')}</p>
@@ -111,7 +111,7 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
         </div>
 
         {result.failures.length > 0 && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900">
-          <p className="flex items-center gap-2 font-bold"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{result.failures.length} folder gagal diperiksa</p>
+          <p className="flex items-center gap-2 font-bold"><CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />{result.failures.length} kendala pemindaian</p>
           <p className="mt-1 leading-relaxed">Periksa akses Drive dan deployment Apps Script, lalu pindai ulang.</p>
           <details className="mt-2"><summary className={`cursor-pointer font-semibold ${focusRing}`}>Lihat rincian kendala</summary><ul className="mt-2 space-y-1 break-words">{result.failures.map((message, index) => <li key={index}>{message}</li>)}</ul></details>
         </div>}
@@ -155,7 +155,7 @@ export function MisplacedFilesScanner({ config, disabled = false }: { config: Ap
 
         <details className="border-t border-slate-100 pt-3 text-[10px] text-slate-500">
           <summary className={`flex cursor-pointer list-none items-center gap-1.5 font-medium ${focusRing}`}><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />Berkas tetap aman di lokasi semula<ChevronRight className="ml-auto h-3 w-3" aria-hidden="true" /></summary>
-          <p className="mt-2 leading-relaxed">Hasil sesi ini tidak masuk hitungan TPS dan tidak disimpan. Menutup dialog menghentikan pemindaian. Shortcut tidak ditelusuri; berkas di luar root arsip tidak dicari.</p>
+          <p className="mt-2 leading-relaxed">Hasil sesi ini tidak masuk hitungan TPS dan tidak disimpan. Menutup dialog menghentikan pemindaian. Hanya PDF yang diperiksa. Daftar PDF diambil dari Shared Drive (atau Drive akun), lalu hasil disaring ke root arsip. Shortcut tidak ditelusuri. Jumlah PDF diperiksa dapat mencakup PDF di luar root.</p>
         </details>
       </div>
     </section>
