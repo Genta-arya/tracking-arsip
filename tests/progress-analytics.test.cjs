@@ -102,3 +102,19 @@ test('district activity follows selected WIB upload day and overrides, ignoring 
   assert.equal(analytics.dailyDistrictActivity(records,'2026-11-09').total[0].count,1);
   assert.equal(analytics.dailyDistrictActivity(records,'2026-11-08').total.length,0);
 });
+
+test('comparison uses nearest earlier active day, skipping empty days across month boundaries', () => {
+  const counts=new Map([['2026-10-31',50],['2026-11-08',40],['2026-11-09',0],['2026-11-10',55],['2026-11-11',100]]);
+  assert.deepEqual(plain(analytics.previousActiveDay(counts,'2026-11-10')),{date:'2026-11-08',count:40});
+  assert.deepEqual(plain(analytics.previousActiveDay(counts,'2026-11-08')),{date:'2026-10-31',count:50});
+  const previous=analytics.previousActiveDay(counts,'2026-11-10');
+  assert.equal(analytics.compareArchiveCounts(55,previous.count).percent,37.5);
+  assert.equal(analytics.previousActiveDay(counts,'2026-10-31'),null);
+});
+
+test('no prior active day means no invented zero baseline; today without uploads still compares to the last active day', () => {
+  assert.equal(analytics.previousActiveDay(new Map([['2026-11-09',0],['2026-11-10',55]]),'2026-11-10'),null);
+  const previous=analytics.previousActiveDay(new Map([['2026-11-07',50],['2026-11-08',0],['2026-11-09',0]]),'2026-11-10');
+  assert.equal(previous.date,'2026-11-07');
+  assert.equal(analytics.compareArchiveCounts(0,previous.count).percent,-100);
+});

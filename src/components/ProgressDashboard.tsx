@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   TrendingUp,
@@ -6,10 +6,13 @@ import {
   CheckCircle2,
   FileCheck,
   FolderOpen,
+  LayoutDashboard,
+  CalendarDays,
+  ChartNoAxesCombined,
 } from 'lucide-react';
 import { useArchiveToday } from '@/hooks/useArchiveToday';
 import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
-import { buildActivityChart, dailyActivityCounts, formatArchiveDay, isActiveArchiveFile, cumulativeUploadCount, previousCalendarDay } from '@/utils/progressAnalytics';
+import { buildActivityChart, dailyActivityCounts, formatArchiveDay, isActiveArchiveFile, cumulativeUploadCount, previousActiveDay } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
@@ -34,6 +37,13 @@ export function ProgressDashboard({
   kecamatanSummaries,
   onNavigateToRekap,
 }: ProgressDashboardProps) {
+  const tabsId = useId();
+  const [dashboardTab, setDashboardTab] = useState<'summary' | 'daily' | 'analysis'>('summary');
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['summary']));
+  const openTab = (tab: 'summary' | 'daily' | 'analysis') => {
+    setDashboardTab(tab);
+    setVisitedTabs(previous => new Set([...previous, tab]));
+  };
   // Pilihan rentang waktu chart
   const [chartRange, setChartRange] = useState<'THIS_MONTH' | 'LAST_30' | 'ALL'>('THIS_MONTH');
 
@@ -43,21 +53,22 @@ export function ProgressDashboard({
   }, [records]);
 
   const todayKey = useArchiveToday();
-  const yesterdayKey = previousCalendarDay(todayKey);
   const countsByDate = useMemo(() => dailyActivityCounts(allFiles), [allFiles, todayKey]);
+  const comparisonDay = useMemo(() => previousActiveDay(countsByDate, todayKey), [countsByDate, todayKey]);
   const dailyUploadData = useMemo(() => buildActivityChart(countsByDate, chartRange), [countsByDate, chartRange, todayKey]);
   const uploadStats = useMemo(() => {
     const peak = dailyUploadData.reduce<(typeof dailyUploadData)[number] | null>((best, day) => !best || day.harian > best.harian ? day : best, null);
     return {
       todayUploads: countsByDate.get(todayKey) || 0,
-      yesterdayUploads: countsByDate.get(yesterdayKey) || 0,
+      previousUploads: comparisonDay?.count ?? null,
+      previousDate: comparisonDay?.date ?? null,
       peakUpload: peak?.harian || 0,
       peakDate: peak?.date || '-',
       averagePerDay: dailyUploadData.length ? Math.round(dailyUploadData.reduce((total, day) => total + day.harian, 0) / dailyUploadData.length) : 0,
     };
-  }, [dailyUploadData, countsByDate, todayKey, yesterdayKey]);
+  }, [dailyUploadData, countsByDate, todayKey, comparisonDay]);
   const cumulativeToday = cumulativeUploadCount(countsByDate, todayKey);
-  const cumulativeYesterday = cumulativeUploadCount(countsByDate, yesterdayKey);
+  const cumulativePrevious = comparisonDay ? cumulativeUploadCount(countsByDate, comparisonDay.date) : null;
 
   // 3. Leaderboard Staf Pengunggah (Uploader Insights)
   const uploaderLeaderboard = useMemo(() => {
@@ -334,12 +345,28 @@ export function ProgressDashboard({
         </motion.div>
       </motion.div>
 
+      <div role="tablist" aria-label="Bagian dashboard progres" className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-slate-100/80 p-1.5">
+        {([{ key: 'summary', label: 'Ringkasan', icon: LayoutDashboard }, { key: 'daily', label: 'Berkas Harian', icon: CalendarDays }, { key: 'analysis', label: 'Analisis', icon: ChartNoAxesCombined }] as const).map((tab, index, tabs) => (
+          <button key={tab.key} type="button" role="tab" id={`${tabsId}-${tab.key}-tab`} aria-controls={`${tabsId}-${tab.key}-panel`} aria-selected={dashboardTab === tab.key} tabIndex={dashboardTab === tab.key ? 0 : -1}
+            onClick={() => openTab(tab.key)}
+            onKeyDown={event => {
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : -1;
+              if (next < 0) return;
+              event.preventDefault();
+              openTab(tabs[next].key);
+              document.getElementById(`${tabsId}-${tabs[next].key}-tab`)?.focus();
+            }}
+            className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kpu-gold sm:flex-row sm:gap-2 sm:text-xs ${dashboardTab === tab.key ? 'border border-rose-100 bg-white text-kpu-maroon shadow-sm' : 'border border-transparent text-slate-500 hover:bg-white/60 hover:text-slate-800'}`}><tab.icon className="h-4 w-4 shrink-0" aria-hidden="true" />{tab.label}</button>
+        ))}
+      </div>
+
+      <div role="tabpanel" id={`${tabsId}-summary-panel`} aria-labelledby={`${tabsId}-summary-tab`} hidden={dashboardTab !== 'summary'} className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-2">
-        <ArchiveComparisonCard title="Berkas masuk · hari ini dibandingkan kemarin" current={countsByDate.get(todayKey) || 0} previous={countsByDate.get(yesterdayKey) || 0}
-          currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={`Kemarin · ${formatArchiveDay(yesterdayKey)}`}
+        <ArchiveComparisonCard title="Berkas masuk · dibandingkan hari aktif sebelumnya" current={countsByDate.get(todayKey) || 0} previous={comparisonDay?.count ?? null}
+          currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={comparisonDay ? `Hari aktif · ${formatArchiveDay(comparisonDay.date)}` : 'Belum ada hari aktif sebelumnya'}
           />
-        <ArchiveComparisonCard title="Kumulatif upload · hari ini dibandingkan kemarin" current={cumulativeToday} previous={cumulativeYesterday}
-          currentLabel={`Sampai ${formatArchiveDay(todayKey)}`} previousLabel={`Sampai ${formatArchiveDay(yesterdayKey)}`}
+        <ArchiveComparisonCard title="Kumulatif upload · dibandingkan hari aktif sebelumnya" current={cumulativeToday} previous={cumulativePrevious}
+          currentLabel={`Sampai ${formatArchiveDay(todayKey)}`} previousLabel={comparisonDay ? `Sampai ${formatArchiveDay(comparisonDay.date)}` : 'Belum ada hari aktif sebelumnya'}
           />
       </div>
 
@@ -354,12 +381,14 @@ export function ProgressDashboard({
         onRangeChange={setChartRange}
       />
 
-      {/* 2b. Card Pantauan Berkas Masuk Per Hari dengan Breakdown Jenis Pemilihan & Visual Chart */}
-      <DailyIncomingBreakdownCard
-        records={records}
-        onNavigateToRekap={onNavigateToRekap}
-      />
+      </div>
 
+      <div role="tabpanel" id={`${tabsId}-daily-panel`} aria-labelledby={`${tabsId}-daily-tab`} hidden={dashboardTab !== 'daily'}>
+      {visitedTabs.has('daily') && <DailyIncomingBreakdownCard records={records} onNavigateToRekap={onNavigateToRekap} />}
+      </div>
+
+      <div role="tabpanel" id={`${tabsId}-analysis-panel`} aria-labelledby={`${tabsId}-analysis-tab`} hidden={dashboardTab !== 'analysis'} className="space-y-6">
+      {visitedTabs.has('analysis') && <>
       {/* 3. Dua Kolom: Peringkat 7 Kecamatan & Kelengkapan 5 Jenis Surat Suara (3D Command Decks) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Kolom Kiri: Peringkat Progres 7 Kecamatan (3D Micro-Cards) */}
@@ -381,6 +410,8 @@ export function ProgressDashboard({
         uploaders={uploaderLeaderboard}
         onViewAnomalies={() => onNavigateToRekap({ status: 'ANOMALY' })}
       />
+      </>}
+      </div>
     </div>
   );
 }

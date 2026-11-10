@@ -102,3 +102,12 @@ export function dailyDistrictActivity(records: Pick<TPSRecord, 'kecamatan' | 'fi
     focus: rows(total).filter(row => row.count > 50 && row.name !== 'Belum diketahui'),
   };
 }
+
+/** Hari bertanggal paling dekat sebelum acuan yang benar-benar memiliki upload. */
+export function previousActiveDay(counts: Map<string, number>, beforeDate: string): { date: string; count: number } | null {
+  let previous: { date: string; count: number } | null = null;
+  for (const [date, count] of counts) {
+    if (date < beforeDate && count > 0 && (!previous || date > previous.date)) previous = { date, count };
+  }
+  return previous;
+}
