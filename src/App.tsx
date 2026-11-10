@@ -652,7 +652,6 @@ export function App() {
                 records={processedRecords}
                 stats={globalStats}
                 kecamatanSummaries={kecamatanSummaries}
-                archiveComparison={syncMeta?.archiveComparison?.current?.rootFolderId === config.rootFolderId ? syncMeta.archiveComparison : undefined}
                 onNavigateToRekap={(filterUpdate) => {
                   if (filterUpdate) {
                     setFilter((prev) => ({ ...prev, ...filterUpdate }));
