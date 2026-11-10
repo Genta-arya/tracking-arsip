@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
 import { saveKecamatanScanToFirestore, fetchAllFileOverrides, deleteFileOverride } from '@/services/firebase';
 import { RawTpsData, AppConfig } from '@/types';
+import { MisplacedFilesScanner } from '@/components/MisplacedFilesScanner';
 import { Scan3DAnimation } from '@/components/Scan3DAnimation';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 
@@ -355,6 +356,8 @@ export function DriveSyncModal({
               </motion.div>
             )}
           </AnimatePresence>
+
+          <MisplacedFilesScanner config={config} disabled={isScanning} />
 
           {/* Tombol Ambil Daftar Folder Kecamatan */}
           {kecamatanFolders.length === 0 ? (

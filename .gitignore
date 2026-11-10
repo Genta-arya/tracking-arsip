@@ -51,3 +51,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Local Apps Script backup containing credentials
+/backup.gs
