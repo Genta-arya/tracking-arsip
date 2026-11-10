@@ -2,6 +2,8 @@ import React, { useState, useRef, useMemo } from 'react';
 import { motion, useSpring } from 'framer-motion';
 import {
   TrendingUp,
+  TrendingDown,
+  Minus,
   Sparkles,
   Trophy,
   Activity,
@@ -22,6 +24,7 @@ import {
   Tooltip,
   ReferenceDot,
 } from 'recharts';
+import { compareArchiveCounts } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 
 export interface DailyUploadItem {
@@ -33,6 +36,7 @@ export interface DailyUploadItem {
 
 export interface UploadStatsData {
   todayUploads: number;
+  yesterdayUploads: number;
   peakUpload: number;
   peakDate: string;
   averagePerDay: number;
@@ -62,6 +66,9 @@ export function TrendChart3D({
   chartRange,
   onRangeChange,
 }: TrendChart3DProps) {
+  const dailyChange = compareArchiveCounts(uploadStats.todayUploads, uploadStats.yesterdayUploads);
+  const GrowthIcon = dailyChange.direction === 'up' ? TrendingUp : dailyChange.direction === 'down' ? TrendingDown : Minus;
+  const growthLabel = dailyChange.percent === null ? 'Baru dari 0' : `${dailyChange.percent > 0 ? '+' : ''}${dailyChange.percent.toLocaleString('id-ID', { maximumFractionDigits: 1 })}%`;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
@@ -314,7 +321,10 @@ export function TrendChart3D({
                 />
                 <span className="text-xs font-semibold text-slate-500">berkas</span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Berkas bertanggal hari ini (WIB)</p>
+              <div aria-label="Perubahan upload dibandingkan kemarin" className="mt-2 space-y-1">
+                <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold ${dailyChange.direction === 'up' ? 'bg-emerald-50 text-emerald-700' : dailyChange.direction === 'down' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'}`}><GrowthIcon className="h-3 w-3" aria-hidden="true" />{growthLabel}</span>
+                <p className="text-[10px] leading-relaxed text-slate-500">{dailyChange.delta !== null && `${dailyChange.delta > 0 ? '+' : ''}${dailyChange.delta.toLocaleString('id-ID')} berkas · `}dibandingkan kemarin (WIB)</p>
+              </div>
             </motion.div>
 
             {/* Pod 2: Puncak Tertinggi (Emerald) */}

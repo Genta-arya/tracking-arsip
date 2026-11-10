@@ -1,4 +1,4 @@
-import type { RawFileItem } from '@/types';
+import type { RawFileItem, TPSRecord, ElectionType } from '@/types';
 
 export const ARCHIVE_TIME_ZONE = 'Asia/Jakarta';
 const archiveDayFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -72,4 +72,33 @@ export function cumulativeUploadCount(counts: Map<string, number>, throughDate: 
   let total = 0;
   for (const [date, count] of counts) if (date <= throughDate) total += count;
   return total;
+}
+
+export interface DistrictActivity { name: string; count: number }
+export type ActivityElection = ElectionType | 'UNKNOWN';
+const activityElections: ActivityElection[] = ['PPWP', 'DPR_RI', 'DPD', 'DPRD_PROV', 'DPRD_KAB', 'UNKNOWN'];
+
+export function dailyDistrictActivity(records: Pick<TPSRecord, 'kecamatan' | 'files'>[], date: string) {
+  const total = new Map<string, number>();
+  const names = new Map<string, string>();
+  const elections = Object.fromEntries(activityElections.map(key => [key, new Map<string, number>()])) as Record<ActivityElection, Map<string, number>>;
+  for (const record of records) {
+    const name = record.kecamatan.trim().replace(/\s+/g, ' ');
+    const key = name.toLocaleLowerCase('id');
+    if (!names.has(key)) names.set(key, name || 'Belum diketahui');
+    for (const file of record.files) {
+      if (!isActiveArchiveFile(file) || fileActivityDay(file) !== date) continue;
+      const candidate = file.overrideElection && file.overrideElection !== 'SUDAH_DIBENARKAN' ? file.overrideElection : file.detectedElection;
+      const election = activityElections.includes(candidate as ActivityElection) ? candidate as ActivityElection : 'UNKNOWN';
+      total.set(key, (total.get(key) || 0) + 1);
+      elections[election].set(key, (elections[election].get(key) || 0) + 1);
+    }
+  }
+  const rows = (counts: Map<string, number>): DistrictActivity[] => [...counts].map(([key, count]) => ({ name: names.get(key)!, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'id'));
+  return {
+    total: rows(total),
+    byElection: Object.fromEntries(activityElections.map(key => [key, rows(elections[key])])) as Record<ActivityElection, DistrictActivity[]>,
+    focus: rows(total).filter(row => row.count > 50 && row.name !== 'Belum diketahui'),
+  };
 }

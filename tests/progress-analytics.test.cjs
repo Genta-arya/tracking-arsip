@@ -66,3 +66,39 @@ test('cumulative totals use upload dates only and need no saved scan history', (
   assert.equal(analytics.fileActivityDay({updatedAt:'2026-11-10T03:00:00Z'}),null);
   assert.equal(analytics.fileActivityDay({createdAt:'bad',updatedAt:'2026-11-10T03:00:00Z'}),null);
 });
+
+test('district focus uses strictly more than 50 files per district, not the combined daily total', () => {
+  const files = (count, election='PPWP') => Array.from({length:count},(_,id)=>({id:String(id),createdAt:'2026-11-10T03:00:00Z',detectedElection:election}));
+  const records=[
+    {kecamatan:' Belitang  Hilir ',files:files(25)},
+    {kecamatan:'belitang hilir',files:files(26,'DPR_RI')},
+    {kecamatan:'Sekadau Hilir',files:files(50)},
+    {kecamatan:'Nanga Taman',files:files(51)},
+  ];
+  const result=analytics.dailyDistrictActivity(records,'2026-11-10');
+  assert.deepEqual(plain(result.focus).map(row=>[row.name,row.count]),[['Belitang Hilir',51],['Nanga Taman',51]]);
+  assert.equal(result.total.find(row=>row.name==='Sekadau Hilir').count,50);
+  assert.equal(result.byElection.PPWP.find(row=>row.name==='Belitang Hilir').count,25);
+  assert.equal(result.byElection.DPR_RI.find(row=>row.name==='Belitang Hilir').count,26);
+});
+
+test('district activity follows selected WIB upload day and overrides, ignoring cancelled or undated files', () => {
+  const records=[{kecamatan:'Belitang',files:[
+    {createdAt:'2026-11-09T17:01:00Z',detectedElection:'PPWP'},
+    {createdAt:'2026-11-09T16:59:00Z',detectedElection:'PPWP'},
+    {createdAt:'2026-11-10T03:00:00Z',detectedElection:'PPWP',overrideElection:'DPR_RI'},
+    {createdAt:'2026-11-10T03:00:00Z',detectedElection:'DPD',overrideElection:'SUDAH_DIBENARKAN'},
+    {createdAt:'2026-11-10T03:00:00Z',detectedElection:'UNKNOWN'},
+    {createdAt:'2026-11-10T03:00:00Z',detectedElection:'PPWP',overrideElection:'IGNORE'},
+    {createdAt:'2026-11-10T03:00:00Z',detectedElection:'PPWP',overrideElection:'HAPUS'},
+    {updatedAt:'2026-11-10T03:00:00Z',detectedElection:'PPWP'},
+  ]}];
+  const result=analytics.dailyDistrictActivity(records,'2026-11-10');
+  assert.equal(result.total[0].count,4);
+  assert.equal(result.byElection.PPWP[0].count,1);
+  assert.equal(result.byElection.DPR_RI[0].count,1);
+  assert.equal(result.byElection.DPD[0].count,1);
+  assert.equal(result.byElection.UNKNOWN[0].count,1);
+  assert.equal(analytics.dailyDistrictActivity(records,'2026-11-09').total[0].count,1);
+  assert.equal(analytics.dailyDistrictActivity(records,'2026-11-08').total.length,0);
+});

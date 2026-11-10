@@ -50,11 +50,12 @@ export function ProgressDashboard({
     const peak = dailyUploadData.reduce<(typeof dailyUploadData)[number] | null>((best, day) => !best || day.harian > best.harian ? day : best, null);
     return {
       todayUploads: countsByDate.get(todayKey) || 0,
+      yesterdayUploads: countsByDate.get(yesterdayKey) || 0,
       peakUpload: peak?.harian || 0,
       peakDate: peak?.date || '-',
       averagePerDay: dailyUploadData.length ? Math.round(dailyUploadData.reduce((total, day) => total + day.harian, 0) / dailyUploadData.length) : 0,
     };
-  }, [dailyUploadData, countsByDate, todayKey]);
+  }, [dailyUploadData, countsByDate, todayKey, yesterdayKey]);
   const cumulativeToday = cumulativeUploadCount(countsByDate, todayKey);
   const cumulativeYesterday = cumulativeUploadCount(countsByDate, yesterdayKey);
 
@@ -334,10 +335,10 @@ export function ProgressDashboard({
       </motion.div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ArchiveComparisonCard title="Berkas masuk · hari ini vs kemarin" current={countsByDate.get(todayKey) || 0} previous={countsByDate.get(yesterdayKey) || 0}
+        <ArchiveComparisonCard title="Berkas masuk · hari ini dibandingkan kemarin" current={countsByDate.get(todayKey) || 0} previous={countsByDate.get(yesterdayKey) || 0}
           currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={`Kemarin · ${formatArchiveDay(yesterdayKey)}`}
           note="Tanggal mengikuti WIB. Penurunan berarti berkas masuk lebih sedikit, bukan bukti berkas dihapus. Hari tanpa berkas bertanggal dihitung 0; data tanpa tanggal tidak diestimasi." />
-        <ArchiveComparisonCard title="Kumulatif upload · hari ini vs kemarin" current={cumulativeToday} previous={cumulativeYesterday}
+        <ArchiveComparisonCard title="Kumulatif upload · hari ini dibandingkan kemarin" current={cumulativeToday} previous={cumulativeYesterday}
           currentLabel={`Sampai ${formatArchiveDay(todayKey)}`} previousLabel={`Sampai ${formatArchiveDay(yesterdayKey)}`}
           note="Kumulatif berdasarkan tanggal upload berkas aktif yang masih tercatat (WIB). Tidak termasuk HAPUS/IGNORE atau berkas tanpa tanggal upload valid." />
       </div>
