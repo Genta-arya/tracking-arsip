@@ -336,7 +336,11 @@ export function App() {
       }
 
       item.totalTPS++;
-      item.totalFiles += r.files.length; // Total seluruh berkas scan di folder Drive
+      // Hitung hanya file aktif (bukan HAPUS/IGNORE) agar konsisten dengan globalStats
+      const activeFiles = r.files.filter(
+        (f) => f.overrideElection !== 'HAPUS' && f.overrideElection !== 'IGNORE'
+      );
+      item.totalFiles += activeFiles.length;
       item.validFiles = (item.validFiles || 0) + r.completedCount;
       item.expectedFiles += 5;
 
@@ -377,7 +381,11 @@ export function App() {
 
     processedRecords.forEach((r) => {
       validSlotFiles += r.completedCount;
-      totalPhysicalFiles += r.files.length;
+      // Hanya hitung file yang aktif (bukan HAPUS/IGNORE) agar tidak memicu anomali palsu di card progress
+      const activeFiles = r.files.filter(
+        (f) => f.overrideElection !== 'HAPUS' && f.overrideElection !== 'IGNORE'
+      );
+      totalPhysicalFiles += activeFiles.length;
       if (r.completedCount === 5) completed++;
       else if (r.completedCount === 0) empty++;
       else partial++;
