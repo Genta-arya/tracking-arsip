@@ -314,7 +314,7 @@ export function TrendChart3D({
                 />
                 <span className="text-xs font-semibold text-slate-500">berkas</span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Pemindaian aktif</p>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Berkas bertanggal hari ini (WIB)</p>
             </motion.div>
 
             {/* Pod 2: Puncak Tertinggi (Emerald) */}
@@ -417,7 +417,7 @@ export function TrendChart3D({
 
             {/* Container Recharts dengan Ketinggian Dinamis & Tanpa Outline Hitam */}
             <div className="w-full h-72 sm:h-80 relative z-10 [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none [&_*]:outline-none [&_*]:focus:outline-none focus:outline-none">
-              <ResponsiveContainer width="100%" height="100%">
+              {dailyUploadData.length === 0 ? <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-slate-500"><Calendar className="h-8 w-8 text-slate-300" aria-hidden="true" /><p className="text-sm font-bold">Belum ada aktivitas bertanggal pada rentang ini</p><p className="text-xs">Hanya hari dengan berkas masuk yang ditampilkan. Tidak ada angka simulasi.</p></div> : <ResponsiveContainer width="100%" height="100%">
                 {viewMode === 'AREA_3D' ? (
                   <AreaChart data={dailyUploadData} margin={{ top: 22, right: 15, left: -15, bottom: 5 }}>
                     <defs>
@@ -494,7 +494,7 @@ export function TrendChart3D({
                                   <div className="flex items-center justify-between gap-4 border-t border-slate-800/90 pt-1.5">
                                     <span className="flex items-center gap-1.5 text-amber-200 font-semibold">
                                       <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
-                                      Total Kumulatif:
+                                      Kumulatif Rentang:
                                     </span>
                                     <span className="font-black text-amber-300 text-sm">
                                       {payload[1]?.value} <span className="text-[11px] font-medium text-amber-200/80">file</span>
@@ -513,6 +513,7 @@ export function TrendChart3D({
                     <Area
                       type="monotone"
                       dataKey="harian"
+                      dot={{ r: 3 }}
                       name="Upload Harian"
                       stroke="#800000"
                       strokeWidth={3}
@@ -525,7 +526,7 @@ export function TrendChart3D({
                     <Area
                       type="monotone"
                       dataKey="kumulatif"
-                      name="Total Kumulatif"
+                      name="Kumulatif Rentang"
                       stroke="#d97706"
                       strokeWidth={2}
                       strokeDasharray="5 5"
@@ -626,7 +627,7 @@ export function TrendChart3D({
                                   <div className="flex items-center justify-between gap-4 border-t border-slate-800/90 pt-1.5">
                                     <span className="flex items-center gap-1.5 text-amber-200 font-semibold">
                                       <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
-                                      Total Kumulatif:
+                                      Kumulatif Rentang:
                                     </span>
                                     <span className="font-black text-amber-300 text-sm">
                                       {payload[1]?.value} <span className="text-[11px] font-medium text-amber-200/80">file</span>
@@ -650,7 +651,7 @@ export function TrendChart3D({
                     />
                   </BarChart>
                 )}
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </div>
 
             {/* Banner Indikator Rekor Puncak di Atas Grafik */}
@@ -673,7 +674,7 @@ export function TrendChart3D({
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block border border-dashed border-amber-600" />
-                    Total Kumulatif
+                    Kumulatif Rentang
                   </span>
                 </div>
               </div>

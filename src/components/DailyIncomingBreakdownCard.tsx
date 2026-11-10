@@ -24,6 +24,9 @@ import {
   PieChart,
   Pie,
 } from 'recharts';
+import { useArchiveToday } from '@/hooks/useArchiveToday';
+import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
+import { fileActivityDay, formatArchiveDay, isActiveArchiveFile, previousCalendarDay } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TPSRecord, ElectionType, ELECTION_LIST, FilterState } from '@/types';
 
@@ -123,15 +126,12 @@ export function DailyIncomingBreakdownCard({
   records,
   onNavigateToRekap,
 }: DailyBreakdownProps) {
+  const calendarToday = useArchiveToday();
   const [chartType, setChartType] = useState<'BAR' | 'DONUT'>('BAR');
 
   // 1. Ekstrak seluruh berkas dan kumpulkan statistik per hari beserta rincian pemilihannya
   const { allDays, todayKey } = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-    const currentDay = String(now.getDate()).padStart(2, '0');
-    const todayKey = `${currentYear}-${currentMonth}-${currentDay}`;
+    const todayKey = calendarToday;
 
     // Map: rawDate -> breakdown
     const dateMap = new Map<string, {
@@ -143,24 +143,9 @@ export function DailyIncomingBreakdownCard({
     // Loop semua file di semua TPS
     records.forEach((record) => {
       record.files.forEach((file) => {
-        // BUG FIX #2: Skip berkas yang ditandai HAPUS atau IGNORE — tidak tampil di rekap apapun
-        if (file.overrideElection === 'HAPUS' || file.overrideElection === 'IGNORE') {
-          return;
-        }
-
-        const dateStr = file.createdAt || file.updatedAt;
-
-        // BUG FIX #1: Skip berkas tanpa timestamp valid — jangan di-assign ke hari ini
-        // Berkas tanpa tanggal adalah berkas lama yang belum disinkronkan ulang, 
-        // tidak ada cara mengetahui tanggal masuknya, jadi tidak dihitung di manapun.
-        if (!dateStr) return;
-        const parsedDate = new Date(dateStr);
-        if (isNaN(parsedDate.getTime())) return;
-
-        const y = parsedDate.getFullYear();
-        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(parsedDate.getDate()).padStart(2, '0');
-        const dateKey = `${y}-${m}-${day}`;
+        if (!isActiveArchiveFile(file)) return;
+        const dateKey = fileActivityDay(file);
+        if (!dateKey || dateKey > todayKey) return;
 
         const current = dateMap.get(dateKey) || {
           total: 0,
@@ -190,28 +175,19 @@ export function DailyIncomingBreakdownCard({
       });
     });
 
-    // Pastikan hari ini selalu ada di daftar jika belum ada
-    if (!dateMap.has(todayKey)) {
-      dateMap.set(todayKey, {
-        total: 0,
-        breakdown: { PPWP: 0, DPR_RI: 0, DPD: 0, DPRD_PROV: 0, DPRD_KAB: 0 },
-        unknown: 0,
-      });
-    }
-
     // Urutkan tanggal dari terbaru ke terlama
     const sortedDates = Array.from(dateMap.keys()).sort().reverse();
 
     const allDays: DayStats[] = sortedDates.map((dKey) => {
       const data = dateMap.get(dKey)!;
-      const parts = dKey.split('-');
-      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const d = new Date(`${dKey}T12:00:00Z`);
       const displayDate = d.toLocaleDateString('id-ID', {
+        timeZone: 'Asia/Jakarta',
         day: 'numeric',
         month: 'short',
         year: 'numeric',
       });
-      const dayName = d.toLocaleDateString('id-ID', { weekday: 'long' });
+      const dayName = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long' });
 
       return {
         rawDate: dKey,
@@ -224,7 +200,7 @@ export function DailyIncomingBreakdownCard({
     });
 
     return { allDays, todayKey };
-  }, [records]);
+  }, [records, calendarToday]);
 
   // Tanggal yang sedang dipilih pengguna untuk dipantau (default ke hari ini atau hari terbaru)
   const [selectedDate, setSelectedDate] = useState<string>(todayKey);
@@ -256,7 +232,10 @@ export function DailyIncomingBreakdownCard({
         color: theme.hex,
         shadow: theme.shadow,
       };
-    });
+    }).filter(item => item.count > 0).concat(activeDay.unknown > 0 ? [{
+      key: 'UNKNOWN' as ElectionType, name: 'Lainnya', fullName: 'Belum terklasifikasi', count: activeDay.unknown,
+      percentage: Number((activeDay.unknown * 100 / activeDay.total).toFixed(1)), color: '#64748b', shadow: 'rgba(100,116,139,0.3)',
+    }] : []);
   }, [activeDay]);
 
   // Navigasi prev/next hari
@@ -277,6 +256,9 @@ export function DailyIncomingBreakdownCard({
   };
 
   const isToday = activeDay.rawDate === todayKey;
+  const previousDayKey = previousCalendarDay(activeDay.rawDate);
+  const previousDay = allDays.find(day => day.rawDate === previousDayKey);
+
 
   return (
     <div className="relative rounded-3xl bg-white border border-slate-200/90 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.07),0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden transition-all duration-300">
@@ -337,10 +319,13 @@ export function DailyIncomingBreakdownCard({
               </button>
 
               <select
+                aria-label="Tanggal pantauan berkas"
                 value={activeDay.rawDate}
+                disabled={allDays.length === 0}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="bg-transparent font-bold text-xs sm:text-sm text-slate-800 px-2 py-1 outline-none cursor-pointer border-none"
               >
+                {allDays.length === 0 && <option value={activeDay.rawDate}>Belum ada aktivitas bertanggal</option>}
                 {allDays.map((d) => (
                   <option key={d.rawDate} value={d.rawDate}>
                     {d.dayName}, {d.displayDate} ({d.total} berkas)
@@ -417,10 +402,14 @@ export function DailyIncomingBreakdownCard({
           <div className="flex items-center gap-2 self-start sm:self-auto text-xs font-semibold text-slate-500">
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
             <span>
-              Terdistribusi ke <strong className="text-slate-800 font-bold">5 jenis surat suara</strong>
+              Terdistribusi ke <strong className="text-slate-800 font-bold">{chartData.length} kategori aktif</strong>
             </span>
           </div>
         </div>
+
+        <ArchiveComparisonCard title="Perubahan penerimaan · tanggal terpilih" current={activeDay.total} previous={previousDay?.total ?? 0}
+          currentLabel={formatArchiveDay(activeDay.rawDate)} previousLabel={formatArchiveDay(previousDayKey)}
+          note="Dibandingkan sehari sebelumnya menurut kalender WIB, bukan hari aktif sebelumnya. Persentase = (sekarang − sebelumnya) / sebelumnya × 100%. Kenaikan dari 0 ditandai baru, tanpa persentase tak terhingga." />
 
         {/* 5 Card Mini Breakdown Jenis Pemilihan (Presiden, DPR RI, DPD, DPRD Prov, DPRD Kab) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">

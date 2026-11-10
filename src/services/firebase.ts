@@ -15,7 +15,9 @@ import {
   deleteDoc,
   collection,
   onSnapshot,
+  runTransaction,
 } from 'firebase/firestore';
+import { countActiveArchiveFiles, nextArchiveComparison, type ArchiveComparison } from '@/utils/progressAnalytics';
 import { RawTpsData, OverrideElectionType } from '@/types';
 
 const firebaseConfig = {
@@ -133,6 +135,28 @@ export interface SyncMetadata {
   lastSyncedAt: string;
   lastSyncedKecamatan: string;
   lastSyncedBy: string;
+  archiveComparison?: ArchiveComparison;
+}
+
+/** Catat satu snapshot total setelah seluruh pekerjaan scan yang diminta berhasil. */
+export async function recordArchiveScanComparison(source: string, rootFolderId: string): Promise<void> {
+  if (!auth.currentUser || !rootFolderId) throw new Error('Login dan root arsip diperlukan untuk mencatat perbandingan scan.');
+  const documents = await getDocs(collection(db, 'scanned_data'));
+  const metaRef = doc(db, 'app_config', 'sync_metadata');
+  await runTransaction(db, async transaction => {
+    const [meta, ...scans] = await Promise.all([
+      transaction.get(metaRef), ...documents.docs.map(document => transaction.get(document.ref)),
+    ]);
+    const records = scans.flatMap(snapshot => {
+      const data = snapshot.data();
+      return Array.isArray(data?.tpsList) ? data.tpsList as RawTpsData[] : [];
+    });
+    const comparison = nextArchiveComparison(meta.data()?.archiveComparison, {
+      total: countActiveArchiveFiles(records), at: new Date().toISOString(), source,
+      rootFolderId, metric: 'active-files-v1',
+    });
+    transaction.set(metaRef, { archiveComparison: comparison }, { merge: true });
+  });
 }
 
 /**

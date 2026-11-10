@@ -28,3 +28,18 @@ Google Drive API harus aktif pada Google Cloud project terkait Apps Script. Mesi
 `node --test tests/fast-scan.test.cjs tests/misplaced-scan.test.cjs` memeriksa scope lokasi, pengecualian isi TPS, pengelompokan parent, pagination, persentase, cache kedaluwarsa, izin gagal, kompatibilitas, dan pelestarian fungsi lama pada file lengkap. Browser dapat diuji dengan respons simulasi. Validasi Drive asli memerlukan deployment pengguna.
 
 Helper `scan-misplaced.gs`, `scan-misplaced-pdf.gs`, dan `scan-misplaced-fast.gs` disediakan sebagai sumber modul; pilih pemasangan modular atau satu file lengkap, bukan keduanya.
+
+
+## Statistik perubahan harian dan hasil scan
+
+Kode.gs lengkap juga menyimpan `archiveComparison.current` dan `archiveComparison.previous` dalam `app_config/sync_metadata`. Untuk mengaktifkan statistik dari scan background, ganti seluruh Kode.gs dengan versi lengkap terbaru, simpan, dan deploy New Version. Pertahankan Script Properties dan trigger yang ada. Jangan memasang `archive-comparison.gs` sebagai tambahan jika memakai file lengkap karena fungsinya sudah digabung.
+
+- Satu snapshot setelah audit background seluruh kecamatan berhasil, termasuk audit tanpa perubahan. Audit sebagian gagal tidak menghasilkan snapshot total parsial. Fungsi diagnosis/audit satu kecamatan di editor tidak dianggap audit global baru.
+- Browser mencatat satu snapshot setelah scan manual yang dipilih berhasil. Scan semua kecamatan menghasilkan satu snapshot, bukan satu per kecamatan. Quick-sync hanya mencatat snapshot setelah perubahan berhasil disimpan, dan diberi label pembaruan parsial karena totalnya menggabungkan data terbaru dengan data kecamatan lain yang sudah tersimpan.
+- Total menghitung berkas aktif di TPS, mengikuti dashboard (bukan HAPUS/IGNORE); berkas tersesat di luar TPS tidak ikut. Snapshot menyimpan rootFolderId agar arsip berbeda tidak memakai baseline yang sama. Selisih adalah perubahan bersih; bukan jumlah penambahan dan penghapusan secara terpisah.
+- Dua hasil terakhir disimpan terpusat. Scan pertama menjadi baseline tanpa persentase; tidak ada rekonstruksi riwayat palsu. Dua scan tanpa perubahan menunjukkan 0 berkas/0%.
+- Browser menggunakan transaksi Firestore, GAS memakai precondition updateTime/retry untuk mencegah dua penulis menimpa baseline yang sama. Metadata lastSyncedAt tetap hanya diperbarui saat data disinkronkan/berubah; field perbandingan di-merge agar tidak terhapus.
+- Grafik harian memakai timestamp createdAt, atau updatedAt jika createdAt tidak valid, dari berkas yang masih tercatat. Waktu dikelompokkan dalam Asia/Jakarta (WIB). Ini adalah aktivitas berkas masuk yang masih tercatat, bukan snapshot total historis per hari. Penurunan penerimaan harian bukan bukti penghapusan berkas.
+- Grafik hanya memuat tanggal dan kategori dengan jumlah >0. Tanpa timestamp valid, tampil kondisi kosong; tidak dibuat distribusi atau angka simulasi. Pembanding harian tetap sehari sebelumnya menurut kalender, meskipun hari kosong tidak ditampilkan di grafik. Nilai sebelumnya 0 dengan nilai baru >0 ditampilkan sebagai baru, bukan Infinity%.
+
+Pengujian seluruh fitur: `node --test tests/*.test.cjs`. Pengujian Firebase/Drive lokal menggunakan mock; pembacaan dan penulisan pada deployment pengguna harus diverifikasi setelah GAS diperbarui. Tidak diperlukan perubahan Firestore Rules karena field baru menggunakan dokumen sync_metadata yang sudah diizinkan.

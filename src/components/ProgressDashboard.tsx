@@ -7,6 +7,9 @@ import {
   FileCheck,
   FolderOpen,
 } from 'lucide-react';
+import { useArchiveToday } from '@/hooks/useArchiveToday';
+import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
+import { buildActivityChart, dailyActivityCounts, formatArchiveDay, isActiveArchiveFile, isArchiveSnapshot, previousCalendarDay, type ArchiveComparison } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
@@ -23,6 +26,7 @@ interface ProgressDashboardProps {
   kecamatanSummaries: KecamatanSummary[];
   onNavigateToRekap: (filterUpdate?: Partial<FilterState>) => void;
   isDemoMode?: boolean;
+  archiveComparison?: ArchiveComparison;
 }
 
 export function ProgressDashboard({
@@ -30,158 +34,32 @@ export function ProgressDashboard({
   stats,
   kecamatanSummaries,
   onNavigateToRekap,
+  archiveComparison,
 }: ProgressDashboardProps) {
   // Pilihan rentang waktu chart
   const [chartRange, setChartRange] = useState<'THIS_MONTH' | 'LAST_30' | 'ALL'>('THIS_MONTH');
 
   // 1. Ekstrak seluruh file dari seluruh TPS
   const allFiles = useMemo(() => {
-    return records.flatMap((r) => r.files);
+    return records.flatMap((r) => r.files).filter(isActiveArchiveFile);
   }, [records]);
 
-  // 2. Data Agregasi Upload Harian untuk Line/Area Chart
-  const dailyUploadData = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth(); // 0-indexed
-
-    // Map untuk menampung jumlah upload per tanggal 'YYYY-MM-DD'
-    const countsByDate = new Map<string, number>();
-
-    allFiles.forEach((file) => {
-      const dateStr = file.createdAt || file.updatedAt;
-      if (dateStr) {
-        const d = new Date(dateStr);
-        if (!isNaN(d.getTime())) {
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          const dd = String(d.getDate()).padStart(2, '0');
-          const key = `${yyyy}-${mm}-${dd}`;
-          countsByDate.set(key, (countsByDate.get(key) || 0) + 1);
-        }
-      }
-    });
-
-    // Jika ada data riil bertanggal
-    const hasDatedFiles = countsByDate.size > 0;
-
-    if (hasDatedFiles) {
-      if (chartRange === 'THIS_MONTH') {
-        // Buat rentang dari tgl 1 sampai hari ini (atau akhir bulan)
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const maxDay = Math.min(now.getDate(), daysInMonth);
-        const result = [];
-        let runningTotal = 0;
-
-        for (let day = 1; day <= maxDay; day++) {
-          const mm = String(currentMonth + 1).padStart(2, '0');
-          const dd = String(day).padStart(2, '0');
-          const key = `${currentYear}-${mm}-${dd}`;
-          const count = countsByDate.get(key) || 0;
-          runningTotal += count;
-
-          result.push({
-            date: `${day} ${now.toLocaleDateString('id-ID', { month: 'short' })} ${currentYear}`,
-            rawDate: key,
-            harian: count,
-            kumulatif: runningTotal,
-          });
-        }
-        return result;
-      } else if (chartRange === 'LAST_30') {
-        const result = [];
-        let runningTotal = 0;
-        for (let i = 29; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          const dd = String(d.getDate()).padStart(2, '0');
-          const key = `${yyyy}-${mm}-${dd}`;
-          const count = countsByDate.get(key) || 0;
-          runningTotal += count;
-
-          result.push({
-            date: `${d.getDate()} ${d.toLocaleDateString('id-ID', { month: 'short' })} ${yyyy}`,
-            rawDate: key,
-            harian: count,
-            kumulatif: runningTotal,
-          });
-        }
-        return result;
-      } else {
-        // ALL Dates yang tercatat, diurutkan
-        const sortedKeys = Array.from(countsByDate.keys()).sort();
-        let runningTotal = 0;
-        return sortedKeys.map((key) => {
-          const parts = key.split('-');
-          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-          const monthShort = d.toLocaleDateString('id-ID', { month: 'short' });
-          const count = countsByDate.get(key) || 0;
-          runningTotal += count;
-          return {
-            date: `${parseInt(parts[2])} ${monthShort} ${parts[0]}`,
-            rawDate: key,
-            harian: count,
-            kumulatif: runningTotal,
-          };
-        });
-      }
-    }
-
-    // Fallback realistis jika file belum dipindai ulang dengan timestamp Google Drive
-    // Menampilkan simulasi distribusi progres berkas yang ada
-    const totalFiles = allFiles.length;
-    const daysInMonth = Math.min(now.getDate(), 30);
-    const result = [];
-    let runningTotal = 0;
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      // Jika data ada tapi belum ada timestamp, estimasikan kurva
-      const factor = Math.sin((day / daysInMonth) * Math.PI);
-      const estimatedCount = totalFiles > 0 ? Math.round((totalFiles / daysInMonth) * (0.8 + 0.4 * factor)) : 0;
-      runningTotal += estimatedCount;
-      result.push({
-        date: `${day} ${now.toLocaleDateString('id-ID', { month: 'short' })} ${currentYear}`,
-        rawDate: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-        harian: estimatedCount,
-        kumulatif: runningTotal,
-      });
-    }
-
-    return result;
-  }, [allFiles, chartRange]);
-
-  // Statistik Ringkas Aktivitas Upload
+  const todayKey = useArchiveToday();
+  const yesterdayKey = previousCalendarDay(todayKey);
+  const countsByDate = useMemo(() => dailyActivityCounts(allFiles), [allFiles, todayKey]);
+  const dailyUploadData = useMemo(() => buildActivityChart(countsByDate, chartRange), [countsByDate, chartRange, todayKey]);
   const uploadStats = useMemo(() => {
-    let todayUploads = 0;
-    let peakUpload = 0;
-    let peakDate = '-';
-    let totalActiveDays = 0;
-
-    dailyUploadData.forEach((item, idx) => {
-      if (item.harian > 0) totalActiveDays++;
-      if (item.harian > peakUpload) {
-        peakUpload = item.harian;
-        peakDate = item.date;
-      }
-      if (idx === dailyUploadData.length - 1) {
-        todayUploads = item.harian;
-      }
-    });
-
-    const averagePerDay =
-      totalActiveDays > 0
-        ? Math.round(dailyUploadData.reduce((acc, curr) => acc + curr.harian, 0) / totalActiveDays)
-        : 0;
-
+    const peak = dailyUploadData.reduce<(typeof dailyUploadData)[number] | null>((best, day) => !best || day.harian > best.harian ? day : best, null);
     return {
-      todayUploads,
-      peakUpload,
-      peakDate,
-      averagePerDay,
+      todayUploads: countsByDate.get(todayKey) || 0,
+      peakUpload: peak?.harian || 0,
+      peakDate: peak?.date || '-',
+      averagePerDay: dailyUploadData.length ? Math.round(dailyUploadData.reduce((total, day) => total + day.harian, 0) / dailyUploadData.length) : 0,
     };
-  }, [dailyUploadData]);
+  }, [dailyUploadData, countsByDate, todayKey]);
+  const latestSnapshot = isArchiveSnapshot(archiveComparison?.current) ? archiveComparison.current : null;
+  const previousSnapshot = isArchiveSnapshot(archiveComparison?.previous) && archiveComparison?.previous?.rootFolderId === latestSnapshot?.rootFolderId ? archiveComparison.previous : null;
+  const snapshotLabel = (value: typeof latestSnapshot) => value ? new Date(value.at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' }) + ' WIB' : 'Belum tersedia';
 
   // 3. Leaderboard Staf Pengunggah (Uploader Insights)
   const uploaderLeaderboard = useMemo(() => {
@@ -457,6 +335,15 @@ export function ProgressDashboard({
           </TiltCard3D>
         </motion.div>
       </motion.div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ArchiveComparisonCard title="Berkas masuk · hari ini vs kemarin" current={countsByDate.get(todayKey) || 0} previous={countsByDate.get(yesterdayKey) || 0}
+          currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={`Kemarin · ${formatArchiveDay(yesterdayKey)}`}
+          note="Tanggal mengikuti WIB. Penurunan berarti berkas masuk lebih sedikit, bukan bukti berkas dihapus. Hari tanpa berkas bertanggal dihitung 0; data tanpa tanggal tidak diestimasi." />
+        <ArchiveComparisonCard title="Total arsip · hasil scan sebelumnya" current={latestSnapshot?.total ?? null} previous={previousSnapshot?.total ?? null}
+          currentLabel={`Scan terbaru · ${snapshotLabel(latestSnapshot)}`} previousLabel={`Scan sebelumnya · ${snapshotLabel(previousSnapshot)}`}
+          note={latestSnapshot ? `${latestSnapshot.source}. Total berkas aktif di TPS, tidak termasuk HAPUS/IGNORE. Selisih bersih tidak menunjukkan jumlah penambahan dan penghapusan secara terpisah.` : 'Riwayat mulai dicatat setelah fitur ini aktif. Diperlukan dua scan berhasil; data lama tidak direkonstruksi dari tanggal upload.'} />
+      </div>
 
       {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D) */}
       <TrendChart3D
