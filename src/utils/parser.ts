@@ -339,16 +339,20 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     }
 
     // Mapping ke slot pemilihan & deteksi berkas ganda (Duplicate)
+    // CATATAN: Hanya file yang BELUM resolved yang bisa memicu duplikat.
+    // File yang sudah isResolved=true (sudah diverifikasi admin) tidak dihitung duplikat meski menempati slot yang sama.
     switch (finalElection) {
       case 'PPWP':
         if (slotPPWP) {
-          const dupAnomaly: AnomalyItem = {
-            type: 'DUPLICATE',
-            message: `Berkas ganda untuk Presiden (PPWP): "${file.name}" dan "${slotPPWP.name}"`,
-            fileName: file.name,
-          };
-          scannedFile.anomalies.push(dupAnomaly);
-          tpsAnomalies.push(dupAnomaly);
+          if (!scannedFile.isResolved) {
+            const dupAnomaly: AnomalyItem = {
+              type: 'DUPLICATE',
+              message: `Berkas ganda untuk Presiden (PPWP): "${file.name}" dan "${slotPPWP.name}"`,
+              fileName: file.name,
+            };
+            scannedFile.anomalies.push(dupAnomaly);
+            tpsAnomalies.push(dupAnomaly);
+          }
         } else {
           slotPPWP = scannedFile;
         }
@@ -356,13 +360,15 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPR_RI':
         if (slotDPR_RI) {
-          const dupAnomaly: AnomalyItem = {
-            type: 'DUPLICATE',
-            message: `Berkas ganda untuk DPR RI: "${file.name}" dan "${slotDPR_RI.name}"`,
-            fileName: file.name,
-          };
-          scannedFile.anomalies.push(dupAnomaly);
-          tpsAnomalies.push(dupAnomaly);
+          if (!scannedFile.isResolved) {
+            const dupAnomaly: AnomalyItem = {
+              type: 'DUPLICATE',
+              message: `Berkas ganda untuk DPR RI: "${file.name}" dan "${slotDPR_RI.name}"`,
+              fileName: file.name,
+            };
+            scannedFile.anomalies.push(dupAnomaly);
+            tpsAnomalies.push(dupAnomaly);
+          }
         } else {
           slotDPR_RI = scannedFile;
         }
@@ -370,13 +376,15 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPD':
         if (slotDPD) {
-          const dupAnomaly: AnomalyItem = {
-            type: 'DUPLICATE',
-            message: `Berkas ganda untuk DPD RI: "${file.name}" dan "${slotDPD.name}"`,
-            fileName: file.name,
-          };
-          scannedFile.anomalies.push(dupAnomaly);
-          tpsAnomalies.push(dupAnomaly);
+          if (!scannedFile.isResolved) {
+            const dupAnomaly: AnomalyItem = {
+              type: 'DUPLICATE',
+              message: `Berkas ganda untuk DPD RI: "${file.name}" dan "${slotDPD.name}"`,
+              fileName: file.name,
+            };
+            scannedFile.anomalies.push(dupAnomaly);
+            tpsAnomalies.push(dupAnomaly);
+          }
         } else {
           slotDPD = scannedFile;
         }
@@ -384,13 +392,15 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPRD_PROV':
         if (slotDPRD_PROV) {
-          const dupAnomaly: AnomalyItem = {
-            type: 'DUPLICATE',
-            message: `Berkas ganda untuk DPRD Provinsi: "${file.name}" dan "${slotDPRD_PROV.name}"`,
-            fileName: file.name,
-          };
-          scannedFile.anomalies.push(dupAnomaly);
-          tpsAnomalies.push(dupAnomaly);
+          if (!scannedFile.isResolved) {
+            const dupAnomaly: AnomalyItem = {
+              type: 'DUPLICATE',
+              message: `Berkas ganda untuk DPRD Provinsi: "${file.name}" dan "${slotDPRD_PROV.name}"`,
+              fileName: file.name,
+            };
+            scannedFile.anomalies.push(dupAnomaly);
+            tpsAnomalies.push(dupAnomaly);
+          }
         } else {
           slotDPRD_PROV = scannedFile;
         }
@@ -398,13 +408,15 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPRD_KAB':
         if (slotDPRD_KAB) {
-          const dupAnomaly: AnomalyItem = {
-            type: 'DUPLICATE',
-            message: `Berkas ganda untuk DPRD Kab/Ko: "${file.name}" dan "${slotDPRD_KAB.name}"`,
-            fileName: file.name,
-          };
-          scannedFile.anomalies.push(dupAnomaly);
-          tpsAnomalies.push(dupAnomaly);
+          if (!scannedFile.isResolved) {
+            const dupAnomaly: AnomalyItem = {
+              type: 'DUPLICATE',
+              message: `Berkas ganda untuk DPRD Kab/Ko: "${file.name}" dan "${slotDPRD_KAB.name}"`,
+              fileName: file.name,
+            };
+            scannedFile.anomalies.push(dupAnomaly);
+            tpsAnomalies.push(dupAnomaly);
+          }
         } else {
           slotDPRD_KAB = scannedFile;
         }
