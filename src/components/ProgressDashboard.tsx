@@ -337,10 +337,10 @@ export function ProgressDashboard({
       <div className="grid gap-4 lg:grid-cols-2">
         <ArchiveComparisonCard title="Berkas masuk · hari ini dibandingkan kemarin" current={countsByDate.get(todayKey) || 0} previous={countsByDate.get(yesterdayKey) || 0}
           currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={`Kemarin · ${formatArchiveDay(yesterdayKey)}`}
-          note="Tanggal mengikuti WIB. Penurunan berarti berkas masuk lebih sedikit, bukan bukti berkas dihapus. Hari tanpa berkas bertanggal dihitung 0; data tanpa tanggal tidak diestimasi." />
+          />
         <ArchiveComparisonCard title="Kumulatif upload · hari ini dibandingkan kemarin" current={cumulativeToday} previous={cumulativeYesterday}
           currentLabel={`Sampai ${formatArchiveDay(todayKey)}`} previousLabel={`Sampai ${formatArchiveDay(yesterdayKey)}`}
-          note="Kumulatif berdasarkan tanggal upload berkas aktif yang masih tercatat (WIB). Tidak termasuk HAPUS/IGNORE atau berkas tanpa tanggal upload valid." />
+          />
       </div>
 
       {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D) */}
