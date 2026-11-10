@@ -1,4 +1,4 @@
-import type { RawFileItem, RawTpsData } from '@/types';
+import type { RawFileItem } from '@/types';
 
 export const ARCHIVE_TIME_ZONE = 'Asia/Jakarta';
 const archiveDayFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -7,15 +7,6 @@ const archiveDayFormatter = new Intl.DateTimeFormat('en-CA', {
 
 export type AnalyticsRange = 'THIS_MONTH' | 'LAST_30' | 'ALL';
 export interface DailyActivity { date: string; rawDate: string; harian: number; kumulatif: number }
-export interface ArchiveSnapshot {
-  total: number;
-  at: string;
-  source: string;
-  rootFolderId: string;
-  metric: 'active-files-v1';
-}
-export interface ArchiveComparison { current: ArchiveSnapshot; previous: ArchiveSnapshot | null }
-
 export function isActiveArchiveFile(file: Pick<RawFileItem, 'overrideElection'>): boolean {
   return file.overrideElection !== 'HAPUS' && file.overrideElection !== 'IGNORE';
 }
@@ -40,8 +31,7 @@ export function formatArchiveDay(key: string): string {
 }
 
 export function fileActivityDay(file: Pick<RawFileItem, 'createdAt' | 'updatedAt'>): string | null {
-  return (file.createdAt ? archiveDateKey(file.createdAt) : null) ||
-    (file.updatedAt ? archiveDateKey(file.updatedAt) : null);
+  return file.createdAt ? archiveDateKey(file.createdAt) : null;
 }
 
 export function dailyActivityCounts(files: RawFileItem[], now = new Date()): Map<string, number> {
@@ -78,19 +68,8 @@ export function compareArchiveCounts(current: number, previous: number | null) {
   };
 }
 
-export function countActiveArchiveFiles(records: Pick<RawTpsData, 'files'>[]): number {
-  return records.reduce((total, record) => total + (record.files || []).filter(isActiveArchiveFile).length, 0);
-}
-
-export function isArchiveSnapshot(value: unknown): value is ArchiveSnapshot {
-  if (!value || typeof value !== 'object') return false;
-  const snapshot = value as ArchiveSnapshot;
-  return Number.isInteger(snapshot.total) && snapshot.total >= 0 && snapshot.metric === 'active-files-v1' &&
-    typeof snapshot.rootFolderId === 'string' && typeof snapshot.source === 'string' &&
-    typeof snapshot.at === 'string' && !Number.isNaN(new Date(snapshot.at).getTime());
-}
-
-export function nextArchiveComparison(existing: unknown, current: ArchiveSnapshot): ArchiveComparison {
-  const candidate = (existing as ArchiveComparison | null)?.current;
-  return { current, previous: isArchiveSnapshot(candidate) && candidate.rootFolderId === current.rootFolderId ? candidate : null };
+export function cumulativeUploadCount(counts: Map<string, number>, throughDate: string): number {
+  let total = 0;
+  for (const [date, count] of counts) if (date <= throughDate) total += count;
+  return total;
 }

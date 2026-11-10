@@ -4,7 +4,6 @@ import {
   fetchAllFileOverrides,
   deleteFileOverride,
   saveKecamatanScanToFirestore,
-  recordArchiveScanComparison,
 } from './firebase';
 
 export interface SyncProgressCallback {
@@ -113,10 +112,6 @@ export async function performFullDriveSync(
     }
   }
 
-  if (!errors.length) {
-    try { await recordArchiveScanComparison('Pemindaian lengkap browser', rootFolderId); }
-    catch (error) { errors.push(`Riwayat perbandingan gagal: ${String(error)}`); }
-  }
   if (onProgress) {
     onProgress(100, 'Sinkronisasi selesai!', undefined);
   }
@@ -243,7 +238,6 @@ export async function performSmartQuickSync(
 
   // Jika ada perubahan, simpan HANYA kecamatan yang berubah ke Cloud Firestore
   if (hasChanges && changedKecamatans.size > 0) {
-    let allSaved = true;
     for (const kec of changedKecamatans) {
       const kecData = updatedData.filter(
         (t) => t.kecamatan.toLowerCase() === kec.toLowerCase()
@@ -251,13 +245,8 @@ export async function performSmartQuickSync(
       try {
         await saveKecamatanScanToFirestore(kec, kecData);
       } catch (dbErr) {
-        allSaved = false;
         console.warn(`Gagal menyimpan quick-sync ${kec} ke Firestore:`, dbErr);
       }
-    }
-    if (allSaved) {
-      try { await recordArchiveScanComparison('Quick-sync browser (pembaruan parsial)', rootFolderId); }
-      catch (error) { console.warn('Riwayat perbandingan quick-sync gagal:', error); }
     }
     return {
       success: true,

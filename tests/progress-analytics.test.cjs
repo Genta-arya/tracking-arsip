@@ -43,7 +43,7 @@ test('charts only contain real active days, no simulated fallback or missing tim
   ];
   const counts=analytics.dailyActivityCounts(files,now);
   assert.deepEqual(plain(analytics.buildActivityChart(counts,'THIS_MONTH',now)).map(day=>[day.rawDate,day.harian,day.kumulatif]),[
-    ['2026-11-08',2,2],['2026-11-10',2,4]
+    ['2026-11-08',1,1],['2026-11-10',2,3]
   ]);
   assert.equal(counts.get('2026-11-09'),undefined);
   assert.equal(analytics.buildActivityChart(analytics.dailyActivityCounts([{},{}],now),'ALL',now).length,0);
@@ -56,19 +56,13 @@ test('range filters retain only active dates and reset cumulative to the selecte
   assert.equal(analytics.buildActivityChart(counts,'THIS_MONTH',now).at(-1).kumulatif,3);
 });
 
-test('snapshot metric excludes HAPUS/IGNORE but includes files without dates', () => {
-  assert.equal(analytics.countActiveArchiveFiles([{files:[{id:'1'},{id:'2',overrideElection:'HAPUS'},{id:'3',overrideElection:'IGNORE'},{id:'4',isResolved:true}]}]),2);
-});
-
-test('snapshots rotate even for unchanged scans, and reset baseline for another root', () => {
-  const current={total:50,at:'2026-11-10T03:00:00Z',source:'Scan',rootFolderId:'root',metric:'active-files-v1'};
-  const first=analytics.nextArchiveComparison(null,current);
-  assert.equal(first.previous,null);
-  const next={...current,total:55,at:'2026-11-10T04:00:00Z'};
-  const second=analytics.nextArchiveComparison(first,next);
-  assert.equal(second.previous.total,50);
-  const third=analytics.nextArchiveComparison(second,{...next,at:'2026-11-10T05:00:00Z'});
-  assert.equal(third.previous.total,55);
-  assert.equal(analytics.nextArchiveComparison(third,{...next,rootFolderId:'other'}).previous,null);
-  assert.equal(analytics.nextArchiveComparison({current:{total:'bad'}},next).previous,null);
+test('cumulative totals use upload dates only and need no saved scan history', () => {
+  const counts = new Map([['2026-11-08', 20], ['2026-11-09', 30], ['2026-11-10', 5]]);
+  const before = analytics.cumulativeUploadCount(counts, '2026-11-09');
+  const current = analytics.cumulativeUploadCount(counts, '2026-11-10');
+  assert.equal(before, 50);
+  assert.equal(current, 55);
+  assert.deepEqual(plain(analytics.compareArchiveCounts(current, before)), {delta:5,percent:10,direction:'up'});
+  assert.equal(analytics.fileActivityDay({updatedAt:'2026-11-10T03:00:00Z'}),null);
+  assert.equal(analytics.fileActivityDay({createdAt:'bad',updatedAt:'2026-11-10T03:00:00Z'}),null);
 });

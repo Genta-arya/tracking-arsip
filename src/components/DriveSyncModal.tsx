@@ -4,7 +4,7 @@ import { RefreshCw, Play, Layers, Maximize2, Minus, CheckCircle2, Clock, FolderO
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
-import { saveKecamatanScanToFirestore, recordArchiveScanComparison, fetchAllFileOverrides, deleteFileOverride } from '@/services/firebase';
+import { saveKecamatanScanToFirestore, fetchAllFileOverrides, deleteFileOverride } from '@/services/firebase';
 import { RawTpsData, AppConfig } from '@/types';
 import { MisplacedFilesScanner } from '@/components/MisplacedFilesScanner';
 import { Scan3DAnimation } from '@/components/Scan3DAnimation';
@@ -137,7 +137,6 @@ export function DriveSyncModal({
       setStatusMessage(`Menyimpan data "${kec.name}" ke Cloud Firestore untuk seluruh staf...`);
       try {
         await saveKecamatanScanToFirestore(kec.name, scannedKecData);
-        await recordArchiveScanComparison(`Pemindaian manual ${kec.name}`, config.rootFolderId);
       } catch (dbErr: any) {
         console.error('Gagal menyimpan ke Firestore:', dbErr);
         firestoreError = dbErr.message || String(dbErr);
@@ -261,13 +260,6 @@ export function DriveSyncModal({
       setScanProgress(Math.round(((i + 1) / kecamatanFolders.length) * 100));
     }
 
-    if (!scanErrors.length && !firestoreErrors.length) {
-      try {
-        await recordArchiveScanComparison('Pemindaian manual seluruh kecamatan', config.rootFolderId);
-      } catch (error) {
-        firestoreErrors.push(`Data tersimpan, tetapi riwayat perbandingan gagal: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
     setScanProgress(100);
     onSyncComplete(combinedData);
     setIsScanning(false);
