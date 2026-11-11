@@ -15,7 +15,13 @@ import {
   deleteDoc,
   collection,
   onSnapshot,
+  runTransaction,
+  serverTimestamp,
+  query,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
+import { correctionState, correctionAuditPayload, type CorrectionAudit } from '@/utils/correctionAudit';
 import { RawTpsData, OverrideElectionType } from '@/types';
 
 const firebaseConfig = {
@@ -235,70 +241,48 @@ export async function updateFileAnomalyStatus(params: {
   isResolved: boolean;
   resolutionNote?: string;
 }): Promise<void> {
-  if (!auth.currentUser) {
-    throw new Error('Akses ditolak: Hanya admin terautentikasi yang dapat mengubah status anomali.');
+  const user = auth.currentUser;
+  if (!user || user.email?.toLowerCase() !== ADMIN_AUTH_EMAIL) {
+    throw new Error('Akses ditolak: Hanya Admin Teknis yang dapat mengoreksi berkas.');
   }
-
   const cleanKec = params.kecamatan.trim();
   const docRef = doc(db, 'scanned_data', cleanKec);
-  const snap = await getDoc(docRef);
-
-  if (snap.exists()) {
-    const data = snap.data();
-    const tpsList: RawTpsData[] = data.tpsList || [];
-
-    // Cari TPS dan file yang bersangkutan
-    const tps = tpsList.find((t) => t.tpsFolderId === params.tpsFolderId);
-    if (tps) {
-      const file = tps.files.find((f) => f.id === params.fileId);
-      if (file) {
-        if (!params.overrideElection && !params.isResolved) {
-          delete file.overrideElection;
-          file.isResolved = false;
-          delete file.resolutionNote;
-          delete file.resolvedAt;
-          delete file.resolvedBy;
-        } else {
-          file.overrideElection = params.overrideElection;
-          file.isResolved = params.isResolved;
-          file.resolutionNote = params.resolutionNote || '';
-          file.resolvedAt = new Date().toISOString();
-          file.resolvedBy = auth.currentUser.email || ADMIN_AUTH_EMAIL;
-        }
-
-        // Simpan kembali ke doc kecamatan di Firestore
-        const cleanTpsList = JSON.parse(JSON.stringify(tpsList));
-        await setDoc(docRef, { ...data, tpsList: cleanTpsList }, { merge: true });
-      }
-    }
-  }
-
-  // Simpan juga ke koleksi permanen file_overrides
   const overrideRef = doc(db, 'file_overrides', params.fileId);
-  if (!params.overrideElection && !params.isResolved) {
-    try {
-      await deleteDoc(overrideRef);
-    } catch (e) {
-      console.warn('Gagal menghapus file_overrides doc:', e);
+  const auditRef = doc(collection(db, 'correction_history'));
+  // Ketiga perubahan harus berhasil bersama: kegagalan riwayat membatalkan koreksi.
+  await runTransaction(db, async transaction => {
+    const snap = await transaction.get(docRef);
+    if (!snap.exists()) throw new Error('Data kecamatan tidak ditemukan. Muat ulang data sebelum mengoreksi.');
+    const tpsList: RawTpsData[] = snap.data().tpsList || [];
+    const tps = tpsList.find(t => t.tpsFolderId === params.tpsFolderId);
+    const file = tps?.files.find(f => f.id === params.fileId);
+    if (!tps || !file) throw new Error('Berkas tidak ditemukan di TPS ini. Muat ulang data sebelum mengoreksi.');
+    const reset = !params.overrideElection && !params.isResolved;
+    const after = correctionState({ overrideElection:reset ? undefined : params.overrideElection, isResolved:params.isResolved, resolutionNote:reset ? '' : params.resolutionNote });
+    if (JSON.stringify(correctionState(file)) === JSON.stringify(after)) return;
+    const event = correctionAuditPayload(tps, file, after, {uid:user.uid,email:user.email!,displayName:user.displayName});
+    if (reset) {
+      delete file.overrideElection; file.isResolved = false;
+      delete file.resolutionNote; delete file.resolvedAt; delete file.resolvedBy;
+      transaction.delete(overrideRef);
+    } else {
+      const resolvedAt = new Date().toISOString();
+      Object.assign(file, {overrideElection:params.overrideElection,isResolved:params.isResolved,resolutionNote:params.resolutionNote || '',resolvedAt,resolvedBy:user.email});
+      transaction.set(overrideRef, {fileId:params.fileId,kecamatan:cleanKec,tpsFolderId:params.tpsFolderId,...after,resolvedAt,resolvedBy:user.email}, {merge:true});
     }
-  } else {
-    await setDoc(
-      overrideRef,
-      JSON.parse(
-        JSON.stringify({
-          fileId: params.fileId,
-          kecamatan: cleanKec,
-          tpsFolderId: params.tpsFolderId,
-          overrideElection: params.overrideElection || null,
-          isResolved: params.isResolved,
-          resolutionNote: params.resolutionNote || '',
-          resolvedAt: new Date().toISOString(),
-          resolvedBy: auth.currentUser.email || ADMIN_AUTH_EMAIL,
-        })
-      ),
-      { merge: true }
-    );
-  }
+    transaction.update(docRef, {tpsList:JSON.parse(JSON.stringify(tpsList))});
+    transaction.set(auditRef, {...event,createdAt:serverTimestamp()});
+  });
+}
+
+/** Riwayat append-only; waktu berasal dari server dan ditampilkan dalam WIB. */
+export function subscribeCorrectionHistory(callback: (rows: CorrectionAudit[]) => void, onError: (error: Error) => void) {
+  return onSnapshot(query(collection(db,'correction_history'),orderBy('createdAt','desc'),limit(100)), snapshot => {
+    callback(snapshot.docs.map(item => {
+      const data=item.data();
+      return {...data,id:item.id,createdAt:data.createdAt?.toDate?.().toISOString() || ''} as CorrectionAudit;
+    }));
+  },onError);
 }
 
 /**

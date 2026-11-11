@@ -32,6 +32,29 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Audit perbaikan: hanya tambahan baru, identitas dan waktu divalidasi server.
+    match /correction_history/{eventId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.auth.token.email == 'teknis.kpusekadau@gmail.com'
+        && request.resource.data.keys().hasOnly(['actorUid', 'actorName', 'actorEmail', 'action', 'kecamatan', 'desa', 'tpsFolderName', 'tpsFolderId', 'fileId', 'fileName', 'fileUrl', 'before', 'after', 'createdAt'])
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorEmail == request.auth.token.email
+        && request.resource.data.actorName is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.action in ['CORRECT', 'REMOVE', 'RESET', 'RESTORE']
+        && request.resource.data.kecamatan is string
+        && request.resource.data.desa is string
+        && request.resource.data.tpsFolderName is string
+        && request.resource.data.tpsFolderId is string
+        && request.resource.data.fileId is string
+        && request.resource.data.fileName is string
+        && request.resource.data.fileUrl is string
+        && request.resource.data.before is map
+        && request.resource.data.after is map;
+      allow update, delete: if false;
+    }
+
     // Override/Koreksi Manual Status Anomali Berkas
     match /file_overrides/{fileId} {
       allow read: if true;
