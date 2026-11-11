@@ -800,6 +800,10 @@ export function App() {
           </div>
         </div>
       </footer>
+      <p className="bg-kpu-darkMaroon pb-4 text-center text-[10px] text-slate-400">
+        &copy; {new Date().getFullYear()} · Developed by{' '}
+        <a href="https://mgentaarya.my.id" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-white hover:underline focus-visible:underline">Genta</a>
+      </p>
 
       {/* 4. Modals */}
       <FileDetailModal
