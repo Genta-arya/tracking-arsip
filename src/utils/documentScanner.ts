@@ -3,6 +3,11 @@ export type Corners = [Point, Point, Point, Point];
 export const FULL_PAGE: Corners = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
 export const MAX_SCAN_PAGES = 25;
 
+export function scanPdfFilename(value: string): string {
+  const name = value.replace(/[\x00-\x1f\x7f<>:"/\\|?*]/g, '').trim().replace(/(?:\.pdf)+$/i, '').replace(/[. ]+$/g, '').slice(0, 120).trim();
+  return name ? `${name}.pdf` : '';
+}
+
 /** Deteksi kontur dari tepi RGB, tanpa asumsi bahwa kertas harus putih. */
 export function detectPaper(image: ImageData): Corners | null {
   const { width: w, height: h, data } = image;
