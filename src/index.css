@@ -108,7 +108,7 @@ svg:focus {
 }
 
 .desa-zone-glow {
-  animation: desa-zone-breathe 1.8s ease-in-out infinite;
+  animation: desa-zone-breathe 4s ease-in-out infinite;
 }
 
 @keyframes desa-zone-march {
