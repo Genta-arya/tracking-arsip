@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -26,6 +26,37 @@ import {
   getDesaCoordinate,
   getKecamatanCoordinate,
 } from '@/data/sekadauCoordinates';
+
+/** SVG khusus agar stroke tetap beranimasi saat layer peta lain memakai Canvas. */
+function SelectedDesaZone({ lat, lng, name }: { lat: number; lng: number; name: string }) {
+  const renderer = useMemo(() => L.svg({ padding: 0.5 }), []);
+  const map = useMap();
+  useEffect(() => () => {
+    if (renderer && map.hasLayer(renderer)) map.removeLayer(renderer);
+  }, [map, renderer]);
+  return (
+    <>
+      <Circle
+        center={[lat, lng]}
+        radius={900}
+        renderer={renderer}
+        interactive={false}
+        pathOptions={{ color: '#fbbf24', weight: 10, opacity: 0.18, fillColor: '#f59e0b', fillOpacity: 0.08, className: 'desa-zone-glow' }}
+      />
+      <Circle
+        center={[lat, lng]}
+        radius={900}
+        renderer={renderer}
+        pathOptions={{ color: '#fbbf24', weight: 3, opacity: 1, fill: false, dashArray: '12 8', lineCap: 'round', className: 'desa-zone-stroke' }}
+      >
+        <Tooltip sticky direction="top">
+          <strong>Zona fokus Desa {name}</strong>
+          <div>Penanda lokasi · bukan batas administratif</div>
+        </Tooltip>
+      </Circle>
+    </>
+  );
+}
 
 interface SekadauInteractiveMapProps {
   selectedKecamatan: string;
@@ -969,6 +1000,18 @@ export function SekadauInteractiveMap({
                       </Marker>
                     );
                   })}
+
+                {selectedKecamatan !== 'ALL' && selectedDesa !== 'ALL' && (() => {
+                  const selected = desaData.find(d => d.name.toLowerCase() === selectedDesa.toLowerCase());
+                  return selected ? (
+                    <SelectedDesaZone
+                      key={`${selectedKecamatan}:${selected.name}`}
+                      lat={selected.coords.lat}
+                      lng={selected.coords.lng}
+                      name={selected.name}
+                    />
+                  ) : null;
+                })()}
 
                 {/* MODE 2: JIKA KECAMATAN DIPILIH -> Tampilkan Pin Desa-Desa */}
                 {selectedKecamatan !== 'ALL' &&
