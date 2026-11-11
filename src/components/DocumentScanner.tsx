@@ -4,7 +4,7 @@ import { Camera, ScanLine, X, Download, Plus, RotateCw, Trash2, ArrowLeft, Arrow
 import './DocumentScanner.css';
 import { Corners, PdfScanImage, FULL_PAGE, MAX_SCAN_PAGES, loadScanImage, paperFromImage, renderScanPage, validCorners, createScanPdf } from '@/utils/documentScanner';
 
-interface ScanPage { id: string; url: string; corners: Corners; rotation: number; brightness: number; contrast: number; grayscale: boolean; width: number; height: number }
+interface ScanPage { id: string; url: string; corners: Corners; rotation: number; brightness: number; contrast: number; grayscale: boolean; magicColor: boolean; width: number; height: number }
 const actionClass = 'scan-button';
 export function DocumentScanner() {
   const [open, setOpen] = useState(false), [pages, setPages] = useState<ScanPage[]>([]), [selected, setSelected] = useState(0);
@@ -42,7 +42,7 @@ export function DocumentScanner() {
     const timer = window.setInterval(() => {
       const v = video.current; if (!v || v.readyState < 2 || !v.videoWidth) return;
       setCameraSize({ width: v.videoWidth, height: v.videoHeight });
-      setDetected(paperFromImage(v, v.videoWidth, v.videoHeight));
+      setDetected(paperFromImage(v, v.videoWidth, v.videoHeight, 240));
     }, 500);
     return () => window.clearInterval(timer);
   }, [stream]);
@@ -50,7 +50,7 @@ export function DocumentScanner() {
     if (!open || !active || crop || stream) return;
     let stale = false; setPreview('');
     const timer = window.setTimeout(() => {
-      renderScanPage(active.url, active.corners, active.rotation, active.brightness, active.contrast, active.grayscale)
+      renderScanPage(active.url, active.corners, active.rotation, active.brightness, active.contrast, active.grayscale, active.magicColor)
         .then(canvas => { if (!stale) setPreview(canvas.toDataURL('image/jpeg', 0.85)); })
         .catch(e => { if (!stale) setError(e.message); });
     }, 150);
@@ -79,7 +79,7 @@ export function DocumentScanner() {
     const compressed = await new Promise<Blob>((resolve, reject) => normalized.toBlob(b => b ? resolve(b) : reject(new Error('Gagal menyimpan gambar.')), 'image/jpeg', 0.92));
     const url = URL.createObjectURL(compressed); urls.current.add(url);
     const corners = paperFromImage(normalized, normalized.width, normalized.height);
-    const page: ScanPage = { id: target || (globalThis.crypto?.randomUUID?.() ?? `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`), url, corners: corners || FULL_PAGE, rotation: 0, brightness: 1, contrast: 1, grayscale: false, width: normalized.width, height: normalized.height };
+    const page: ScanPage = { id: target || (globalThis.crypto?.randomUUID?.() ?? `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`), url, corners: corners || FULL_PAGE, rotation: 0, brightness: 1, contrast: 1, grayscale: false, magicColor: false, width: normalized.width, height: normalized.height };
     setPages(list => {
       const index = target ? list.findIndex(p => p.id === target) : -1;
       if (index >= 0) { const old = list[index]; URL.revokeObjectURL(old.url); urls.current.delete(old.url); return list.map(p => p.id === target ? page : p); }
@@ -119,7 +119,7 @@ export function DocumentScanner() {
       for (let i = 0; i < pages.length; i++) {
         setMessage(`Menyiapkan PDF ${i + 1}/${pages.length}…`); await new Promise(resolve => setTimeout(resolve, 0));
         const p = pages[i];
-        const canvas = await renderScanPage(p.url, p.corners, p.rotation, p.brightness, p.contrast, p.grayscale);
+        const canvas = await renderScanPage(p.url, p.corners, p.rotation, p.brightness, p.contrast, p.grayscale, p.magicColor);
         canvases.push({ width: canvas.width, height: canvas.height, jpeg: Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]), c => c.charCodeAt(0)) });
         canvas.width = 0; canvas.height = 0;
       }
@@ -185,7 +185,7 @@ export function DocumentScanner() {
             <div className="scan-tabs" role="tablist" aria-label="Alat edit halaman">{([{key:'crop',label:'Crop',icon:Crop},{key:'adjust',label:'Warna',icon:SlidersHorizontal},{key:'pages',label:'Halaman',icon:Layers}] as const).map(t => <button key={t.key} id={`scan-tab-${t.key}`} role="tab" aria-selected={tool === t.key} aria-controls="scan-tool-panel" disabled={busy || (crop && t.key !== 'crop')} onClick={() => setTool(t.key)}><t.icon size={18}/>{t.label}</button>)}</div>
             <div className="scan-tool-panel" id="scan-tool-panel" role="tabpanel" aria-labelledby={`scan-tab-${tool}`}>
               {tool === 'crop' && <><h4>Bingkai yang pas.</h4><p>Buang area di luar kertas dan luruskan perspektifnya.</p><button className="scan-primary scan-wide" disabled={busy} onClick={applyCrop}>{crop ? <Check size={17}/> : <Crop size={17}/>} {crop ? 'Terapkan crop & luruskan' : 'Edit crop · geser 4 sudut'}</button><div className="scan-button-row"><button className={actionClass} disabled={busy} onClick={() => void autoCrop()}><ScanLine size={16}/>Auto crop</button><button className={actionClass} disabled={busy} onClick={() => { change({ corners: FULL_PAGE }); setCrop(true); }}>Gambar penuh</button></div><div className="scan-tip"><ScanLine size={20}/><span>Tarik setiap sudut agar tepat mengikuti tepi dokumen.</span></div></>}
-              {tool === 'adjust' && <><h4>Lebih jelas dibaca.</h4><p>Atur cahaya dan pilih tampilan dokumen.</p><div className="scan-color-options"><button className={!active.grayscale ? 'selected' : ''} aria-pressed={!active.grayscale} disabled={busy} onClick={() => change({ grayscale: false })}><span className="color-swatch"/>Warna asli</button><button className={active.grayscale ? 'selected' : ''} aria-pressed={active.grayscale} disabled={busy} onClick={() => change({ grayscale: true })}><span className="mono-swatch"/>Hitam putih</button></div>{(['brightness','contrast'] as const).map(key => <label className="scan-range" key={key}><span>{key === 'brightness' ? 'Kecerahan' : 'Kontras'}<b>{Math.round(active[key] * 100)}%</b></span><input type="range" min="0.5" max="1.8" step="0.05" value={active[key]} disabled={busy} onChange={e => change({ [key]: Number(e.target.value) })}/></label>)}<button className="scan-text-button" disabled={busy} onClick={() => change({ brightness: 1, contrast: 1, grayscale: false })}>Kembalikan warna asli</button></>}
+              {tool === 'adjust' && <><h4>Lebih jelas dibaca.</h4><p>Atur cahaya dan pilih tampilan dokumen.</p><div className="scan-color-options"><button className={!active.grayscale && !active.magicColor ? 'selected' : ''} aria-pressed={!active.grayscale && !active.magicColor} disabled={busy} onClick={() => change({ grayscale: false, magicColor: false })}><span className="color-swatch"/>Warna asli</button><button className={active.grayscale ? 'selected' : ''} aria-pressed={active.grayscale} disabled={busy} onClick={() => change({ grayscale: true, magicColor: false })}><span className="mono-swatch"/>Hitam putih</button><button className={active.magicColor ? 'selected' : ''} aria-pressed={active.magicColor} disabled={busy} onClick={() => change({ grayscale: false, magicColor: true })}><span className="magic-swatch"/>Warna Ajaib</button></div>{(['brightness','contrast'] as const).map(key => <label className="scan-range" key={key}><span>{key === 'brightness' ? 'Kecerahan' : 'Kontras'}<b>{Math.round(active[key] * 100)}%</b></span><input type="range" min="0.5" max="1.8" step="0.05" value={active[key]} disabled={busy} onChange={e => change({ [key]: Number(e.target.value) })}/></label>)}<button className="scan-text-button" disabled={busy} onClick={() => change({ brightness: 1, contrast: 1, grayscale: false, magicColor: false })}>Kembalikan warna asli</button></>}
               {tool === 'pages' && <><h4>Urutan yang tepat.</h4><p>Pindahkan posisi halaman atau ganti foto yang kurang jelas.</p><div className="scan-reorder"><button aria-label="Pindah halaman ke kiri" className="scan-icon-button" disabled={busy || selected === 0} onClick={() => move(-1)}><ArrowLeft size={19}/></button><span>Urutan <b>{selected + 1} dari {pages.length}</b></span><button aria-label="Pindah halaman ke kanan" className="scan-icon-button" disabled={busy || selected === pages.length - 1} onClick={() => move(1)}><ArrowRight size={19}/></button></div><button className={`${actionClass} scan-wide`} disabled={busy} onClick={() => void startCamera(true)}><RefreshCw size={17}/>Ambil ulang halaman</button><button className={`${actionClass} scan-wide`} disabled={busy} onClick={() => { replacement.current = active.id; input.current?.click(); }}><ImagePlus size={17}/>Ganti dari galeri</button><button className="scan-delete" disabled={busy} onClick={removePage}><Trash2 size={16}/>Hapus halaman</button></>}
             </div>
             <div className="scan-local-note"><ShieldCheck size={16}/><span>Foto diproses di perangkat Anda.</span></div>
