@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Camera, ScanLine, X, Download, Plus, RotateCw, Trash2, ArrowLeft, ArrowRight, RefreshCw, Crop, SlidersHorizontal, Layers, ImagePlus, Check, ShieldCheck, ChevronRight } from 'lucide-react';
 import './DocumentScanner.css';
-import { Corners, PdfScanImage, FULL_PAGE, MAX_SCAN_PAGES, loadScanImage, paperFromImage, renderScanPage, validCorners, createScanPdf, scanPdfFilename } from '@/utils/documentScanner';
+import { DocumentDetector } from '@/utils/documentDetectorClient';
+import { Corners, PdfScanImage, FULL_PAGE, MAX_SCAN_PAGES, loadScanImage, renderScanPage, validCorners, createScanPdf, scanPdfFilename } from '@/utils/documentScanner';
 
 interface ScanPage { id: string; url: string; corners: Corners; rotation: number; brightness: number; contrast: number; grayscale: boolean; magicColor: boolean; width: number; height: number }
 const actionClass = 'scan-button';
@@ -19,6 +20,18 @@ export function DocumentScanner() {
   const [pdfName, setPdfName] = useState('');
   const [nameError, setNameError] = useState('');
   const popupRef = useRef<HTMLDialogElement>(null);
+  const detector = useRef<DocumentDetector | null>(null);
+  const [detectionStatus, setDetectionStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  useEffect(() => {
+    if (!open) return;
+    setDetectionStatus('loading');
+    let service: DocumentDetector;
+    try { service = new DocumentDetector(); detector.current = service; }
+    catch { setDetectionStatus('error'); setError('Deteksi otomatis tidak tersedia di browser ini. Gunakan crop manual.'); return; }
+    service.ready().then(() => { if (detector.current === service) setDetectionStatus('ready'); })
+      .catch(e => { if (detector.current === service) { setDetectionStatus('error'); setError(e.message); } });
+    return () => { detector.current = null; service.dispose(); };
+  }, [open]);
   useEffect(() => {
     const modal = popupRef.current;
     if (open && popup && modal && !modal.open) modal.showModal();
@@ -55,12 +68,28 @@ export function DocumentScanner() {
     if (!stream || !video.current) return;
     video.current.srcObject = stream;
     video.current.play().catch(() => setError('Kamera belum dapat diputar. Tutup lalu buka kamera kembali.'));
-    const timer = window.setInterval(() => {
-      const v = video.current; if (!v || v.readyState < 2 || !v.videoWidth) return;
-      setCameraSize({ width: v.videoWidth, height: v.videoHeight });
-      setDetected(paperFromImage(v, v.videoWidth, v.videoHeight, 240));
-    }, 500);
-    return () => window.clearInterval(timer);
+    let cancelled = false, timer = 0, misses = 0;
+    const scanFrame = async () => {
+      const v = video.current, service = detector.current;
+      if (!cancelled && v && v.readyState >= 2 && v.videoWidth && service) {
+        setCameraSize({ width: v.videoWidth, height: v.videoHeight });
+        try {
+          const corners = await service.detect(v, v.videoWidth, v.videoHeight, 480);
+          if (!cancelled) {
+            if (corners) {
+              misses = 0;
+              setDetected(previous => {
+                if (!previous || previous.some((p,i) => Math.hypot(p.x-corners[i].x,p.y-corners[i].y)>0.12)) return corners;
+                return corners.map((p,i) => ({x:previous[i].x*0.25+p.x*0.75,y:previous[i].y*0.25+p.y*0.75})) as Corners;
+              });
+            } else if (++misses >= 3) setDetected(null);
+          }
+        } catch (e) { if (!cancelled) { setDetected(null); setDetectionStatus('error'); setError(e instanceof Error ? e.message : 'Deteksi otomatis gagal.'); } return; }
+      }
+      if (!cancelled) timer = window.setTimeout(() => void scanFrame(), 350);
+    };
+    void scanFrame();
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [stream]);
   useEffect(() => {
     if (!open || !active || crop || stream) return;
@@ -85,7 +114,7 @@ export function DocumentScanner() {
       media.current = result; setStream(result);
     } catch (e) { setError(e instanceof Error ? `Camera: ${e.message}. Anda tetap bisa menambahkan foto dari galeri.` : 'Camera tidak dapat dibuka.'); }
   };
-  const addBlob = async (blob: Blob, target: string | null) => {
+  const addBlob = async (blob: Blob, target: string | null, cameraCorners: Corners | null = null) => {
     const sourceUrl = URL.createObjectURL(blob); let image: HTMLImageElement;
     try { image = await loadScanImage(sourceUrl); } catch (e) { URL.revokeObjectURL(sourceUrl); throw e; }
     // Simpan salinan terkompresi agar 25 foto kamera tidak memenuhi memori.
@@ -94,7 +123,10 @@ export function DocumentScanner() {
     normalized.getContext('2d')!.drawImage(image, 0, 0, normalized.width, normalized.height); URL.revokeObjectURL(sourceUrl);
     const compressed = await new Promise<Blob>((resolve, reject) => normalized.toBlob(b => b ? resolve(b) : reject(new Error('Gagal menyimpan gambar.')), 'image/jpeg', 0.92));
     const url = URL.createObjectURL(compressed); urls.current.add(url);
-    const corners = paperFromImage(normalized, normalized.width, normalized.height);
+    let corners: Corners | null = cameraCorners;
+    setMessage('Menganalisis batas dan perspektif dokumen…');
+    try { corners = await detector.current?.detect(normalized, normalized.width, normalized.height) || cameraCorners; }
+    catch (e) { setError(e instanceof Error ? e.message : 'Deteksi otomatis gagal. Foto tetap tersedia untuk crop manual.'); }
     const page: ScanPage = { id: target || (globalThis.crypto?.randomUUID?.() ?? `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`), url, corners: corners || FULL_PAGE, rotation: 0, brightness: 1, contrast: 1, grayscale: false, magicColor: false, width: normalized.width, height: normalized.height };
     setPages(list => {
       const index = target ? list.findIndex(p => p.id === target) : -1;
@@ -111,7 +143,7 @@ export function DocumentScanner() {
     try {
       const v = video.current, canvas = document.createElement('canvas'); canvas.width = v.videoWidth; canvas.height = v.videoHeight; canvas.getContext('2d')!.drawImage(v, 0, 0);
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('Gagal mengambil gambar.')), 'image/jpeg', 0.92));
-      await addBlob(blob, replacement.current);
+      await addBlob(blob, replacement.current, detected);
       if (!replacement.current) setSelected(pages.length);
       replacement.current = null; stopCamera();
     } catch (e) { setError(e instanceof Error ? e.message : 'Gagal mengambil foto.'); } finally { setBusy(false); }
@@ -151,11 +183,17 @@ export function DocumentScanner() {
     setCrop(!crop); setError('');
   };
   const autoCrop = async () => {
-    if (!active) return;
+    if (!active || busy) return;
+    setBusy(true); setError(''); setMessage('Menganalisis batas dan perspektif dokumen…');
     try {
-      const image = await loadScanImage(active.url), corners = paperFromImage(image, image.width, image.height);
-      change({ corners: corners || FULL_PAGE }); setMessage(corners ? 'Crop otomatis diterapkan.' : 'Kertas belum terdeteksi. Geser sudut secara manual.'); setCrop(true);
-    } catch { setError('Gagal mendeteksi kertas.'); }
+      const image = await loadScanImage(active.url), service = detector.current;
+      if (!service) throw new Error('Mesin deteksi belum siap. Buka ulang scanner.');
+      const corners = await service.detect(image, image.width, image.height);
+      if (corners) change({ corners });
+      setMessage(corners ? 'Batas dokumen ditemukan. Periksa empat sudut sebelum menerapkan crop.' : 'Batas belum cukup jelas. Crop sebelumnya dipertahankan; Anda bisa menyesuaikan empat sudut.');
+      setCrop(true); setTool('crop');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Gagal mendeteksi kertas.'); }
+    finally { setBusy(false); }
   };
   const removePage = () => {
     if (!active) return;
@@ -179,7 +217,7 @@ export function DocumentScanner() {
           <div className="scan-camera-view" style={{ aspectRatio: `${cameraSize.width}/${cameraSize.height}`, width: `min(100%, ${60 * cameraSize.width / cameraSize.height}dvh)` }}>
             <video ref={video} autoPlay muted playsInline className="h-full w-full object-contain" />
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full"><polygon points={(detected || FULL_PAGE).map(p => `${p.x * 100},${p.y * 100}`).join(' ')} fill={detected ? '#10b98115' : 'transparent'} stroke={detected ? '#6ee7b7' : '#ffffff80'} strokeWidth="0.5" strokeDasharray={detected ? undefined : '2 2'} /></svg>
-            <div className={`scan-detection ${detected ? 'found' : ''}`}>{detected ? <Check size={14} /> : <ScanLine size={14} />}{detected ? 'Kertas terdeteksi · siap difoto' : 'Mencari batas kertas…'}</div>
+            <div className={`scan-detection ${detected ? 'found' : ''}`}>{detected ? <Check size={14} /> : <ScanLine size={14} />}{detectionStatus === 'loading' ? 'Menyiapkan deteksi dokumen…' : detectionStatus === 'error' ? 'Deteksi tidak tersedia · foto & crop manual' : detected ? 'Kertas terdeteksi · siap difoto' : 'Mencari batas kertas…'}</div>
             <div role="group" aria-label="Kontrol kamera" className="scan-camera-controls">
               <button className="scan-camera-back" disabled={busy} onClick={stopCamera}><ArrowLeft size={20} /><span>Kembali</span></button>
               <button className="scan-shutter" aria-label={replacement.current ? 'Ganti halaman ini' : 'Ambil foto'} disabled={busy} onClick={() => void capture()}><span>{busy ? <RefreshCw className="animate-spin" size={25} /> : <Camera size={28} />}</span><b>{busy ? 'Memproses…' : replacement.current ? 'Ganti halaman ini' : 'Ambil foto'}</b></button>

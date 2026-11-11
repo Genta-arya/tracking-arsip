@@ -1,11 +1,16 @@
-const { test } = require('node:test');
+const { test, before } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const ts = require('typescript');
 const context = vm.createContext({ exports: {}, TextEncoder, Blob, Uint8Array });
 vm.runInContext(ts.transpileModule(fs.readFileSync('src/utils/documentScanner.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, context);
-const { detectPaper, validCorners, projectPoint, FULL_PAGE, createScanPdf } = context.exports;
+const { validCorners, projectPoint, FULL_PAGE, createScanPdf } = context.exports;
+const detectionContext = vm.createContext({ exports: {}, require: () => context.exports });
+vm.runInContext(ts.transpileModule(fs.readFileSync('src/utils/documentDetection.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, detectionContext);
+let cv;
+before(async () => { cv = await require('@techstark/opencv-js'); });
+const detectPaper = image => detectionContext.exports.detectDocument(cv, image);
 test('detects a sheet against dark background and rejects blank frames', () => {
   const width = 100, height = 100, data = new Uint8ClampedArray(width * height * 4);
   for (let y = 15; y < 85; y++) for (let x = 20; x < 80; x++) for (let k = 0; k < 3; k++) data[(y * width + x) * 4 + k] = 240;
@@ -86,4 +91,20 @@ test('download names keep one PDF extension and strip filesystem control charact
  assert.equal(name('Arsip/KPU:TPS?5\u0000.pdf'),'ArsipKPUTPS5.pdf');
  assert.equal(name('...'),'');assert.equal(name('  '),'');assert.equal(name('.pdf'),'');
  assert.ok(name('a'.repeat(200)).length<=124);
+});
+
+test('recovers a document on textured background instead of rejecting merged edge blobs',()=>{
+ const {image,corners}=documentFixture([220,200,155],true);
+ for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++){
+   const inside=corners.every((a,i)=>{const b=corners[(i+1)%4];return (b.x-a.x)*(y-a.y)-(b.y-a.y)*(x-a.x)>=0;});
+   if(!inside){const grain=45+35*Math.sin(x*0.7)+20*Math.sin(y*0.2+x*0.13);for(let k=0;k<3;k++)image.data[(y*image.width+x)*4+k]=grain+k*8;}
+ }
+ const found=detectPaper(image);assert.ok(found);
+ for(let i=0;i<4;i++)assert.ok(Math.hypot(found[i].x-corners[i].x/(image.width-1),found[i].y-corners[i].y/(image.height-1))<0.04,JSON.stringify(found));
+});
+test('a large sheet near the camera frame is not discarded for having margins below three pixels',()=>{
+ const width=200,height=160,data=new Uint8ClampedArray(width*height*4);
+ for(let y=2;y<157;y++)for(let x=2;x<197;x++)for(let k=0;k<3;k++)data[(y*width+x)*4+k]=210;
+ const found=detectPaper({width,height,data});assert.ok(found);
+ assert.ok(found[0].x<0.04 && found[0].y<0.04 && found[2].x>0.95 && found[2].y>0.95);
 });

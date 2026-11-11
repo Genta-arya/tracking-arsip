@@ -8,101 +8,6 @@ export function scanPdfFilename(value: string): string {
   return name ? `${name}.pdf` : '';
 }
 
-/** Deteksi kontur dari tepi RGB, tanpa asumsi bahwa kertas harus putih. */
-export function detectPaper(image: ImageData): Corners | null {
-  const { width: w, height: h, data } = image;
-  if (w < 12 || h < 12) return null;
-  const smooth = new Float32Array(w * h * 3);
-  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) for (let k = 0; k < 3; k++) {
-    let sum = 0;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) sum += data[((y + dy) * w + x + dx) * 4 + k];
-    smooth[(y * w + x) * 3 + k] = sum / 9;
-  }
-  const strength = new Float32Array(w * h), histogram = new Uint32Array(256);
-  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
-    let edge = 0;
-    for (let k = 0; k < 3; k++) {
-      const at = (dx: number, dy: number) => smooth[((y + dy) * w + x + dx) * 3 + k];
-      const gx = -at(-1,-1) - 2 * at(-1,0) - at(-1,1) + at(1,-1) + 2 * at(1,0) + at(1,1);
-      const gy = -at(-1,-1) - 2 * at(0,-1) - at(1,-1) + at(-1,1) + 2 * at(0,1) + at(1,1);
-      edge = Math.max(edge, Math.hypot(gx, gy) / 4);
-    }
-    strength[y * w + x] = edge; histogram[Math.min(255, Math.round(edge))]++;
-  }
-  let percentile = 0, count = 0;
-  for (; percentile < 255; percentile++) { count += histogram[percentile]; if (count >= (w - 4) * (h - 4) * 0.85) break; }
-  const threshold = Math.max(8, percentile * 0.65), mask = new Uint8Array(w * h);
-  // Hubungkan celah kecil pada batas yang terkena bayangan atau tekstur.
-  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) if (strength[y * w + x] >= threshold) {
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) mask[(y + dy) * w + x + dx] = 1;
-  }
-  const cross = (a: Point, b: Point, c: Point) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-  const area = (p: Point[]) => Math.abs(p.reduce((sum, a, i) => { const b = p[(i + 1) % p.length]; return sum + a.x * b.y - b.x * a.y; }, 0)) / 2;
-  let best: Corners | null = null, bestScore = 0;
-  for (let i = 0; i < mask.length; i++) {
-    if (!mask[i]) continue;
-    const queue = [i]; mask[i] = 0;
-    for (let j = 0; j < queue.length; j++) {
-      const p = queue[j], x = p % w, y = Math.floor(p / w);
-      for (const n of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) if (n >= 0 && mask[n]) { mask[n] = 0; queue.push(n); }
-    }
-    if (queue.length < Math.min(w, h)) continue;
-    const points = queue.map(p => ({ x: p % w, y: Math.floor(p / w) })).sort((a,b) => a.x - b.x || a.y - b.y);
-    const half = (pts: Point[]) => { const result: Point[] = []; for (const p of pts) { while (result.length >= 2 && cross(result[result.length - 2], result[result.length - 1], p) <= 0) result.pop(); result.push(p); } result.pop(); return result; };
-    const hull = [...half(points), ...half([...points].reverse())], hullArea = area(hull);
-    if (hull.length < 4 || hullArea < w * h * 0.12 || hullArea > w * h * 0.94) continue;
-    const quad = [...hull];
-    while (quad.length > 4) {
-      let min = Infinity, index = 0;
-      for (let j = 0; j < quad.length; j++) { const lost = Math.abs(cross(quad[(j + quad.length - 1) % quad.length], quad[j], quad[(j + 1) % quad.length])); if (lost < min) { min = lost; index = j; } }
-      quad.splice(index, 1);
-    }
-    if (area(quad) / hullArea < 0.86 || quad.filter(p => p.x < 3 || p.y < 3 || p.x > w - 4 || p.y > h - 4).length >= 2) continue;
-    let support = 0;
-    for (let side = 0; side < 4; side++) {
-      let hits = 0;
-      for (let t = 0; t <= 30; t++) {
-        const a = quad[side], b = quad[(side + 1) % 4], x = Math.round(a.x + (b.x - a.x) * t / 30), y = Math.round(a.y + (b.y - a.y) * t / 30);
-        let peak = 0;
-        for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) if (x + dx >= 0 && x + dx < w && y + dy >= 0 && y + dy < h) peak = Math.max(peak, strength[(y + dy) * w + x + dx]);
-        if (peak >= threshold) hits++;
-      }
-      if (hits < 20) { support = 0; break; } support += hits / 31;
-    }
-    if (!support) continue;
-    // Pasangkan garis pada gradien asli, lalu potong empat garis untuk sudut presisi.
-    const lines = quad.map((a, side) => {
-      const b = quad[(side + 1) % 4], length = Math.hypot(b.x - a.x, b.y - a.y), nx = -(b.y - a.y) / length, ny = (b.x - a.x) / length;
-      const samples: Point[] = [];
-      for (let t = 0.15; t <= 0.85; t += 0.035) {
-        const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
-        const values: {d:number;v:number}[] = [];
-        for (let d = -10; d <= 10; d += 0.5) { const px = Math.round(x + nx * d), py = Math.round(y + ny * d); if (px >= 0 && px < w && py >= 0 && py < h) values.push({ d, v: strength[py * w + px] }); }
-        const peak = Math.max(...values.map(v => v.v));
-        if (peak < threshold) continue;
-        const strong = values.filter(v => v.v >= peak * 0.9), delta = strong.reduce((sum,v) => sum + v.d, 0) / strong.length;
-        samples.push({ x:x + nx * delta, y:y + ny * delta });
-      }
-      if (samples.length < 8) return { x:nx, y:ny, c:nx * a.x + ny * a.y };
-      const mx = samples.reduce((sum,p) => sum + p.x, 0) / samples.length, my = samples.reduce((sum,p) => sum + p.y, 0) / samples.length;
-      let xx=0, yy=0, xy=0;
-      for (const p of samples) { xx+=(p.x-mx)**2; yy+=(p.y-my)**2; xy+=(p.x-mx)*(p.y-my); }
-      const angle = 0.5 * Math.atan2(2*xy, xx-yy), x = -Math.sin(angle), y = Math.cos(angle);
-      return { x, y, c:x * mx + y * my };
-    });
-    const normalized = lines.map((b,j) => {
-      const a = lines[(j + 3) % 4], det = a.x * b.y - b.x * a.y;
-      if (Math.abs(det) < 1e-5) return {x:-1,y:-1};
-      return {x:(a.c * b.y - b.c * a.y) / det / (w-1), y:(a.x * b.c - b.x * a.c) / det / (h-1)};
-    });
-    const first = normalized.reduce((min,p,j) => p.x + p.y < normalized[min].x + normalized[min].y ? j : min, 0);
-    const corners = [...normalized.slice(first), ...normalized.slice(0, first)] as Corners;
-    const score = area(quad) * support;
-    if (validCorners(corners) && score > bestScore) { best = corners; bestScore = score; }
-  }
-  return best;
-}
-
 export function validCorners(c: Corners): boolean {
   return c.every((p, i) => {
     const q = c[(i + 1) % 4], r = c[(i + 2) % 4];
@@ -116,13 +21,6 @@ export function loadScanImage(url: string): Promise<HTMLImageElement> {
     const image = new Image(); image.onload = () => resolve(image); image.onerror = () => reject(new Error('Gambar tidak dapat dibaca. Gunakan JPG, PNG, atau WebP.')); image.src = url;
   });
 }
-export function paperFromImage(image: CanvasImageSource, width: number, height: number, maxSide = 360): Corners | null {
-  const canvas = document.createElement('canvas'); const scale = maxSide / Math.max(width, height); canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return detectPaper(ctx.getImageData(0, 0, canvas.width, canvas.height));
-}
-
 /** Homografi persegi satuan ke empat sudut: meluruskan perspektif dokumen. */
 export function projectPoint(c: Corners, u: number, v: number): Point {
   const [a, b, d, e] = c;
