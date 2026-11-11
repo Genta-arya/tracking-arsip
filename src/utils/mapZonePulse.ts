@@ -12,7 +12,7 @@ export function startMapZonePulse(layers: RadiusLayer[], frames: FrameScheduler 
   const tick = (time: number) => {
     if (stopped) return;
     started ??= time;
-    const phase = ((time - started) % 1800) / 1800;
+    const phase = ((time - started) % 4000) / 4000;
     const radius = 350 + 750 * (1 - Math.cos(phase * Math.PI * 2)) / 2;
     layers.forEach(layer => layer.setRadius(radius));
     frame = frames.requestAnimationFrame(tick);
