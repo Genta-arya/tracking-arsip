@@ -100,3 +100,29 @@ svg:focus {
 
 
 
+
+/* Zona fokus desa: garis berjalan tanpa mengubah koordinat atau ukuran area. */
+.desa-zone-stroke {
+  animation: desa-zone-march 2.4s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.7));
+}
+
+.desa-zone-glow {
+  animation: desa-zone-breathe 3s ease-in-out infinite;
+}
+
+@keyframes desa-zone-march {
+  to { stroke-dashoffset: -40; }
+}
+
+@keyframes desa-zone-breathe {
+  0%, 100% { stroke-opacity: 0.12; }
+  50% { stroke-opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desa-zone-stroke,
+  .desa-zone-glow {
+    animation: none;
+  }
+}
