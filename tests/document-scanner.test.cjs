@@ -108,3 +108,15 @@ test('a large sheet near the camera frame is not discarded for having margins be
  const found=detectPaper({width,height,data});assert.ok(found);
  assert.ok(found[0].x<0.04 && found[0].y<0.04 && found[2].x>0.95 && found[2].y>0.95);
 });
+test('tap target selects the smaller document under the finger instead of the larger neighboring sheet',()=>{
+ const width=240,height=180,data=new Uint8ClampedArray(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+   const left=x>=15&&x<95&&y>=35&&y<150,right=x>=120&&x<225&&y>=15&&y<165;
+   for(let k=0;k<3;k++)data[(y*width+x)*4+k]=left?210:right?240:30;data[(y*width+x)*4+3]=255;
+ }
+ const image={width,height,data};
+ const automatic=detectionContext.exports.detectDocument(cv,image);
+ const tapped=detectionContext.exports.detectDocument(cv,image,{x:0.23,y:0.5});
+ assert.ok(automatic&&tapped);assert.ok(automatic.every(p=>p.x>0.45));assert.ok(tapped.every(p=>p.x<0.45));
+ assert.equal(detectionContext.exports.detectDocument(cv,image,{x:0.04,y:0.04}),null);
+});

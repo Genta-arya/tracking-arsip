@@ -30,3 +30,17 @@ Pengujian:
 Deteksi tetap bergantung pada batas kertas yang terlihat. Tepi tertutup tangan,
 kertas melengkung, atau warna kertas yang menyatu dengan latar dapat memerlukan
 penyesuaian sudut manual.
+
+## Kamera layar penuh dan ketuk fokus
+
+Video memakai `object-fit: cover`. Konversi layar/sensor memperhitungkan sisi
+video yang terpotong, sehingga tanda bidik dan polygon dokumen tetap selaras.
+Titik pilihan diteruskan ke worker untuk memilih kandidat dokumen yang
+melingkupinya. Titik itu ikut disimpan dengan halaman hasil kamera agar Auto
+crop berikutnya tetap memilih dokumen yang sama. Hasil frame sebelum ketukan
+terbaru diabaikan; ketukan segera meminta analisis baru tanpa menumpuk antrean.
+
+Pengaturan fokus lensa hanya diminta jika track kamera mengiklankan dukungan
+`pointsOfInterest`. Jika tidak didukung atau permintaan ditolak, pemilihan area
+deteksi tetap berfungsi. Tombol Fokus otomatis menghapus titik pilihan dan
+mengembalikan mode fokus continuous pada kamera yang mendukungnya.
