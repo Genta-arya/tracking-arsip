@@ -207,8 +207,7 @@ export function DocumentScanner() {
       pdfUrls.current = [url, ...previews.map(page => page.url)];
       pdfUrls.current.forEach(asset => urls.current.add(asset));
       setPdfResult({ file, url, pages:previews }); setShareMessage('');
-      const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
-      setPopup('preview'); setMessage('PDF siap. Pratinjau dan tombol berbagi tersedia. Pastikan unduhan selesai sebelum menutup browser.');
+      setPopup('preview'); setMessage('Pratinjau PDF siap. Pilih Unduh PDF untuk menyimpan berkas ke perangkat.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Gagal membuat PDF.'); } finally { setBusy(false); }
   };
   const sharePdf = async (destination: ShareDestination) => {
@@ -258,7 +257,7 @@ export function DocumentScanner() {
       <header className="scan-header">
         <div className="scan-brand"><span className="scan-brand-icon"><ScanLine size={23} /></span><div><h2>Arsip<span>Scan</span></h2><p>Dokumen rapi. Arsip siap.</p></div></div>
         <div className="scan-steps" aria-label="Langkah scan"><span className={!pages.length || stream ? 'current' : ''}>01 <b>Ambil</b></span><ChevronRight size={14} /><span className={pages.length && !stream ? 'current' : ''}>02 <b>Rapikan</b></span><ChevronRight size={14} /><span>03 <b>Simpan</b></span></div>
-        <div className="scan-header-actions">{!!pages.length && !stream && <button className="scan-primary scan-export" disabled={busy || crop} onClick={() => { setPdfName(`Scan-Arsip-${new Date().toISOString().slice(0, 10)}`); setNameError(''); setError(''); setPopup('rename'); }}><Download size={17} /><span>Unduh PDF ({pages.length})</span></button>}<button aria-label="Tutup scanner" disabled={busy} onClick={() => { stopCamera(); setOpen(false); }} className="scan-icon-button"><X size={21} /></button></div>
+        <div className="scan-header-actions">{!!pages.length && !stream && <button className="scan-primary scan-export" disabled={busy || crop} onClick={() => { setPdfName(`Scan-Arsip-${new Date().toISOString().slice(0, 10)}`); setNameError(''); setError(''); setPopup('rename'); }}><Download size={17} /><span>Preview PDF ({pages.length})</span></button>}<button aria-label="Tutup scanner" disabled={busy} onClick={() => { stopCamera(); setOpen(false); }} className="scan-icon-button"><X size={21} /></button></div>
       </header>
       <input ref={input} type="file" accept="image/*" multiple className="hidden" onChange={e => void upload(e.target.files)} />
       {(error || message || busy) && <div className={`scan-notice ${error ? 'has-error' : ''}`} role={error ? 'alert' : 'status'}>{busy && <span className="scan-spinner" />}{error || (busy ? message || 'Memproses gambar…' : message)}{!busy && <button aria-label="Tutup pemberitahuan" onClick={() => { setError(''); setMessage(''); }}><X size={14} /></button>}</div>}
@@ -330,7 +329,7 @@ export function DocumentScanner() {
           {nameError && <p className="scan-name-error" id="scan-name-error" role="alert">{nameError}</p>}
           {busy ? <p className="scan-modal-progress" role="status"><span className="scan-spinner"/>{message || 'Menyiapkan dokumen…'}</p> : <p className="scan-modal-footnote">Tetap buka browser sampai PDF selesai diunduh.</p>}
           {error && <p className="scan-name-error" role="alert">{error}</p>}
-          <div className="scan-button-row"><button type="button" className="scan-button" disabled={busy} onClick={() => setPopup(null)}>Batal</button><button type="submit" className="scan-primary" disabled={busy || !pdfName.trim()}>{busy ? 'Memproses…' : 'Simpan & unduh PDF'}{!busy && <Download size={16}/>}</button></div>
+          <div className="scan-button-row"><button type="button" className="scan-button" disabled={busy} onClick={() => setPopup(null)}>Batal</button><button type="submit" className="scan-primary" disabled={busy || !pdfName.trim()}>{busy ? 'Memproses…' : 'Buat preview PDF'}{!busy && <Download size={16}/>}</button></div>
           {busy && <p className="scan-modal-footnote">Jangan tutup tab atau browser saat proses berlangsung.</p>}
         </form> : popup === 'preview' && pdfResult ? <div className="scan-pdf-content">
           <header className="scan-pdf-header"><div><span className="scan-eyebrow">PRATINJAU PDF</span><h3 id="scan-modal-title">{pdfResult.file.name}</h3><p id="scan-modal-description">{pdfResult.pages.length} halaman · {(pdfResult.file.size / 1024 / 1024).toFixed(1)} MB · Siap diunduh dan dibagikan</p></div><button autoFocus className="scan-icon-button" aria-label="Tutup pratinjau PDF" disabled={sharing} onClick={() => setPopup(null)}><X size={20}/></button></header>

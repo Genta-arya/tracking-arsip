@@ -47,7 +47,7 @@ mengembalikan mode fokus continuous pada kamera yang mendukungnya.
 
 ## Pratinjau dan berbagi PDF
 
-Simpan & unduh mempertahankan modal dan menampilkan pratinjau halaman dari
+Preview PDF membuat dokumen tanpa memulai unduhan dan menampilkan pratinjau halaman dari
 raster yang dipakai untuk membuat PDF. File PDF asli dapat dibuka lewat Buka
 file PDF, diunduh ulang, atau dibagikan melalui Web Share API dengan `File`
 bertipe `application/pdf`. Tombol WhatsApp/Drive membuka share sheet perangkat;
@@ -56,3 +56,5 @@ WhatsApp yang berpura-pura melampirkan file. Browser tanpa dukungan berbagi file
 menampilkan petunjuk unduh dan lampirkan/unggah manual. Batal berbagi tidak
 menutup pratinjau. URL hasil PDF tetap hidup selama sesi, dan dibersihkan saat
 PDF diganti atau komponen dilepas.
+
+Unduhan baru dimulai saat pengguna menekan Unduh PDF di panel pratinjau.
