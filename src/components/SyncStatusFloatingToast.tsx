@@ -1,3 +1,4 @@
+import { DocumentScanner } from '@/components/DocumentScanner';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, X, ChevronUp, FolderSearch } from 'lucide-react';
@@ -53,6 +54,7 @@ export function SyncStatusFloatingToast({
 
   return (
     <div className="fixed bottom-4 right-4 z-[9990] flex flex-col items-end pointer-events-none select-none">
+      <DocumentScanner />
       <AnimatePresence mode="wait">
         {!isOpen ? (
           /* Tombol Pill Kecil Mengambang: Info Last Sync Realtime */
