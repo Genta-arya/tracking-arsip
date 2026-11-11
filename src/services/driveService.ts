@@ -51,27 +51,37 @@ export async function fetchKecamatanList(
  */
 export async function scanKecamatanFolder(
   webAppUrl: string,
-  kecFolderId: string
+  kecFolderId: string,
+  onProgress?: (percent: number, desaName?: string) => void,
 ): Promise<RawTpsData[]> {
-  const url = new URL(webAppUrl);
-  url.searchParams.set('action', 'scanKecamatan');
-  url.searchParams.set('folderId', kecFolderId);
+  const request = async (action: string, desaId?: string) => {
+    const url = new URL(webAppUrl);
+    url.searchParams.set('action', action);
+    url.searchParams.set('folderId', kecFolderId);
+    if (desaId) url.searchParams.set('desaId', desaId);
+    const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+    if (!res.ok) throw new Error(`Koneksi HTTP gagal: Status ${res.status}`);
+    const json = await res.json();
+    if (json.status !== 'success' || !Array.isArray(json.data)) {
+      throw new Error(`${json.message || 'Respons scan tidak valid'}. Pastikan Kode.gs terbaru sudah di-deploy sebagai versi baru.`);
+    }
+    return json.data;
+  };
 
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    redirect: 'follow',
-  });
-
-  if (!res.ok) {
-    throw new Error(`Koneksi HTTP gagal: Status ${res.status}`);
+  onProgress?.(0);
+  const villages: GasKecamatanItem[] = await request('listScanDesa');
+  if (villages.some(village => !village || typeof village.id !== 'string' || typeof village.name !== 'string') ||
+      new Set(villages.map(village => village.id)).size !== villages.length) {
+    throw new Error('Daftar desa tidak valid; pemindaian dihentikan.');
   }
-
-  const json: GasScanResponse = await res.json();
-  if (json.status !== 'success' || !json.data) {
-    throw new Error(json.message || 'Gagal memindai folder kecamatan');
+  const data: RawTpsData[] = [];
+  for (let i = 0; i < villages.length; i++) {
+    const village = villages[i];
+    data.push(...await request('scanDesa', village.id));
+    onProgress?.(Math.round((i + 1) * 100 / villages.length), village.name);
   }
-
-  return json.data;
+  if (!villages.length) onProgress?.(100);
+  return data;
 }
 
 export interface GasQuickScanItem {
