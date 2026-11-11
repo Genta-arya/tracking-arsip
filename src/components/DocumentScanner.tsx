@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, ScanLine, X, Download, Plus, RotateCw, Trash2, ArrowLeft, ArrowRight, RefreshCw, Crop, SlidersHorizontal, Layers, ImagePlus, Check, ShieldCheck, ChevronRight, Crosshair } from 'lucide-react';
+import { Camera, ScanLine, X, Download, Plus, RotateCw, Trash2, ArrowLeft, ArrowRight, RefreshCw, Crop, SlidersHorizontal, Layers, ImagePlus, Check, ShieldCheck, ChevronRight, Crosshair, Share2, Cloud } from 'lucide-react';
 import './DocumentScanner.css';
 import { cameraToView, viewToCamera, focusCameraTrack, resetCameraFocus } from '@/utils/cameraFocus';
+import { shareScanPdf, type ShareDestination } from '@/utils/shareScanPdf';
 import { DocumentDetector } from '@/utils/documentDetectorClient';
 import { Corners, Point, PdfScanImage, FULL_PAGE, MAX_SCAN_PAGES, loadScanImage, renderScanPage, validCorners, createScanPdf, scanPdfFilename } from '@/utils/documentScanner';
 
@@ -17,9 +18,13 @@ export function DocumentScanner() {
   const replacement = useRef<string | null>(null), urls = useRef(new Set<string>()), media = useRef<MediaStream | null>(null), cameraRequest = useRef(0);
   const dialog = useRef<HTMLDivElement>(null);
   const [tool, setTool] = useState<'crop' | 'adjust' | 'pages'>('crop');
-  const [popup, setPopup] = useState<'notice' | 'rename' | null>(null);
+  const [popup, setPopup] = useState<'notice' | 'rename' | 'preview' | null>(null);
   const [pdfName, setPdfName] = useState('');
   const [nameError, setNameError] = useState('');
+  const [pdfResult, setPdfResult] = useState<{ file: File; url: string; pages: { url: string; width: number; height: number }[] } | null>(null);
+  const pdfUrls = useRef<string[]>([]);
+  const [shareMessage, setShareMessage] = useState('');
+  const [sharing, setSharing] = useState(false);
   const popupRef = useRef<HTMLDialogElement>(null);
   const cameraView = useRef<HTMLDivElement>(null);
   const cameraFocus = useRef<Point | null>(null);
@@ -194,8 +199,23 @@ export function DocumentScanner() {
         canvases.push({ width: canvas.width, height: canvas.height, jpeg: Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]), c => c.charCodeAt(0)) });
         canvas.width = 0; canvas.height = 0;
       }
-      const blob = await createScanPdf(canvases), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000); setPopup(null); setMessage('Unduhan PDF dimulai. Pastikan unduhan selesai di browser sebelum menutup halaman.');
+      const blob = await createScanPdf(canvases);
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      const url = URL.createObjectURL(file);
+      const previews = canvases.map(page => ({ url: URL.createObjectURL(new Blob([page.jpeg as BlobPart], {type:'image/jpeg'})), width:page.width, height:page.height }));
+      pdfUrls.current.forEach(old => { URL.revokeObjectURL(old); urls.current.delete(old); });
+      pdfUrls.current = [url, ...previews.map(page => page.url)];
+      pdfUrls.current.forEach(asset => urls.current.add(asset));
+      setPdfResult({ file, url, pages:previews }); setShareMessage('');
+      const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
+      setPopup('preview'); setMessage('PDF siap. Pratinjau dan tombol berbagi tersedia. Pastikan unduhan selesai sebelum menutup browser.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Gagal membuat PDF.'); } finally { setBusy(false); }
+  };
+  const sharePdf = async (destination: ShareDestination) => {
+    if (!pdfResult || sharing) return;
+    setSharing(true); setShareMessage(`Pilih ${destination === 'Drive' ? 'Google Drive' : 'WhatsApp'} di menu berbagi perangkat.`);
+    try { const result = await shareScanPdf(pdfResult.file, destination); setShareMessage(result.message); }
+    finally { setSharing(false); }
   };
   const move = (delta: number) => { const next = selected + delta; if (next < 0 || next >= pages.length) return; setPages(list => { const copy = [...list]; [copy[selected], copy[next]] = [copy[next], copy[selected]]; return copy; }); setSelected(next); };
   const setCameraTarget = async (point: Point) => {
@@ -252,7 +272,7 @@ export function DocumentScanner() {
             <video ref={video} autoPlay muted playsInline onLoadedMetadata={() => { const v=video.current; if(v) setCameraSize({width:v.videoWidth,height:v.videoHeight}); }} className="scan-camera-video" />
             <button className="scan-camera-focus-surface" aria-label="Fokus ke tengah kamera" disabled={busy} onClick={() => void setCameraTarget(viewToCamera({x:0.5,y:0.5},cameraSize,viewportSize))} />
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="scan-camera-boundary"><polygon points={(visibleCorners || FULL_PAGE).map(p => `${p.x * 100},${p.y * 100}`).join(' ')} fill={detected ? '#10b98115' : 'transparent'} stroke={detected ? '#6ee7b7' : 'transparent'} strokeWidth="0.4" /></svg>
-            <div className="scan-camera-topbar"><span><ScanLine size={19}/> Scan dokumen</span><button aria-label="Tutup kamera" className="scan-camera-close" disabled={busy} onClick={() => { stopCamera(); setOpen(false); }}><X size={23}/></button></div>
+            <div className="scan-camera-topbar"><span><ScanLine size={19}/> Scan dokumen</span></div>
             {visibleFocus && focusMark && <div key={focusMark.id} className="scan-focus-reticle" aria-hidden="true" style={{left:`${visibleFocus.x*100}%`,top:`${visibleFocus.y*100}%`}}><i/><i/><i/><i/><Crosshair size={16}/></div>}
             <div className={`scan-detection ${detected ? 'found' : ''}`}>{detected ? <Check size={14} /> : <ScanLine size={14} />}{detectionStatus === 'loading' ? 'Menyiapkan deteksi dokumen…' : detectionStatus === 'error' ? 'Deteksi tidak tersedia · foto & crop manual' : detected ? 'Kertas terdeteksi · siap difoto' : 'Mencari batas kertas…'}</div>
             <div className="scan-focus-feedback" role="status">{focusFeedback || 'Ketuk kertas untuk fokus dan memilih dokumen'}{focusMark && <button onClick={resetCameraTarget} disabled={busy}>Fokus otomatis</button>}</div>
@@ -292,7 +312,7 @@ export function DocumentScanner() {
         </section>}
       </main>
       {!!pages.length && !stream && <footer className="scan-filmstrip"><div className="scan-filmstrip-label"><Layers size={17}/><span>{pages.length}<small>/25 halaman</small></span></div><nav aria-label="Daftar halaman scan">{pages.map((p, i) => <button key={p.id} disabled={busy || crop} aria-label={`Pilih halaman ${i + 1}`} aria-current={i === selected ? 'page' : undefined} onClick={() => { setSelected(i); setCrop(false); }} className={i === selected ? 'selected' : ''}><img src={p.url} alt=""/><span>{i + 1}</span>{i === selected && <Check size={11}/>}</button>)}</nav><div className="scan-add-pages"><button title="Tambah dari kamera" aria-label="Kamera" className="scan-icon-button" disabled={busy || crop || pages.length >= 25} onClick={() => void startCamera()}><Camera size={19}/></button><button title="Tambah dari galeri" aria-label="Tambah gambar" className="scan-icon-button" disabled={busy || crop || pages.length >= 25} onClick={pickImages}><Plus size={20}/></button></div></footer>}
-      <dialog ref={popupRef} className="scan-modal" aria-labelledby="scan-modal-title" aria-describedby="scan-modal-description" onCancel={event => { event.preventDefault(); if (!busy) setPopup(null); }}>
+      <dialog ref={popupRef} className={`scan-modal ${popup === 'preview' ? 'scan-pdf-modal' : ''}`} aria-labelledby="scan-modal-title" aria-describedby="scan-modal-description" onCancel={event => { event.preventDefault(); if (!busy && !sharing) setPopup(null); }}>
         {popup === 'notice' ? <div className="scan-modal-content">
           <span className="scan-modal-icon"><ShieldCheck size={25}/></span>
           <span className="scan-eyebrow">SEBELUM MULAI</span>
@@ -312,7 +332,11 @@ export function DocumentScanner() {
           {error && <p className="scan-name-error" role="alert">{error}</p>}
           <div className="scan-button-row"><button type="button" className="scan-button" disabled={busy} onClick={() => setPopup(null)}>Batal</button><button type="submit" className="scan-primary" disabled={busy || !pdfName.trim()}>{busy ? 'Memproses…' : 'Simpan & unduh PDF'}{!busy && <Download size={16}/>}</button></div>
           {busy && <p className="scan-modal-footnote">Jangan tutup tab atau browser saat proses berlangsung.</p>}
-        </form> : null}
+        </form> : popup === 'preview' && pdfResult ? <div className="scan-pdf-content">
+          <header className="scan-pdf-header"><div><span className="scan-eyebrow">PRATINJAU PDF</span><h3 id="scan-modal-title">{pdfResult.file.name}</h3><p id="scan-modal-description">{pdfResult.pages.length} halaman · {(pdfResult.file.size / 1024 / 1024).toFixed(1)} MB · Siap diunduh dan dibagikan</p></div><button autoFocus className="scan-icon-button" aria-label="Tutup pratinjau PDF" disabled={sharing} onClick={() => setPopup(null)}><X size={20}/></button></header>
+          <div className="scan-pdf-pages" aria-label="Halaman PDF">{pdfResult.pages.map((page,i) => <figure key={page.url}><div className="scan-pdf-sheet" style={{aspectRatio:page.width>page.height?'842/595':'595/842'}}><img src={page.url} alt={`Pratinjau PDF halaman ${i+1}`} loading="lazy"/></div><figcaption>Halaman {i+1} dari {pdfResult.pages.length}</figcaption></figure>)}</div>
+          <footer className="scan-pdf-actions"><p>Pratinjau ini mengikuti isi dan urutan PDF yang dibuat. Dokumen tetap tersedia sampai sesi browser berakhir.</p><div className="scan-pdf-buttons"><a className="scan-primary" href={pdfResult.url} download={pdfResult.file.name}><Download size={17}/>Unduh PDF</a><button className="scan-button scan-share-whatsapp" disabled={sharing} onClick={() => void sharePdf('WhatsApp')}><Share2 size={17}/>Bagikan ke WhatsApp</button><button className="scan-button" disabled={sharing} onClick={() => void sharePdf('Drive')}><Cloud size={18}/>Simpan ke Drive</button></div><p className="scan-share-hint">Tombol berbagi membuka menu perangkat. Pilih WhatsApp atau Google Drive jika aplikasinya tersedia.</p>{shareMessage && <p className="scan-share-message" role="status">{shareMessage}</p>}<div className="scan-pdf-links"><a href={pdfResult.url} target="_blank" rel="noopener noreferrer">Buka file PDF</a><button className="scan-text-button" disabled={sharing} onClick={() => setPopup(null)}>Kembali ke editor</button></div></footer>
+        </div> : null}
       </dialog>
     </div>, document.body)}
   </>;
