@@ -12,6 +12,7 @@
     "deploy:hosting": "npm run build && npx firebase-tools deploy --only hosting"
   },
   "dependencies": {
+    "@techstark/opencv-js": "5.0.0-release.1",
     "@types/leaflet": "^1.9.22",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
