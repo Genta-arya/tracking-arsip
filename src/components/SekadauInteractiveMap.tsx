@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { startMapZonePulse } from '@/utils/mapZonePulse';
 import 'leaflet/dist/leaflet.css';
 import {
   MapPin,
@@ -31,12 +32,31 @@ import {
 function SelectedDesaZone({ lat, lng, name }: { lat: number; lng: number; name: string }) {
   const renderer = useMemo(() => L.svg({ padding: 0.5 }), []);
   const map = useMap();
+  const glowRef = useRef<L.Circle>(null);
+  const strokeRef = useRef<L.Circle>(null);
+  useEffect(() => {
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let stop: (() => void) | undefined;
+    const updateMotion = () => {
+      stop?.();
+      const layers = [glowRef.current, strokeRef.current].filter((layer): layer is L.Circle => !!layer);
+      if (motion.matches) layers.forEach(layer => layer.setRadius(900));
+      else stop = startMapZonePulse(layers);
+    };
+    updateMotion();
+    motion.addEventListener('change', updateMotion);
+    return () => {
+      stop?.();
+      motion.removeEventListener('change', updateMotion);
+    };
+  }, [lat, lng]);
   useEffect(() => () => {
     if (renderer && map.hasLayer(renderer)) map.removeLayer(renderer);
   }, [map, renderer]);
   return (
     <>
       <Circle
+        ref={glowRef}
         center={[lat, lng]}
         radius={900}
         renderer={renderer}
@@ -44,6 +64,7 @@ function SelectedDesaZone({ lat, lng, name }: { lat: number; lng: number; name: 
         pathOptions={{ color: '#f97316', weight: 12, opacity: 0.3, fillColor: '#ef4444', fillOpacity: 0.08, className: 'desa-zone-glow' }}
       />
       <Circle
+        ref={strokeRef}
         center={[lat, lng]}
         radius={900}
         renderer={renderer}
