@@ -12,6 +12,7 @@ import {
   TableProperties,
 } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
+import { getElectionFile } from '@/utils/electionChecklist';
 import { TPSRecord, ScannedFile } from '@/types';
 
 interface TrackerMatrixProps {
@@ -308,11 +309,11 @@ export function TrackerMatrix({
                     </td>
 
                     {/* 5 Kolom Pemilihan 3D Dipepetkan */}
-                    {renderElectionCell(tps.slotPPWP, 'Presiden (PPWP)', tps, 'left')}
-                    {renderElectionCell(tps.slotDPR_RI, 'DPR RI', tps)}
-                    {renderElectionCell(tps.slotDPD, 'DPD RI', tps)}
-                    {renderElectionCell(tps.slotDPRD_PROV, 'DPRD Provinsi', tps)}
-                    {renderElectionCell(tps.slotDPRD_KAB, 'DPRD Kab/Ko', tps, 'right')}
+                    {renderElectionCell(getElectionFile(tps, 'PPWP'), 'Presiden (PPWP)', tps, 'left')}
+                    {renderElectionCell(getElectionFile(tps, 'DPR_RI'), 'DPR RI', tps)}
+                    {renderElectionCell(getElectionFile(tps, 'DPD'), 'DPD RI', tps)}
+                    {renderElectionCell(getElectionFile(tps, 'DPRD_PROV'), 'DPRD Provinsi', tps)}
+                    {renderElectionCell(getElectionFile(tps, 'DPRD_KAB'), 'DPRD Kab/Ko', tps, 'right')}
 
                     {/* Total File di Folder Drive */}
                     <td className="px-2 py-2 text-center">

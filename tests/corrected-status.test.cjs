@@ -13,7 +13,9 @@ function load(path, mocks = {}) {
   return context.exports;
 }
 const { processRawTps } = load('src/utils/parser.ts', { '../data/mockSekadauData.ts': { MOCK_DESA_MAP: {} } });
+const checklist = load('src/utils/electionChecklist.ts');
 const { TrackerMatrix } = load('src/components/TrackerMatrix.tsx', {
+  '@/utils/electionChecklist': checklist,
   'lucide-react': load(require.resolve('lucide-react')),
   '@/components/AnimatedCounter': { AnimatedCounter: ({ value }) => value },
 });
@@ -42,4 +44,34 @@ test('reset removes the correction check; removed files and unclassified correct
     assert.equal(result.completedCount, 0);
     assert.doesNotMatch(html(result), /Sudah dikoreksi/);
   }
+});
+
+const Container = ({ children }) => React.createElement('div', null, children);
+const { FileDetailModal } = load('src/components/FileDetailModal.tsx', {
+  '@/utils/electionChecklist': checklist,
+  '@/types': load('src/types/index.ts'),
+  '@/services/firebase': {},
+  '@/components/ui/dialog': { Dialog: Container, DialogContent: Container, DialogTitle: Container },
+  '@/components/ui/button': { Button: Container },
+  'lucide-react': load(require.resolve('lucide-react')),
+});
+test('detail checklist follows corrected categories even when old slots still contain the previous category', () => {
+  const result = record([file('fixed', 'scan.pdf', { overrideElection: 'DPRD_PROV', isResolved: true })]);
+  result.slotDPRD_PROV = null;
+  result.slotPPWP = result.files[0];
+  const markup = renderToStaticMarkup(React.createElement(FileDetailModal, {
+    record: result, open: true, onClose() {},
+  }));
+  assert.match(markup, /aria-label="DPRD Provinsi: Tercentang"/);
+  assert.match(markup, /aria-label="Presiden &amp; Wakil Presiden: Belum ada"/);
+  assert.match(markup, /Sudah dikoreksi &amp; diverifikasi/);
+  assert.match(html(result), /Sudah dikoreksi/);
+});
+test('resolved corrections show a check despite old anomaly metadata, but removed files stay missing', () => {
+  const result = record([file('fixed', 'scan.pdf', { overrideElection: 'PPWP', isResolved: true })]);
+  result.files[0].anomalies = [{ type: 'UNKNOWN_FORMAT', message: 'Old anomaly', fileName: 'scan.pdf' }];
+  const render = () => renderToStaticMarkup(React.createElement(FileDetailModal, { record: result, open: true, onClose() {} }));
+  assert.match(render(), /aria-label="Presiden &amp; Wakil Presiden: Tercentang"/);
+  result.files[0].overrideElection = 'HAPUS';
+  assert.match(render(), /aria-label="Presiden &amp; Wakil Presiden: Belum ada"/);
 });
