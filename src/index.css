@@ -101,14 +101,25 @@ svg:focus {
 
 
 
-/* Zona fokus desa: garis berjalan tanpa mengubah koordinat atau ukuran area. */
+/* Denyut danger area: skala SVG berpusat pada koordinat desa, bukan sudut peta. */
+.desa-zone-stroke,
+.desa-zone-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 .desa-zone-stroke {
-  animation: desa-zone-march 2.4s linear infinite;
-  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.7));
+  animation: desa-zone-pulse 1.8s ease-in-out infinite, desa-zone-march 2.4s linear infinite;
+  filter: drop-shadow(0 0 7px rgba(249, 115, 22, 0.9));
 }
 
 .desa-zone-glow {
-  animation: desa-zone-breathe 3s ease-in-out infinite;
+  animation: desa-zone-pulse 1.8s ease-in-out infinite, desa-zone-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes desa-zone-pulse {
+  0%, 100% { transform: scale(0.55); }
+  50% { transform: scale(1.2); }
 }
 
 @keyframes desa-zone-march {
@@ -116,13 +127,14 @@ svg:focus {
 }
 
 @keyframes desa-zone-breathe {
-  0%, 100% { stroke-opacity: 0.12; }
-  50% { stroke-opacity: 0.3; }
+  0%, 100% { stroke-opacity: 0.2; fill-opacity: 0.08; }
+  50% { stroke-opacity: 0.55; fill-opacity: 0.22; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .desa-zone-stroke,
   .desa-zone-glow {
     animation: none;
+    transform: none;
   }
 }

@@ -41,13 +41,13 @@ function SelectedDesaZone({ lat, lng, name }: { lat: number; lng: number; name: 
         radius={900}
         renderer={renderer}
         interactive={false}
-        pathOptions={{ color: '#fbbf24', weight: 10, opacity: 0.18, fillColor: '#f59e0b', fillOpacity: 0.08, className: 'desa-zone-glow' }}
+        pathOptions={{ color: '#f97316', weight: 12, opacity: 0.3, fillColor: '#ef4444', fillOpacity: 0.08, className: 'desa-zone-glow' }}
       />
       <Circle
         center={[lat, lng]}
         radius={900}
         renderer={renderer}
-        pathOptions={{ color: '#fbbf24', weight: 3, opacity: 1, fill: false, dashArray: '12 8', lineCap: 'round', className: 'desa-zone-stroke' }}
+        pathOptions={{ color: '#fb923c', weight: 4, opacity: 1, fill: false, dashArray: '12 8', lineCap: 'round', className: 'desa-zone-stroke' }}
       >
         <Tooltip sticky direction="top">
           <strong>Zona fokus Desa {name}</strong>
