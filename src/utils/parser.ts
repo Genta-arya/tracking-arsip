@@ -55,6 +55,45 @@ export function extractFileTpsNumber(cleanName: string): number {
   return 0;
 }
 
+/** Variasi singkatan dan typo yang tetap menunjuk jenis pemilihan tertentu. */
+export const ELECTION_CATEGORY_ALIASES: Record<ElectionType, readonly string[]> = {
+  PPWP: [
+    'pil pres', 'pilpers', 'pilpresiden', 'presidn', 'persiden',
+    'prseiden', 'presidne', 'presidnt', 'pp wp', 'p p w p',
+  ],
+  DPR_RI: [
+    'dpr r i', 'd p r ri', 'd p r r i', 'dpr republik indonesia', 'dpr pusat',
+    'dpr nasional', 'dprr i', 'dpr rii', 'dewan perwakilan rakyat ri', 'dewan perwakilan rakyat republik indonesia',
+  ],
+  DPD: [
+    'd p d', 'dp d ri', 'd pd ri', 'dpd r i', 'dpd republik indonesia',
+    'dpd pusat', 'dpd nasional', 'dpd rii', 'dewan perwakilan daerah', 'dewan perwakilan daearh',
+  ],
+  DPRD_PROV: [
+    'dprd propinsi', 'dprd prop', 'dprd profinsi', 'dprd provnsi', 'dprd porvinsi',
+    'dprd provinisi', 'dprd pr ov', 'dpr d prov', 'd p r d prov', 'dprd tingkat satu',
+  ],
+  DPRD_KAB: [
+    'dprd kab ko', 'dprd kab kota', 'dprd kabupaten kota', 'dprd kabupatn', 'dprd kabupaten',
+    'dprd kabuapten', 'dprd kab kot', 'dpr d kab ko', 'd p r d kab ko', 'dprd tingkat dua',
+  ],
+};
+
+function normalizeElectionAliases(name: string): string {
+  let normalized = name.toLowerCase().replace(/[._/\\&-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const canonical: Record<ElectionType, string> = {
+    PPWP: 'ppwp', DPR_RI: 'dpr ri', DPD: 'dpd', DPRD_PROV: 'dprd prov', DPRD_KAB: 'dprd kab',
+  };
+  // Frasa terpanjang dulu agar singkatan tidak memotong nama kategori lengkap.
+  const aliases = (Object.keys(ELECTION_CATEGORY_ALIASES) as ElectionType[])
+    .flatMap(type => ELECTION_CATEGORY_ALIASES[type].map(alias => ({ alias, type })))
+    .sort((a, b) => b.alias.length - a.alias.length);
+  for (const { alias, type } of aliases) {
+    normalized = normalized.replace(new RegExp(`\\b${alias}\\b`, 'g'), canonical[type]);
+  }
+  return normalized;
+}
+
 /**
  * Smart Regex Parser untuk mengklasifikasikan nama file ke dalam 5 Jenis Pemilihan
  */
@@ -62,7 +101,7 @@ export function detectElectionCategory(cleanName: string): {
   type: ElectionType | 'UNKNOWN';
   isAmbiguousDprd?: boolean;
 } {
-  const lower = cleanName.toLowerCase();
+  const lower = normalizeElectionAliases(cleanName);
 
   // 1. Presiden & Wakil Presiden (PPWP)
   if (/\b(presiden|ppwp|pilpres|capres|wapres|pres|press|presss|presi|preside|presidesi|presidesn|presidenn|presidesien|presidesienn)\b/i.test(lower)) {
