@@ -18,6 +18,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType } from '@/types';
+import { getElectionFile } from '@/utils/electionChecklist';
 import { updateFileAnomalyStatus } from '@/services/firebase';
 
 interface FileDetailModalProps {
@@ -354,20 +355,16 @@ export function FileDetailModal({
             </h4>
 
             {ELECTION_LIST.map((elec) => {
-              let file = null;
-              if (elec.key === 'PPWP') file = record.slotPPWP;
-              if (elec.key === 'DPR_RI') file = record.slotDPR_RI;
-              if (elec.key === 'DPD') file = record.slotDPD;
-              if (elec.key === 'DPRD_PROV') file = record.slotDPRD_PROV;
-              if (elec.key === 'DPRD_KAB') file = record.slotDPRD_KAB;
-
+              const file = getElectionFile(record, elec.key);
               const isFound = !!file;
-              const hasAnomaly = file && file.anomalies.length > 0;
+              const hasAnomaly = !!file && !file.isResolved && file.anomalies.length > 0;
               const ballotTheme = BALLOT_THEMES[elec.key] || BALLOT_THEMES.PPWP;
 
               return (
                 <motion.div
                   key={elec.key}
+                  role="group"
+                  aria-label={`${elec.label}: ${isFound ? hasAnomaly ? 'Perlu diperiksa' : 'Tercentang' : 'Belum ada'}`}
                   whileHover={{ y: -2, scale: 1.008 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   className={`p-3.5 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_3px_10px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] ${
@@ -415,6 +412,11 @@ export function FileDetailModal({
                           <p className="text-xs font-semibold text-slate-700 truncate max-w-sm sm:max-w-md">
                             📄 {file?.name}
                           </p>
+                          {file?.isResolved && (
+                            <p className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                              <Check className="h-3 w-3" aria-hidden="true" /> Sudah dikoreksi &amp; diverifikasi
+                            </p>
+                          )}
                           {hasAnomaly && (
                             <p className="text-[11px] text-amber-900 font-bold">
                               ⚠️ {file?.anomalies[0].message}
