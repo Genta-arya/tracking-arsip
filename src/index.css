@@ -101,25 +101,14 @@ svg:focus {
 
 
 
-/* Denyut danger area: skala SVG berpusat pada koordinat desa, bukan sudut peta. */
-.desa-zone-stroke,
-.desa-zone-glow {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
+/* Radius danger area digerakkan Leaflet; CSS hanya untuk garis dan glow. */
 .desa-zone-stroke {
-  animation: desa-zone-pulse 1.8s ease-in-out infinite, desa-zone-march 2.4s linear infinite;
+  animation: desa-zone-march 2.4s linear infinite;
   filter: drop-shadow(0 0 7px rgba(249, 115, 22, 0.9));
 }
 
 .desa-zone-glow {
-  animation: desa-zone-pulse 1.8s ease-in-out infinite, desa-zone-breathe 1.8s ease-in-out infinite;
-}
-
-@keyframes desa-zone-pulse {
-  0%, 100% { transform: scale(0.55); }
-  50% { transform: scale(1.2); }
+  animation: desa-zone-breathe 1.8s ease-in-out infinite;
 }
 
 @keyframes desa-zone-march {
