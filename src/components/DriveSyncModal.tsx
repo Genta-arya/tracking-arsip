@@ -89,9 +89,12 @@ export function DriveSyncModal({
     let firestoreError: string | null = null;
 
     try {
-      const scannedKecData = await scanKecamatanFolder(config.gasWebAppUrl, kec.id);
+      const scannedKecData = await scanKecamatanFolder(config.gasWebAppUrl, kec.id, (percent, desa) => {
+        setScanProgress(Math.round(percent * 0.8));
+        setStatusMessage(desa ? `Desa ${desa} selesai dibaca. Memindai Kecamatan ${kec.name}...` : `Mendata desa di Kecamatan ${kec.name}...`);
+      });
 
-      setScanProgress(40);
+      setScanProgress(80);
 
       // Pertahankan status anomali yang sudah diperbaiki/ditetapkan berdasarkan compare file.id
       const overrides = await fetchAllFileOverrides();
@@ -131,7 +134,7 @@ export function DriveSyncModal({
         }
       }
 
-      setScanProgress(70);
+      setScanProgress(90);
 
       // Simpan ke Cloud Firestore terpusat agar langsung sinkron ke seluruh user lain
       setStatusMessage(`Menyimpan data "${kec.name}" ke Cloud Firestore untuk seluruh staf...`);
@@ -209,7 +212,10 @@ export function DriveSyncModal({
       setScanProgress(Math.round(((i) / kecamatanFolders.length) * 100));
 
       try {
-        const scannedKecData = await scanKecamatanFolder(config.gasWebAppUrl, kec.id);
+        const scannedKecData = await scanKecamatanFolder(config.gasWebAppUrl, kec.id, (percent, desa) => {
+          setScanProgress(Math.floor((i + percent * 0.009) / kecamatanFolders.length * 100));
+          setStatusMessage(`(${i + 1}/${kecamatanFolders.length}) ${desa ? `Desa ${desa} selesai dibaca` : 'Mendata desa'} · Kecamatan ${kec.name}`);
+        });
 
         // Pertahankan status anomali berdasarkan compare file.id
         scannedKecData.forEach((tps) => {
@@ -236,6 +242,8 @@ export function DriveSyncModal({
             deleteFileOverride(fId);
           }
         }
+
+        setStatusMessage(`Menyimpan Kecamatan ${kec.name} ke Cloud Firestore...`);
 
         // Simpan per kecamatan ke Cloud Firestore
         try {

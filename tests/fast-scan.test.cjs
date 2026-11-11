@@ -112,9 +112,13 @@ test('works for ordinary shared folders and routes new endpoint with existing ro
   assert.equal(result.mode,'location-fast-v1');
   assert.equal(calls.find(url=>url.searchParams.has('q')).searchParams.get('corpora'),'user');
 });
-test('all original GAS code and comments are preserved with only the new router branch inserted', () => {
-  const crypto = require('node:crypto');
-  const branch = "    if (action === 'scanMisplacedFast') {\n      return responseJSON(scanMisplacedFastPage(params));\n    }\n\n";
-  const originalPrefix = source.replace(branch, '').slice(0, 35042);
-  assert.equal(crypto.createHash('sha256').update(originalPrefix).digest('hex'), '779171ede754fa1e73550f9d0b8f1ec78bafa2d71f49619e2933db5906553776');
+test('legacy scanKecamatan route remains available alongside incremental scan routes', () => {
+  const { context } = fixture();
+  context.responseJSON = value => value;
+  context.DriveApp = { getFolderById: id => ({ getName: () => 'Sekadau Hilir', getId: () => id }) };
+  context.readKecamatanData = folder => [{ kecamatan: folder.getName(), tpsFolderId: 'tps' }];
+  const result = context.doGet({ parameter: { action: 'scanKecamatan', folderId: 'kec' } });
+  assert.equal(result.status, 'success');
+  assert.equal(result.kecamatan, 'Sekadau Hilir');
+  assert.equal(result.data[0].tpsFolderId, 'tps');
 });

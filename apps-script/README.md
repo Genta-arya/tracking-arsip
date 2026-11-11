@@ -1,6 +1,6 @@
 # Versi terbaru: scan cepat berdasarkan lokasi
 
-Gunakan **Kode.gs** di folder ini untuk mengganti seluruh isi Kode.gs di Apps Script. Seluruh kode lama dan formatnya dipertahankan; router ditambah action `scanMisplacedFast`, lalu fungsi baru ditambahkan di akhir file. Fungsi scan lama tetap tersedia untuk kompatibilitas. Jangan memasang helper `scan-misplaced*.gs` sebagai tambahan jika menggunakan file lengkap: seluruh fungsi sudah digabung.
+Gunakan **Kode.gs** di folder ini untuk mengganti seluruh isi Kode.gs di Apps Script. Router mencakup `scanMisplacedFast`, `listScanDesa`, dan `scanDesa`. Pembacaan TPS per desa dipakai bersama oleh scan bertahap dan scan kecamatan lama, yang tetap tersedia untuk kompatibilitas. Jangan memasang helper `scan-misplaced*.gs` sebagai tambahan jika menggunakan file lengkap: seluruh fungsi sudah digabung.
 
 ## Pemasangan
 
@@ -28,3 +28,16 @@ Google Drive API harus aktif pada Google Cloud project terkait Apps Script. Mesi
 `node --test tests/fast-scan.test.cjs tests/misplaced-scan.test.cjs` memeriksa scope lokasi, pengecualian isi TPS, pengelompokan parent, pagination, persentase, cache kedaluwarsa, izin gagal, kompatibilitas, dan pelestarian fungsi lama pada file lengkap. Browser dapat diuji dengan respons simulasi. Validasi Drive asli memerlukan deployment pengguna.
 
 Helper `scan-misplaced.gs`, `scan-misplaced-pdf.gs`, dan `scan-misplaced-fast.gs` disediakan sebagai sumber modul; pilih pemasangan modular atau satu file lengkap, bukan keduanya.
+
+## Progres scan biasa (tab pertama)
+
+Scan biasa kini memakai action `listScanDesa` dan `scanDesa` untuk memperbarui
+persentase setiap desa selesai dibaca. Ganti isi `Kode.gs` dengan file lengkap
+terbaru, lalu buka **Deploy → Manage deployments → Edit → New version → Deploy**.
+Gunakan URL Web App deployment yang sama pada konfigurasi aplikasi. Endpoint
+`scanKecamatan` lama tetap tersedia untuk pemanggil lama.
+
+Persentase mengikuti desa yang selesai dibaca, kemudian penyimpanan Firestore.
+Saat satu desa masih dibaca, persentase menunggu respons Google Drive; ini bukan
+estimasi waktu. Jika satu desa gagal, hasil parsial kecamatan tidak menggantikan
+data yang sudah tersimpan.

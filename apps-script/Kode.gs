@@ -87,6 +87,28 @@ function doGet(e) {
       });
     }
 
+    if (action === 'listScanDesa') {
+      var folders = DriveApp.getFolderById(folderId).getFolders();
+      var villages = [];
+      while (folders.hasNext()) {
+        var village = folders.next();
+        if (!village.isTrashed()) villages.push({ id: village.getId(), name: village.getName().trim() });
+      }
+      return responseJSON({ status: 'success', data: villages });
+    }
+
+    if (action === 'scanDesa') {
+      var parent = DriveApp.getFolderById(folderId);
+      var desa = DriveApp.getFolderById(params.desaId);
+      var parents = desa.getParents();
+      var belongs = false;
+      while (parents.hasNext()) {
+        if (parents.next().getId() === folderId) belongs = true;
+      }
+      if (!belongs || desa.isTrashed()) throw new Error('Desa tidak ditemukan di kecamatan ini. Pindai ulang.');
+      return responseJSON({ status: 'success', data: readDesaData(desa, parent.getName().trim(), {}) });
+    }
+
     if (action === 'scanKecamatan') {
       var kecFolder = DriveApp.getFolderById(folderId);
 
@@ -297,45 +319,36 @@ function preserveFileOverrides(source, target) {
 function readKecamatanData(kecFolder, existingLookup) {
   var result = [];
   var desaFolders = kecFolder.getFolders();
-  var kecName = kecFolder.getName().trim();
-
   while (desaFolders.hasNext()) {
     var desa = desaFolders.next();
-
-    if (desa.isTrashed()) continue;
-
-    var desaName = desa.getName().trim();
-    var tpsFolders = desa.getFolders();
-
-    while (tpsFolders.hasNext()) {
-      var tps = tpsFolders.next();
-
-      if (tps.isTrashed()) continue;
-
-      var files = tps.getFiles();
-      var fileList = [];
-
-      while (files.hasNext()) {
-        var file = files.next();
-
-        if (file.isTrashed()) continue;
-
-        fileList.push(
-          readFileMetadata(file, existingLookup[file.getId()])
-        );
-      }
-
-      result.push({
-        kecamatan: kecName,
-        desa: desaName,
-        tpsFolderName: tps.getName().trim(),
-        tpsFolderId: tps.getId(),
-        tpsFolderUrl: tps.getUrl(),
-        files: fileList
-      });
+    if (!desa.isTrashed()) {
+      result = result.concat(readDesaData(desa, kecFolder.getName().trim(), existingLookup));
     }
   }
+  return result;
+}
 
+function readDesaData(desa, kecName, existingLookup) {
+  var result = [];
+  var tpsFolders = desa.getFolders();
+  while (tpsFolders.hasNext()) {
+    var tps = tpsFolders.next();
+    if (tps.isTrashed()) continue;
+    var files = tps.getFiles();
+    var fileList = [];
+    while (files.hasNext()) {
+      var file = files.next();
+      if (!file.isTrashed()) fileList.push(readFileMetadata(file, existingLookup[file.getId()]));
+    }
+    result.push({
+      kecamatan: kecName,
+      desa: desa.getName().trim(),
+      tpsFolderName: tps.getName().trim(),
+      tpsFolderId: tps.getId(),
+      tpsFolderUrl: tps.getUrl(),
+      files: fileList
+    });
+  }
   return result;
 }
 
