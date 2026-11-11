@@ -44,3 +44,15 @@ Pengaturan fokus lensa hanya diminta jika track kamera mengiklankan dukungan
 `pointsOfInterest`. Jika tidak didukung atau permintaan ditolak, pemilihan area
 deteksi tetap berfungsi. Tombol Fokus otomatis menghapus titik pilihan dan
 mengembalikan mode fokus continuous pada kamera yang mendukungnya.
+
+## Pratinjau dan berbagi PDF
+
+Simpan & unduh mempertahankan modal dan menampilkan pratinjau halaman dari
+raster yang dipakai untuk membuat PDF. File PDF asli dapat dibuka lewat Buka
+file PDF, diunduh ulang, atau dibagikan melalui Web Share API dengan `File`
+bertipe `application/pdf`. Tombol WhatsApp/Drive membuka share sheet perangkat;
+aplikasi tujuan dipilih pengguna. Tidak ada upload Drive otomatis atau tautan
+WhatsApp yang berpura-pura melampirkan file. Browser tanpa dukungan berbagi file
+menampilkan petunjuk unduh dan lampirkan/unggah manual. Batal berbagi tidak
+menutup pratinjau. URL hasil PDF tetap hidup selama sesi, dan dibersihkan saat
+PDF diganti atau komponen dilepas.
