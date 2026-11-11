@@ -263,6 +263,10 @@ export function TrackerMatrix({
               currentRecords.map((tps, idx) => {
                 const globalIndex = startIndex + idx + 1;
                 const isComplete = tps.isComplete;
+                const correctedCount = tps.files.filter(file =>
+                  file.isResolved && file.overrideElection !== 'HAPUS' &&
+                  file.overrideElection !== 'IGNORE' && file.detectedElection !== 'UNKNOWN'
+                ).length;
                 const isEmpty = tps.completedCount === 0;
 
                 return (
@@ -341,6 +345,14 @@ export function TrackerMatrix({
 
                     {/* Status Badge 3D */}
                     <td className="px-2 py-2 text-center">
+                      {correctedCount > 0 && (
+                        <div className="mb-1">
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800" title={`${correctedCount} berkas sudah dikoreksi dan ditetapkan jenis pemilihannya`}>
+                            <Check className="h-3 w-3" aria-hidden="true" />
+                            Sudah dikoreksi ({correctedCount})
+                          </span>
+                        </div>
+                      )}
                       {isComplete && !tps.hasAnomaly && (
                         <span
                           className="inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200 text-emerald-950 border border-emerald-300 shadow-2xs whitespace-nowrap"

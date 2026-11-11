@@ -108,8 +108,9 @@ export function FileDetailModal({
     }
     setEditingFileId(file.id);
     setSelectedElection(
-      file.overrideElection ||
-      (file.detectedElection !== 'UNKNOWN' ? file.detectedElection : 'SUDAH_DIBENARKAN')
+      (file.overrideElection && file.overrideElection !== 'SUDAH_DIBENARKAN'
+        ? file.overrideElection
+        : file.detectedElection !== 'UNKNOWN' ? file.detectedElection : '')
     );
     setResolutionNote(
       file.resolutionNote ||
@@ -141,6 +142,9 @@ export function FileDetailModal({
     setSaveSuccessMsg(null);
 
     try {
+      if (!['PPWP', 'DPR_RI', 'DPD', 'DPRD_PROV', 'DPRD_KAB', 'HAPUS', 'RESET'].includes(selectedElection)) {
+        throw new Error('Pilih jenis pemilihan agar berkas yang dikoreksi tercentang di tabel.');
+      }
       const isReset = selectedElection === 'RESET';
       const isHapus = selectedElection === 'HAPUS';
 
@@ -730,6 +734,7 @@ export function FileDetailModal({
                                   }}
                                   className="w-full text-xs p-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 shadow-[0_1.5px_3px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-kpu-maroon focus:outline-none"
                                 >
+                                  <option value="" disabled>Pilih jenis pemilihan untuk mencentang tabel</option>
                                   <option value="HAPUS">
                                     🗑️ Hapus Berkas / Sudah Dipindahkan (Selesaikan & Sembunyikan)
                                   </option>
