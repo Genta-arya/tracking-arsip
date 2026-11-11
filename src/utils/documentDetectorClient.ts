@@ -1,4 +1,4 @@
-import type { Corners } from './documentScanner';
+import type { Corners, Point } from './documentScanner';
 
 /** Satu antrean worker untuk preview kamera dan analisis foto resolusi lebih tinggi. */
 export class DocumentDetector {
@@ -31,7 +31,7 @@ export class DocumentDetector {
     for(const job of this.pending.values()){clearTimeout(job.timer);job.reject(error);}this.pending.clear();
   }
   async ready(): Promise<void> {await this.initialization;if(this.stopped)throw new Error('Scanner sudah ditutup.');if(this.failure)throw this.failure;}
-  async detect(source: CanvasImageSource, width: number, height: number, maxSide=960): Promise<Corners | null> {
+  async detect(source: CanvasImageSource, width: number, height: number, maxSide=960, focus: Point | null = null): Promise<Corners | null> {
     await this.ready();
     const canvas=document.createElement('canvas'),scale=Math.min(1,maxSide/Math.max(width,height));
     canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
@@ -40,7 +40,7 @@ export class DocumentDetector {
     return new Promise((resolve,reject)=>{
       const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('Deteksi belum selesai. Coba ulang dengan foto yang lebih jelas.'));},20000);
       this.pending.set(id,{resolve,reject,timer});
-      this.worker.postMessage({id,width:image.width,height:image.height,buffer:image.data.buffer},[image.data.buffer]);
+      this.worker.postMessage({id,width:image.width,height:image.height,focus,buffer:image.data.buffer},[image.data.buffer]);
     });
   }
   dispose(): void {this.stopped=true;this.cancelInitialization();this.worker.terminate();this.fail(new Error('Scanner sudah ditutup.'));}

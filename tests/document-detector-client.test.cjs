@@ -36,3 +36,9 @@ test('worker load failure is reported instead of silently claiming no paper was 
  const {detector,worker}=fixture();const pending=detector.detect({},2,2);
  worker.onerror();await assert.rejects(pending,/tidak tersedia/);detector.dispose();
 });
+test('tap position is carried to the worker with the camera frame',async()=>{
+ const {detector,worker}=fixture();worker.onmessage({data:{ready:true}});
+ const point={x:0.25,y:0.65},pending=detector.detect({},2,2,480,point);await new Promise(r=>setImmediate(r));
+ assert.deepEqual(JSON.parse(JSON.stringify(worker.messages[0].focus)),point);
+ worker.onmessage({data:{id:worker.messages[0].id,corners:null}});await pending;detector.dispose();
+});

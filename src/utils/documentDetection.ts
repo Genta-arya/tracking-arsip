@@ -4,7 +4,7 @@ import { validCorners, type Corners, type Point } from './documentScanner';
 type Cv = typeof OpenCV;
 
 /** Banyak kandidat kontur, bukan satu blob tepi yang harus tersambung sempurna. */
-export function detectDocument(cv: Cv, image: ImageData): Corners | null {
+export function detectDocument(cv: Cv, image: ImageData, focus: Point | null = null): Corners | null {
   const { width: w, height: h } = image;
   if (w < 20 || h < 20) return null;
   const owned: { delete(): void }[] = [];
@@ -22,6 +22,8 @@ export function detectDocument(cv: Cv, image: ImageData): Corners | null {
     const candidates = new Map<string, number>();
     const scoreQuad = (corners: Corners) => {
       if (!validCorners(corners)) return;
+      // Saat pengguna mengetuk, pilih dokumen yang melingkupi titik itu, bukan yang terbesar di tempat lain.
+      if (focus && !corners.every((a,i)=>{const b=corners[(i+1)%4];return (b.x-a.x)*(focus.y-a.y)-(b.y-a.y)*(focus.x-a.x)>=-0.003;})) return;
       const area = Math.abs(corners.reduce((sum, p, i) => { const q = corners[(i + 1) % 4]; return sum + p.x * q.y - q.x * p.y; }, 0)) / 2;
       if (area < 0.06 || area > 0.985) return;
       const lengths = corners.map((a, i) => { const b = corners[(i+1)%4]; return Math.hypot((a.x-b.x)*w,(a.y-b.y)*h); });
@@ -62,7 +64,7 @@ export function detectDocument(cv: Cv, image: ImageData): Corners | null {
         const order: {index:number;area:number}[]=[];
         for(let i=0;i<contours.size();i++){const contour=contours.get(i);try{const area=Math.abs(cv.contourArea(contour));if(area>w*h*0.055)order.push({index:i,area});}finally{contour.delete();}}
         order.sort((a,b)=>b.area-a.area);
-        for(const item of order.slice(0,18)) {
+        for(const item of order.slice(0,focus ? 36 : 18)) {
           const contour=contours.get(item.index), approx=new cv.Mat();
           try {
             const perimeter=cv.arcLength(contour,true);

@@ -1,5 +1,6 @@
 import cvUrl from '@techstark/opencv-js/dist/opencv.js?url';
 import type * as OpenCV from '@techstark/opencv-js';
+import type { Point } from '../utils/documentScanner';
 import { detectDocument } from '../utils/documentDetection';
 
 const scope = globalThis as unknown as {
@@ -13,11 +14,11 @@ const ready = (async () => {
   return await scope.cv;
 })();
 ready.then(() => scope.postMessage({ ready: true })).catch(() => scope.postMessage({ error: 'Mesin deteksi tidak dapat dimuat. Coba buka ulang scanner.' }));
-scope.onmessage = async ({ data }: MessageEvent<{ id: number; width: number; height: number; buffer: ArrayBuffer }>) => {
+scope.onmessage = async ({ data }: MessageEvent<{ id: number; width: number; height: number; buffer: ArrayBuffer; focus?: Point | null }>) => {
   try {
     const cv = await ready;
     const image = new ImageData(new Uint8ClampedArray(data.buffer), data.width, data.height);
-    const corners = detectDocument(cv, image);
+    const corners = detectDocument(cv, image, data.focus);
     scope.postMessage({ id: data.id, corners });
   } catch {
     scope.postMessage({ id: data.id, error: 'Deteksi dokumen gagal. Coba ulang atau sesuaikan sudut crop.' });
