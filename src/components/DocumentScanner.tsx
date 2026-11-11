@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Camera, ScanLine, X, Download, Plus, RotateCw, Trash2, ArrowLeft, ArrowRight, RefreshCw, Crop, SlidersHorizontal, Layers, ImagePlus, Check, ShieldCheck, ChevronRight } from 'lucide-react';
 import './DocumentScanner.css';
-import { Corners, PdfScanImage, FULL_PAGE, MAX_SCAN_PAGES, loadScanImage, paperFromImage, renderScanPage, validCorners, createScanPdf } from '@/utils/documentScanner';
+import { Corners, PdfScanImage, FULL_PAGE, MAX_SCAN_PAGES, loadScanImage, paperFromImage, renderScanPage, validCorners, createScanPdf, scanPdfFilename } from '@/utils/documentScanner';
 
 interface ScanPage { id: string; url: string; corners: Corners; rotation: number; brightness: number; contrast: number; grayscale: boolean; magicColor: boolean; width: number; height: number }
 const actionClass = 'scan-button';
@@ -15,6 +15,21 @@ export function DocumentScanner() {
   const replacement = useRef<string | null>(null), urls = useRef(new Set<string>()), media = useRef<MediaStream | null>(null), cameraRequest = useRef(0);
   const dialog = useRef<HTMLDivElement>(null);
   const [tool, setTool] = useState<'crop' | 'adjust' | 'pages'>('crop');
+  const [popup, setPopup] = useState<'notice' | 'rename' | null>(null);
+  const [pdfName, setPdfName] = useState('');
+  const [nameError, setNameError] = useState('');
+  const popupRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const modal = popupRef.current;
+    if (open && popup && modal && !modal.open) modal.showModal();
+    else if (modal?.open && (!open || !popup)) modal.close();
+  }, [open, popup]);
+  useEffect(() => {
+    if (!pages.length && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [pages.length, busy]);
   const active = pages[selected];
   const stopCamera = () => { cameraRequest.current++; media.current?.getTracks().forEach(t => t.stop()); media.current = null; setStream(null); setDetected(null); };
   useEffect(() => () => { cameraRequest.current++; media.current?.getTracks().forEach(t => t.stop()); urls.current.forEach(url => URL.revokeObjectURL(url)); }, []);
@@ -23,6 +38,7 @@ export function DocumentScanner() {
     const previous = document.body.style.overflow, focused = document.activeElement as HTMLElement | null; document.body.style.overflow = 'hidden';
     dialog.current?.querySelector<HTMLButtonElement>('button')?.focus();
     const close = (event: KeyboardEvent) => {
+      if (dialog.current?.querySelector('dialog[open]')) return;
       if (event.key === 'Tab') {
         const nodes = dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled):not([type="file"])');
         if (nodes?.length) {
@@ -113,6 +129,9 @@ export function DocumentScanner() {
   };
   const download = async () => {
     if (!pages.length || busy) return;
+    const filename = scanPdfFilename(pdfName);
+    if (!filename) { setNameError('Masukkan nama file yang valid.'); return; }
+    setNameError('');
     setBusy(true); setError('');
     try {
       const canvases: PdfScanImage[] = [];
@@ -123,7 +142,7 @@ export function DocumentScanner() {
         canvases.push({ width: canvas.width, height: canvas.height, jpeg: Uint8Array.from(atob(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]), c => c.charCodeAt(0)) });
         canvas.width = 0; canvas.height = 0;
       }
-      const blob = await createScanPdf(canvases), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = `Scan-Arsip-${new Date().toISOString().slice(0, 10)}.pdf`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000); setMessage('PDF siap diunduh.');
+      const blob = await createScanPdf(canvases), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000); setPopup(null); setMessage('Unduhan PDF dimulai. Pastikan unduhan selesai di browser sebelum menutup halaman.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Gagal membuat PDF.'); } finally { setBusy(false); }
   };
   const move = (delta: number) => { const next = selected + delta; if (next < 0 || next >= pages.length) return; setPages(list => { const copy = [...list]; [copy[selected], copy[next]] = [copy[next], copy[selected]]; return copy; }); setSelected(next); };
@@ -145,12 +164,12 @@ export function DocumentScanner() {
   };
   const pickImages = () => { replacement.current = null; input.current?.click(); };
   return <>
-    <button onClick={() => setOpen(true)} className="pointer-events-auto mb-3 flex items-center gap-2 rounded-full border border-amber-300 bg-gradient-to-r from-kpu-maroon to-rose-800 px-5 py-3 text-sm font-bold text-white shadow-xl"><ScanLine className="h-5 w-5" /> Scan Berkas</button>
+    <button onClick={() => { setPopup('notice'); setOpen(true); }} className="pointer-events-auto mb-3 flex items-center gap-2 rounded-full border border-amber-300 bg-gradient-to-r from-kpu-maroon to-rose-800 px-5 py-3 text-sm font-bold text-white shadow-xl"><ScanLine className="h-5 w-5" /> Scan Berkas</button>
     {open && createPortal(<div ref={dialog} className={`archive-scanner ${stream ? 'is-camera' : ''}`} role="dialog" aria-modal="true" aria-label="Scan dokumen arsip">
       <header className="scan-header">
         <div className="scan-brand"><span className="scan-brand-icon"><ScanLine size={23} /></span><div><h2>Arsip<span>Scan</span></h2><p>Dokumen rapi. Arsip siap.</p></div></div>
         <div className="scan-steps" aria-label="Langkah scan"><span className={!pages.length || stream ? 'current' : ''}>01 <b>Ambil</b></span><ChevronRight size={14} /><span className={pages.length && !stream ? 'current' : ''}>02 <b>Rapikan</b></span><ChevronRight size={14} /><span>03 <b>Simpan</b></span></div>
-        <div className="scan-header-actions">{!!pages.length && !stream && <button className="scan-primary scan-export" disabled={busy || crop} onClick={() => void download()}><Download size={17} /><span>Unduh PDF ({pages.length})</span></button>}<button aria-label="Tutup scanner" disabled={busy} onClick={() => { stopCamera(); setOpen(false); }} className="scan-icon-button"><X size={21} /></button></div>
+        <div className="scan-header-actions">{!!pages.length && !stream && <button className="scan-primary scan-export" disabled={busy || crop} onClick={() => { setPdfName(`Scan-Arsip-${new Date().toISOString().slice(0, 10)}`); setNameError(''); setError(''); setPopup('rename'); }}><Download size={17} /><span>Unduh PDF ({pages.length})</span></button>}<button aria-label="Tutup scanner" disabled={busy} onClick={() => { stopCamera(); setOpen(false); }} className="scan-icon-button"><X size={21} /></button></div>
       </header>
       <input ref={input} type="file" accept="image/*" multiple className="hidden" onChange={e => void upload(e.target.files)} />
       {(error || message || busy) && <div className={`scan-notice ${error ? 'has-error' : ''}`} role={error ? 'alert' : 'status'}>{busy && <span className="scan-spinner" />}{error || (busy ? message || 'Memproses gambar…' : message)}{!busy && <button aria-label="Tutup pemberitahuan" onClick={() => { setError(''); setMessage(''); }}><X size={14} /></button>}</div>}
@@ -197,6 +216,28 @@ export function DocumentScanner() {
         </section>}
       </main>
       {!!pages.length && !stream && <footer className="scan-filmstrip"><div className="scan-filmstrip-label"><Layers size={17}/><span>{pages.length}<small>/25 halaman</small></span></div><nav aria-label="Daftar halaman scan">{pages.map((p, i) => <button key={p.id} disabled={busy || crop} aria-label={`Pilih halaman ${i + 1}`} aria-current={i === selected ? 'page' : undefined} onClick={() => { setSelected(i); setCrop(false); }} className={i === selected ? 'selected' : ''}><img src={p.url} alt=""/><span>{i + 1}</span>{i === selected && <Check size={11}/>}</button>)}</nav><div className="scan-add-pages"><button title="Tambah dari kamera" aria-label="Kamera" className="scan-icon-button" disabled={busy || crop || pages.length >= 25} onClick={() => void startCamera()}><Camera size={19}/></button><button title="Tambah dari galeri" aria-label="Tambah gambar" className="scan-icon-button" disabled={busy || crop || pages.length >= 25} onClick={pickImages}><Plus size={20}/></button></div></footer>}
+      <dialog ref={popupRef} className="scan-modal" aria-labelledby="scan-modal-title" aria-describedby="scan-modal-description" onCancel={event => { event.preventDefault(); if (!busy) setPopup(null); }}>
+        {popup === 'notice' ? <div className="scan-modal-content">
+          <span className="scan-modal-icon"><ShieldCheck size={25}/></span>
+          <span className="scan-eyebrow">SEBELUM MULAI</span>
+          <h3 id="scan-modal-title">Sesi scan ini bersifat sementara.</h3>
+          <p id="scan-modal-description">Foto dan hasil edit <strong>tidak tersimpan permanen</strong>. Tetap buka browser sampai semua berkas selesai diproses dan PDF selesai diunduh.</p>
+          <div className="scan-modal-reminder">Jangan tutup tab, muat ulang halaman, atau keluar dari browser sebelum memastikan file PDF sudah tersimpan di perangkat Anda.</div>
+          <button autoFocus className="scan-primary scan-wide" onClick={() => setPopup(null)}>Saya mengerti, mulai scan <ArrowRight size={17}/></button>
+        </div> : popup === 'rename' ? <form className="scan-modal-content" onSubmit={event => { event.preventDefault(); void download(); }}>
+          <span className="scan-modal-icon"><Download size={25}/></span>
+          <span className="scan-eyebrow">SIMPAN DOKUMEN</span>
+          <h3 id="scan-modal-title">Beri nama arsip Anda.</h3>
+          <p id="scan-modal-description">{pages.length} halaman akan digabung menjadi satu PDF. Pilih nama agar dokumen mudah ditemukan.</p>
+          <label className="scan-name-label" htmlFor="scan-pdf-name">Nama file PDF</label>
+          <div className="scan-name-input"><input autoFocus id="scan-pdf-name" value={pdfName} maxLength={120} disabled={busy} aria-invalid={!!nameError} aria-describedby={nameError ? 'scan-name-error' : undefined} onChange={event => { setPdfName(event.target.value); setNameError(''); }}/><span>.pdf</span></div>
+          {nameError && <p className="scan-name-error" id="scan-name-error" role="alert">{nameError}</p>}
+          {busy ? <p className="scan-modal-progress" role="status"><span className="scan-spinner"/>{message || 'Menyiapkan dokumen…'}</p> : <p className="scan-modal-footnote">Tetap buka browser sampai PDF selesai diunduh.</p>}
+          {error && <p className="scan-name-error" role="alert">{error}</p>}
+          <div className="scan-button-row"><button type="button" className="scan-button" disabled={busy} onClick={() => setPopup(null)}>Batal</button><button type="submit" className="scan-primary" disabled={busy || !pdfName.trim()}>{busy ? 'Memproses…' : 'Simpan & unduh PDF'}{!busy && <Download size={16}/>}</button></div>
+          {busy && <p className="scan-modal-footnote">Jangan tutup tab atau browser saat proses berlangsung.</p>}
+        </form> : null}
+      </dialog>
     </div>, document.body)}
   </>;
 }

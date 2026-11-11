@@ -79,3 +79,11 @@ test('a round object is not mistaken for a four-sided sheet',()=>{
  for(let y=0;y<height;y++)for(let x=0;x<width;x++)if((x-50)**2+(y-50)**2<32**2)for(let k=0;k<3;k++)data[(y*width+x)*4+k]=200;
  assert.equal(detectPaper({width,height,data}),null);
 });
+test('download names keep one PDF extension and strip filesystem control characters',()=>{
+ const name=context.exports.scanPdfFilename;
+ assert.equal(name('  Arsip Peniti TPS 5  '),'Arsip Peniti TPS 5.pdf');
+ assert.equal(name('Arsip.pdf.PDF'),'Arsip.pdf');
+ assert.equal(name('Arsip/KPU:TPS?5\u0000.pdf'),'ArsipKPUTPS5.pdf');
+ assert.equal(name('...'),'');assert.equal(name('  '),'');assert.equal(name('.pdf'),'');
+ assert.ok(name('a'.repeat(200)).length<=124);
+});
