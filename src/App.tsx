@@ -1,3 +1,4 @@
+import { CorrectionHistory } from '@/components/CorrectionHistory';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, RefreshCw, TrendingUp, Table, MapPin, Building2 } from 'lucide-react';
@@ -223,7 +224,7 @@ export function App() {
     return processedRecords.find((r) => r.id === selectedRecordId) || null;
   }, [processedRecords, selectedRecordId]);
 
-  // Handler pembaruan status anomali berkas (Optimistic UI instan + Firestore + IndexedDB)
+  // Koreksi dan audit disimpan atomik, kemudian UI serta cache diperbarui.
   const handleUpdateFileStatus = useCallback(
     async (params: {
       kecamatan: string;
@@ -233,7 +234,9 @@ export function App() {
       isResolved: boolean;
       resolutionNote?: string;
     }) => {
-      // 1. Optimistic Update pada state rawData di App.tsx
+      if (!config.isDemoMode) await updateFileAnomalyStatus(params);
+      // Terapkan UI setelah transaksi koreksi dan riwayat berhasil.
+
       setRawData((prevRawData) => {
         const nextRawData = prevRawData.map((tps) => {
           if (tps.tpsFolderId !== params.tpsFolderId) return tps;
@@ -268,10 +271,6 @@ export function App() {
         return nextRawData;
       });
 
-      // 2. Simpan ke Firestore jika bukan demo mode
-      if (!config.isDemoMode) {
-        await updateFileAnomalyStatus(params);
-      }
     },
     [currentUserEmail, config.isDemoMode]
   );
@@ -670,6 +669,8 @@ export function App() {
                 onUpdateFileStatus={handleUpdateFileStatus}
                 currentUserEmail={currentUserEmail}
               />
+
+              <CorrectionHistory isDemoMode={config.isDemoMode} />
 
               {/* 2. Peta Pantauan Wilayah Sekadau (Interaktif & Collapsible) */}
               <SekadauInteractiveMap
