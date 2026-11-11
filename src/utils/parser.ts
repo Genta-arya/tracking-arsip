@@ -344,6 +344,8 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     switch (finalElection) {
       case 'PPWP':
         if (slotPPWP) {
+          // Prioritaskan berkas yang telah divalidasi admin untuk centang matriks.
+          if (scannedFile.isResolved && !slotPPWP.isResolved) slotPPWP = scannedFile;
           if (!scannedFile.isResolved) {
             const dupAnomaly: AnomalyItem = {
               type: 'DUPLICATE',
@@ -360,6 +362,8 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPR_RI':
         if (slotDPR_RI) {
+          // Prioritaskan berkas yang telah divalidasi admin untuk centang matriks.
+          if (scannedFile.isResolved && !slotDPR_RI.isResolved) slotDPR_RI = scannedFile;
           if (!scannedFile.isResolved) {
             const dupAnomaly: AnomalyItem = {
               type: 'DUPLICATE',
@@ -376,6 +380,8 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPD':
         if (slotDPD) {
+          // Prioritaskan berkas yang telah divalidasi admin untuk centang matriks.
+          if (scannedFile.isResolved && !slotDPD.isResolved) slotDPD = scannedFile;
           if (!scannedFile.isResolved) {
             const dupAnomaly: AnomalyItem = {
               type: 'DUPLICATE',
@@ -392,6 +398,8 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPRD_PROV':
         if (slotDPRD_PROV) {
+          // Prioritaskan berkas yang telah divalidasi admin untuk centang matriks.
+          if (scannedFile.isResolved && !slotDPRD_PROV.isResolved) slotDPRD_PROV = scannedFile;
           if (!scannedFile.isResolved) {
             const dupAnomaly: AnomalyItem = {
               type: 'DUPLICATE',
@@ -408,6 +416,8 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
       case 'DPRD_KAB':
         if (slotDPRD_KAB) {
+          // Prioritaskan berkas yang telah divalidasi admin untuk centang matriks.
+          if (scannedFile.isResolved && !slotDPRD_KAB.isResolved) slotDPRD_KAB = scannedFile;
           if (!scannedFile.isResolved) {
             const dupAnomaly: AnomalyItem = {
               type: 'DUPLICATE',
