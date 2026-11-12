@@ -43,16 +43,8 @@ function doGet(e) {
   var params = (e && e.parameter) || {};
   var action = params.action || 'listKecamatan';
   var folderId = params.folderId;
-  var scanLock = null;
 
   try {
-    // Lapisan server: juga melindungi dari klien lama dan trigger auto-push.
-    if (['listKecamatan', 'listScanDesa', 'scanDesa', 'scanKecamatan', 'quickScan', 'scanMisplacedFast', 'scanMisplacedPdf', 'scanMisplaced', 'auditKecamatan'].indexOf(action) >= 0) {
-      var candidateLock = LockService.getScriptLock();
-      if (!candidateLock.tryLock(1000)) throw new Error('SCAN_BUSY: Pemindaian Drive lain masih berjalan. Tunggu lalu coba kembali.');
-      scanLock = candidateLock;
-    }
-
     if (action === 'scanMisplacedFast') {
       return responseJSON(scanMisplacedFastPage(params));
     }
@@ -143,8 +135,6 @@ function doGet(e) {
       status: 'error',
       message: errorMessage(err)
     });
-  } finally {
-    if (scanLock) scanLock.releaseLock();
   }
 }
 

@@ -4,8 +4,9 @@
 
 1. Publish seluruh `firestore.rules` terbaru melalui Firebase Console. Tambahan
    kali ini adalah match `/app_config/drive_scan_lock`.
-2. Ganti seluruh `Kode.gs` di Apps Script dengan `apps-script/Kode.gs` terbaru,
-   lalu Deploy → Manage deployments → Edit → New version → Deploy. Pertahankan URL.
+2. Tidak perlu memasang pengunci baru di GAS. Jika versi pengunci router
+   sebelumnya sudah dipasang, gunakan `apps-script/Kode.gs` terbaru dan deploy
+   versi baru untuk menghapusnya. Pengunci lama pada trigger auto-push tidak diubah.
 3. Deploy frontend hasil `npm run build`, lalu muat ulang aplikasi di semua
    perangkat admin. Klien lama tidak mengetahui status lease dari frontend baru.
 
@@ -31,9 +32,9 @@ read-only.
   melepaskan tokennya sendiri.
 - Sync penuh, quick sync, scan per kecamatan dan scan berkas tersesat berbagi
   pengunci yang sama. Permintaan kamera Scan Berkas tidak memakai lease Drive.
-- ScriptLock GAS mencakup request scan dan memakai mutex yang sama dengan
-  trigger auto-push. Jika GAS sedang sibuk, request ditolak sebelum pembacaan
-  Drive, bukan menjalankan scan kedua.
+- Pengunci scan tidak ditambahkan pada router GAS. Koordinasi hanya berlaku
+  untuk perangkat yang memakai frontend terbaru dan lease Firestore ini.
+  Klien lama atau pemanggilan GAS langsung tidak tercakup oleh pengunci aplikasi.
 
 ## Riwayat lama
 
@@ -51,3 +52,16 @@ tertindih atau terhapus sebelum audit diaktifkan tidak dapat dipulihkan.
   tombol B tidak menjalankan request scan. Setelah A selesai, B dapat memulai.
 - Tutup perangkat pemilik dan tunggu lease kedaluwarsa; perangkat lain dapat
   mengambil alih. Sesi lama tetap ditolak bila mencoba menyimpan hasil.
+
+## Identitas pemindai
+
+Lease memuat nama/email akun, nama perangkat lokal yang dapat diedit, ID lokal
+browser, jenis perangkat, OS, browser, user agent, dan waktu mulai dari server.
+Nama perangkat disimpan di localStorage; ID ini bukan nomor seri hardware dan
+akan berbeda pada profil browser lain atau setelah penyimpanan dibersihkan.
+Label OS/browser diturunkan dari user agent, bukan identifikasi model pasti.
+Identitas perangkat dilaporkan klien; UID/email dan timestamp divalidasi rules.
+Alamat IP tidak dikumpulkan atau dicari melalui pihak ketiga. Detail tersedia
+di modal scan dan kartu status sinkronisasi.
+
+Publish `firestore.rules` terbaru lagi agar field metadata perangkat diterima.

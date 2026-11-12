@@ -1,3 +1,4 @@
+import { ActiveDriveScanDetails } from '@/components/ActiveDriveScanDetails';
 import { useSharedDriveScan } from '@/context/SharedDriveScanContext';
 import { DocumentScanner } from '@/components/DocumentScanner';
 import { useState } from 'react';
@@ -196,6 +197,7 @@ export function SyncStatusFloatingToast({
                   </div>
                 )}
 
+                {sharedScan.scan && <ActiveDriveScanDetails scan={sharedScan.scan}/>}
                 {/* Tombol Pindai Lengkap Manual */}
                 {onOpenSyncModal && (
                   <div className="pt-1 border-t border-slate-100 flex flex-col gap-2">

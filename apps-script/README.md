@@ -44,7 +44,9 @@ data yang sudah tersimpan.
 
 ## Scan bersama antarperangkat
 
-Kode.gs terbaru menambahkan ScriptLock pada router scan. Gunakan bersama
-`firestore.rules` dan frontend terbaru untuk status scan global dan lease
-antarperangkat. Ikuti `docs/shared-drive-scan.md` di root repositori. Publikasikan
-GAS sebagai versi baru; semua perangkat perlu memuat ulang frontend terbaru.
+Koordinasi scan dilakukan aplikasi melalui transaksi dan status realtime
+Firestore. Router Kode.gs tidak menambahkan pengunci scan. Semua perangkat perlu
+memakai frontend dan `firestore.rules` terbaru. Lihat `docs/shared-drive-scan.md`.
+Jika sebelumnya memasang versi router dengan pengunci tambahan, gunakan Kode.gs
+terbaru untuk menghapus tambahan itu. Pengunci internal trigger auto-push yang
+sudah ada sebelumnya tetap dipertahankan.
