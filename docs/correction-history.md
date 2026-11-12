@@ -9,7 +9,8 @@ Riwayat mencakup identitas Firebase admin (UID, display name bila ada, email),
 waktu server, lokasi kecamatan/desa/TPS, ID/nama/URL berkas, kategori dan status
 verifikasi sebelum/sesudah, serta catatan lama/baru. Reset, pemulihan, dan
 penandaan hapus/pindah ikut dicatat. Riwayat menampilkan 100 aktivitas terbaru
-secara realtime, dengan pencarian dan tampilan bertahap per 10 aktivitas.
+secara realtime dalam tabel minimalis, dengan pencarian dan paginasi
+10/25/50 baris per halaman. Data pendukung dapat dibuka per baris.
 Waktu ditampilkan eksplisit dalam zona Asia/Jakarta (WIB).
 
 ## Aktivasi di produksi
