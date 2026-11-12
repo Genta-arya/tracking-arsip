@@ -1,3 +1,4 @@
+import { withDriveScan, driveScanToken, ensureDriveScanOwned } from './driveScanLock';
 import { RawTpsData } from '@/types';
 import { fetchKecamatanList, scanKecamatanFolder, quickScanRecentFiles } from './driveService';
 import {
@@ -19,7 +20,7 @@ export interface SyncResult {
  * Mesin inti sinkronisasi Google Drive ke Firestore & Lokal.
  * Dapat dipanggil oleh modal manual maupun background auto-sync scheduler secara senyap.
  */
-export async function performFullDriveSync(
+async function fullDriveSync(
   gasWebAppUrl: string,
   rootFolderId: string,
   currentRawData: RawTpsData[],
@@ -32,7 +33,7 @@ export async function performFullDriveSync(
   }
 
   // 1. Ambil daftar folder kecamatan dari Google Drive
-  const kecFolders = await fetchKecamatanList(gasWebAppUrl, rootFolderId);
+  const kecFolders = await fetchKecamatanList(gasWebAppUrl, rootFolderId, ensureDriveScanOwned);
   if (!kecFolders || kecFolders.length === 0) {
     throw new Error('Tidak ditemukan folder kecamatan di dalam root folder Google Drive.');
   }
@@ -62,7 +63,7 @@ export async function performFullDriveSync(
     }
 
     try {
-      const scannedKecData = await scanKecamatanFolder(gasWebAppUrl, kec.id);
+      const scannedKecData = await scanKecamatanFolder(gasWebAppUrl, kec.id, undefined, ensureDriveScanOwned);
 
       // Pertahankan status anomali berdasarkan compare file.id
       scannedKecData.forEach((tps) => {
@@ -95,7 +96,8 @@ export async function performFullDriveSync(
 
       // Simpan per kecamatan ke Cloud Firestore
       try {
-        await saveKecamatanScanToFirestore(kec.name, scannedKecData);
+        await ensureDriveScanOwned();
+        await saveKecamatanScanToFirestore(kec.name, scannedKecData, driveScanToken());
       } catch (dbErr: any) {
         console.error(`Gagal menyimpan ${kec.name} ke Firestore:`, dbErr);
         errors.push(`Firestore error ${kec.name}: ${dbErr.message || String(dbErr)}`);
@@ -140,7 +142,7 @@ export interface QuickSyncResult {
  * Berjalan super kilat (1-2 detik) dan hanya mengupdate data TPS/Kecamatan yang terpengaruh ke Firestore.
  * Tidak melakukan full scan 7 kecamatan sehingga sangat hemat kuota dan tidak membuat lemot.
  */
-export async function performSmartQuickSync(
+async function smartQuickSync(
   gasWebAppUrl: string,
   rootFolderId: string,
   currentRawData: RawTpsData[]
@@ -156,7 +158,7 @@ export async function performSmartQuickSync(
   }
 
   // Pindai berkas 30 menit terakhir (cepat 1-2 detik)
-  const recentItems = await quickScanRecentFiles(gasWebAppUrl, rootFolderId, 30);
+  const recentItems = await quickScanRecentFiles(gasWebAppUrl, rootFolderId, 30, ensureDriveScanOwned);
   
   // Jika recentItems null (gagal HTTP atau action quickScan belum didukung di GAS lama)
   if (recentItems === null) {
@@ -243,7 +245,8 @@ export async function performSmartQuickSync(
         (t) => t.kecamatan.toLowerCase() === kec.toLowerCase()
       );
       try {
-        await saveKecamatanScanToFirestore(kec, kecData);
+        await ensureDriveScanOwned();
+        await saveKecamatanScanToFirestore(kec, kecData, driveScanToken());
       } catch (dbErr) {
         console.warn(`Gagal menyimpan quick-sync ${kec} ke Firestore:`, dbErr);
       }
@@ -264,3 +267,6 @@ export async function performSmartQuickSync(
   };
 }
 
+
+export const performFullDriveSync = (...args:Parameters<typeof fullDriveSync>) => withDriveScan('Sinkronisasi penuh Drive',()=>fullDriveSync(...args));
+export const performSmartQuickSync = (...args:Parameters<typeof smartQuickSync>) => withDriveScan('Sinkronisasi otomatis Drive',()=>smartQuickSync(...args));

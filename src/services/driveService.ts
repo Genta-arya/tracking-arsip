@@ -23,12 +23,14 @@ export interface GasListKecResponse {
  */
 export async function fetchKecamatanList(
   webAppUrl: string,
-  rootFolderId: string
+  rootFolderId: string,
+  guard?: () => Promise<void>
 ): Promise<GasKecamatanItem[]> {
   const url = new URL(webAppUrl);
   url.searchParams.set('action', 'listKecamatan');
   url.searchParams.set('folderId', rootFolderId);
 
+  await guard?.();
   const res = await fetch(url.toString(), {
     method: 'GET',
     redirect: 'follow',
@@ -39,6 +41,7 @@ export async function fetchKecamatanList(
   }
 
   const json: GasListKecResponse = await res.json();
+  await guard?.();
   if (json.status !== 'success' || !json.data) {
     throw new Error(json.message || 'Gagal mengambil daftar folder kecamatan');
   }
@@ -53,16 +56,20 @@ export async function scanKecamatanFolder(
   webAppUrl: string,
   kecFolderId: string,
   onProgress?: (percent: number, desaName?: string) => void,
+  guard?: () => Promise<void>,
 ): Promise<RawTpsData[]> {
   const request = async (action: string, desaId?: string) => {
     const url = new URL(webAppUrl);
     url.searchParams.set('action', action);
     url.searchParams.set('folderId', kecFolderId);
     if (desaId) url.searchParams.set('desaId', desaId);
+    await guard?.();
     const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
     if (!res.ok) throw new Error(`Koneksi HTTP gagal: Status ${res.status}`);
     const json = await res.json();
+    await guard?.();
     if (json.status !== 'success' || !Array.isArray(json.data)) {
+      if (json.message?.includes('SCAN_BUSY')) throw new Error(json.message);
       throw new Error(`${json.message || 'Respons scan tidak valid'}. Pastikan Kode.gs terbaru sudah di-deploy sebagai versi baru.`);
     }
     return json.data;
@@ -113,7 +120,8 @@ export interface GasQuickScanResponse {
 export async function quickScanRecentFiles(
   webAppUrl: string,
   rootFolderId: string,
-  sinceMinutes: number = 20
+  sinceMinutes: number = 20,
+  guard?: () => Promise<void>
 ): Promise<GasQuickScanItem[] | null> {
   try {
     const url = new URL(webAppUrl);
@@ -121,6 +129,7 @@ export async function quickScanRecentFiles(
     url.searchParams.set('folderId', rootFolderId);
     url.searchParams.set('minutes', sinceMinutes.toString());
 
+    await guard?.();
     const res = await fetch(url.toString(), {
       method: 'GET',
       redirect: 'follow',
@@ -128,6 +137,7 @@ export async function quickScanRecentFiles(
 
     if (!res.ok) return null;
     const json: GasQuickScanResponse = await res.json();
+    await guard?.();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
     }
@@ -171,6 +181,7 @@ export async function scanMisplacedFiles(
   rootFolderId: string,
   signal: AbortSignal,
   onProgress: (progress: MisplacedScanProgress) => void,
+  guard?: () => Promise<void>,
 ): Promise<MisplacedScanProgress> {
   const found = new Map<string, MisplacedFile>();
   const folders = new Set<string>();
@@ -187,9 +198,11 @@ export async function scanMisplacedFiles(
       const url = new URL(webAppUrl);
       Object.entries({ action: 'scanMisplacedFast', folderId: rootFolderId, rootFolderId, cursor })
         .forEach(([key, value]) => url.searchParams.set(key, value));
+      await guard?.();
       const response = await fetch(url, { signal, redirect: 'follow' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const page = await response.json();
+      await guard?.();
       if (page?.status !== 'success' || page.mode !== 'location-fast-v1') {
         throw new Error(`${page?.message || 'Respons tidak sesuai'}. Perbarui GAS untuk action scanMisplacedFast dan deploy versi baru.`);
       }

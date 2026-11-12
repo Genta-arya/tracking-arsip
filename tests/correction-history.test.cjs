@@ -28,3 +28,17 @@ test('reset and restore are recorded, and missing files or non-admin callers can
  await assert.rejects(f.update({...params,fileId:'missing'}),/tidak ditemukan/);
  await assert.rejects(fixture({email:'staff@example.com'}).update(params),/Admin Teknis/);
 });
+test('legacy records preserve stored actor/time without inventing the old status, and avoid duplicate audited files',()=>{
+ const raw=JSON.parse(JSON.stringify(original));Object.assign(raw.tpsList[0].files[0],{isResolved:true,overrideElection:'DPD',resolvedBy:'old@example.com',resolvedAt:'2026-01-01T00:00:00Z'});
+ const rows=audit.legacyCorrections(raw.tpsList,[],[]);assert.equal(rows.length,1);assert.equal(rows[0].legacy,true);assert.equal(rows[0].actorEmail,'old@example.com');assert.equal(rows[0].createdAt,'2026-01-01T00:00:00.000Z');assert.equal(rows[0].after.overrideElection,'DPD');
+ assert.equal(audit.legacyCorrections(raw.tpsList,[],[{fileId:'file'}]).length,0);
+ const unknown=audit.legacyCorrections([],[{fileId:'old',isResolved:true}],[])[0];assert.equal(unknown.createdAt,'');assert.match(unknown.actorName,/tidak tercatat/);
+});
+test('scan result writes are fenced by the current lease token in the same transaction',async()=>{
+ const source=firebaseSource.slice(firebaseSource.indexOf('export async function saveKecamatanScanToFirestore'),firebaseSource.indexOf('export function subscribeRealtimeScannedData'));
+ let writes=[];
+ const globals={auth:{currentUser:{email:'admin@example.com'}},db:{},doc:(_db,col,id)=>col+'/'+id,DEFAULT_AUTH_EMAIL:'staff',runTransaction:async(_db,body)=>body({get:async()=>({data:()=>({active:true,token:'new-session'})}),set:(ref,data)=>writes.push({ref,data})})};
+ const save=load(source,globals).saveKecamatanScanToFirestore;
+ await assert.rejects(save('Sekadau Hilir',[], 'old-session'),/beralih/);assert.equal(writes.length,0);
+ await save('Sekadau Hilir',[], 'new-session');assert.equal(writes.length,2);
+});

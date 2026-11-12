@@ -1,3 +1,4 @@
+import { withDriveScan, ensureDriveScanOwned, reportDriveScan } from '@/services/driveScanLock';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, CheckCheck, ChevronRight, CircleAlert, FileSearch, FileText, FolderOpen, MapPin, Radar, Search, ShieldCheck, Square, X } from 'lucide-react';
 import { AppConfig } from '@/types';
@@ -30,7 +31,7 @@ export function MisplacedFilesScanner({ config, disabled = false, onBusyChange }
     setStatus('running');
     setSearch('');
     try {
-      const finalResult = await scanMisplacedFiles(config.gasWebAppUrl, config.rootFolderId, current.signal, setResult);
+      const finalResult = await withDriveScan('Memindai berkas tersesat', () => scanMisplacedFiles(config.gasWebAppUrl, config.rootFolderId, current.signal, value => {setResult(value);reportDriveScan(value.progress?.percent || 0,'Memindai berkas tersesat');}, ensureDriveScanOwned));
       if (!current.signal.aborted) { setResult(finalResult); setStatus(finalResult.failures.length ? 'error' : 'done'); }
     } catch (error) {
       if (!current.signal.aborted) {

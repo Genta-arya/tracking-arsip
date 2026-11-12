@@ -32,6 +32,30 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Lease scan global: token berbeda meskipun akun dipakai di beberapa perangkat.
+    match /app_config/drive_scan_lock {
+      function validScan() {
+        return request.auth != null
+          && request.resource.data.keys().hasOnly(['active','token','actorUid','actorEmail','label','progress','updatedAt'])
+          && request.resource.data.active is bool
+          && request.resource.data.token is string
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.actorEmail == request.auth.token.email
+          && request.resource.data.label is string
+          && request.resource.data.progress is int
+          && request.resource.data.progress >= 0 && request.resource.data.progress <= 100
+          && request.resource.data.updatedAt == request.time;
+      }
+      allow read: if request.auth != null;
+      allow create: if validScan() && request.resource.data.active == true;
+      allow update: if validScan() && (
+        resource.data.active == false
+        || resource.data.updatedAt < request.time - duration.value(180, 's')
+        || (request.resource.data.token == resource.data.token && request.auth.uid == resource.data.actorUid)
+      );
+      allow delete: if false;
+    }
+
     // Audit perbaikan: hanya tambahan baru, identitas dan waktu divalidasi server.
     match /correction_history/{eventId} {
       allow read: if request.auth != null;

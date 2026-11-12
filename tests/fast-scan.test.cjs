@@ -21,7 +21,7 @@ function fixture({ pageSize = 1000, desaCount = 1, driveId = 'shared', failParen
     entries.push({ id: `tps${i}`, name: 'TPS 1', mimeType: FOLDER, parents: [`desa${i}`] });
     entries.push({ id: `validpdf${i}`, name: 'normal.pdf', mimeType: 'application/pdf', parents: [`tps${i}`] });
   }
-  const context = vm.createContext({ Error, Number, JSON,
+  const context = vm.createContext({ Error, Number, JSON, LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     CacheService: { getScriptCache: () => ({ get: key => cache.get(key) ?? null, put: (key, value) => cache.set(key, value) }) },
     Utilities: { getUuid: () => 'session-1' },
     ScriptApp: { getOAuthToken: () => 'mock' },

@@ -1,3 +1,5 @@
+import { withDriveScan, driveScanToken, ensureDriveScanOwned, reportDriveScan } from '@/services/driveScanLock';
+import { useSharedDriveScan } from '@/context/SharedDriveScanContext';
 import { useState, useEffect, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Play, Layers, Maximize2, Minus, CheckCircle2, Clock, FolderOpen, ShieldCheck, FileSearch } from 'lucide-react';
@@ -27,6 +29,8 @@ export function DriveSyncModal({
   currentRawData,
   onReopenModal,
 }: DriveSyncModalProps) {
+  const shared = useSharedDriveScan();
+  const scanBlocked = !shared.ready || !!shared.scan;
   const tabsId = useId();
   const [activeTab, setActiveTab] = useState<'regular' | 'misplaced'>('regular');
   const [isMisplacedScanning, setIsMisplacedScanning] = useState(false);
@@ -59,7 +63,7 @@ export function DriveSyncModal({
     setIsFetchingFolders(true);
     setStatusMessage(null);
     try {
-      const list = await fetchKecamatanList(config.gasWebAppUrl, config.rootFolderId);
+      const list = await withDriveScan('Membaca daftar kecamatan', () => fetchKecamatanList(config.gasWebAppUrl, config.rootFolderId, ensureDriveScanOwned));
       setKecamatanFolders(list);
       setStatusMessage(`Terdeteksi ${list.length} folder Kecamatan di Google Drive.`);
       setStatusType('success');
@@ -72,13 +76,13 @@ export function DriveSyncModal({
   };
 
   useEffect(() => {
-    if (open && activeTab === 'regular' && config.gasWebAppUrl && config.rootFolderId && kecamatanFolders.length === 0) {
+    if (shared.ready && !shared.scan && open && activeTab === 'regular' && config.gasWebAppUrl && config.rootFolderId && kecamatanFolders.length === 0) {
       handleLoadKecamatanList();
     }
-  }, [open, activeTab, config.gasWebAppUrl, config.rootFolderId]);
+  }, [open, activeTab, config.gasWebAppUrl, config.rootFolderId, shared.ready]);
 
   // Pindai 1 Kecamatan secara spesifik
-  const handleScanSingleKecamatan = async (kec: GasKecamatanItem) => {
+  const scanSingle = async (kec: GasKecamatanItem) => {
     setHasScanStarted(true);
     setIsScanning(true);
     setScanProgress(0);
@@ -92,7 +96,7 @@ export function DriveSyncModal({
       const scannedKecData = await scanKecamatanFolder(config.gasWebAppUrl, kec.id, (percent, desa) => {
         setScanProgress(Math.round(percent * 0.8));
         setStatusMessage(desa ? `Desa ${desa} selesai dibaca. Memindai Kecamatan ${kec.name}...` : `Mendata desa di Kecamatan ${kec.name}...`);
-      });
+      }, ensureDriveScanOwned);
 
       setScanProgress(80);
 
@@ -139,7 +143,8 @@ export function DriveSyncModal({
       // Simpan ke Cloud Firestore terpusat agar langsung sinkron ke seluruh user lain
       setStatusMessage(`Menyimpan data "${kec.name}" ke Cloud Firestore untuk seluruh staf...`);
       try {
-        await saveKecamatanScanToFirestore(kec.name, scannedKecData);
+        await ensureDriveScanOwned();
+        await saveKecamatanScanToFirestore(kec.name, scannedKecData, driveScanToken());
       } catch (dbErr: any) {
         console.error('Gagal menyimpan ke Firestore:', dbErr);
         firestoreError = dbErr.message || String(dbErr);
@@ -153,6 +158,7 @@ export function DriveSyncModal({
       );
       const updated = [...otherKecData, ...scannedKecData];
 
+      await ensureDriveScanOwned();
       onSyncComplete(updated);
       setCompletedKecamatans((prev) => Array.from(new Set([...prev, kec.name])));
 
@@ -175,7 +181,7 @@ export function DriveSyncModal({
   };
 
   // Pindai Seluruh Kecamatan secara berurutan (Batch Scan)
-  const handleScanAllKecamatan = async () => {
+  const scanAll = async () => {
     if (kecamatanFolders.length === 0) return;
 
     setHasScanStarted(true);
@@ -215,7 +221,7 @@ export function DriveSyncModal({
         const scannedKecData = await scanKecamatanFolder(config.gasWebAppUrl, kec.id, (percent, desa) => {
           setScanProgress(Math.floor((i + percent * 0.009) / kecamatanFolders.length * 100));
           setStatusMessage(`(${i + 1}/${kecamatanFolders.length}) ${desa ? `Desa ${desa} selesai dibaca` : 'Mendata desa'} · Kecamatan ${kec.name}`);
-        });
+        }, ensureDriveScanOwned);
 
         // Pertahankan status anomali berdasarkan compare file.id
         scannedKecData.forEach((tps) => {
@@ -247,7 +253,8 @@ export function DriveSyncModal({
 
         // Simpan per kecamatan ke Cloud Firestore
         try {
-          await saveKecamatanScanToFirestore(kec.name, scannedKecData);
+          await ensureDriveScanOwned();
+          await saveKecamatanScanToFirestore(kec.name, scannedKecData, driveScanToken());
         } catch (dbErr: any) {
           console.error(`Gagal menyimpan ${kec.name} ke Firestore:`, dbErr);
           if (!firestoreErrors.includes(dbErr.message || String(dbErr))) {
@@ -269,6 +276,8 @@ export function DriveSyncModal({
     }
 
     setScanProgress(100);
+    try { await ensureDriveScanOwned(); }
+    catch(error){setIsScanning(false);setCurrentScanningKec(null);throw error;}
     onSyncComplete(combinedData);
     setIsScanning(false);
     setCurrentScanningKec(null);
@@ -287,6 +296,9 @@ export function DriveSyncModal({
     }
   };
 
+  useEffect(()=>{if(isScanning)reportDriveScan(scanProgress,currentScanningKec ? `Memindai ${currentScanningKec}` : 'Memindai seluruh kecamatan');},[isScanning,scanProgress,currentScanningKec]);
+  const handleScanSingleKecamatan = async (kec:GasKecamatanItem) => {try{await withDriveScan(`Memindai ${kec.name}`,()=>scanSingle(kec));}catch(e){setStatusType('error');setStatusMessage(e instanceof Error?e.message:String(e));}};
+  const handleScanAllKecamatan = async () => {try{await withDriveScan('Memindai seluruh kecamatan',scanAll);}catch(e){setStatusType('error');setStatusMessage(e instanceof Error?e.message:String(e));}};
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -350,6 +362,7 @@ export function DriveSyncModal({
         {/* Content */}
         <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
           
+          {(shared.scan || shared.error || !shared.ready) && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{shared.error || (shared.scan ? `${shared.scan.actorEmail} · ${shared.scan.label} · ${shared.scan.progress}% — tunggu hingga selesai sebelum memulai scan baru.` : 'Menghubungkan status scan bersama…')}</p>}
           <div role="tabpanel" id={`${tabsId}-regular-panel`} aria-labelledby={`${tabsId}-regular-tab`} hidden={activeTab !== 'regular'} className="space-y-4">
           {hasScanStarted && <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3" role="status" aria-live="polite">
             <div className="mb-2 flex items-center justify-between gap-3"><span className="text-xs font-bold text-slate-800">{isScanning ? 'Progres pemindaian biasa' : statusType === 'error' ? 'Proses berakhir dengan kendala' : 'Proses pemindaian selesai'}</span><strong className="font-mono text-lg font-black text-kpu-maroon">{scanProgress}%</strong></div>
@@ -408,7 +421,7 @@ export function DriveSyncModal({
               <Button
                 variant="maroon"
                 onClick={handleLoadKecamatanList}
-                disabled={isFetchingFolders || isMisplacedScanning}
+                disabled={isFetchingFolders || isMisplacedScanning || scanBlocked}
                 className="bg-kpu-maroon text-white"
               >
                 <Play className={`h-4 w-4 mr-1.5 ${isFetchingFolders ? 'animate-spin' : ''}`} />
@@ -429,7 +442,7 @@ export function DriveSyncModal({
                   whileTap={!isScanning ? { scale: 0.96, y: 2 } : {}}
                   type="button"
                   onClick={handleScanAllKecamatan}
-                  disabled={isScanning || isMisplacedScanning}
+                  disabled={isScanning || isMisplacedScanning || scanBlocked}
                   className="relative h-8 px-4 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 shadow-[0_3px_0_#b45309,0_6px_12px_rgba(245,158,11,0.3)] active:shadow-[0_1px_0_#b45309] border-t border-amber-200/90 flex items-center justify-center gap-1.5 transition-all overflow-hidden cursor-pointer disabled:opacity-50 w-full sm:w-auto"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isScanning ? 'animate-spin' : ''}`} />
@@ -538,7 +551,7 @@ export function DriveSyncModal({
                         whileTap={!isScanning ? { scale: 0.95, y: 1 } : {}}
                         type="button"
                         onClick={() => handleScanSingleKecamatan(kec)}
-                        disabled={isScanning || isMisplacedScanning}
+                        disabled={isScanning || isMisplacedScanning || scanBlocked}
                         className={`text-xs h-7 px-3 rounded-xl shrink-0 font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs border ${
                           isCurrentlyScanning
                             ? 'bg-amber-300 text-amber-950 border-amber-400 shadow-inner opacity-90'
@@ -560,7 +573,7 @@ export function DriveSyncModal({
           )}
           </div>
           <div role="tabpanel" id={`${tabsId}-misplaced-panel`} aria-labelledby={`${tabsId}-misplaced-tab`} hidden={activeTab !== 'misplaced'}>
-            <MisplacedFilesScanner config={config} disabled={isScanning} onBusyChange={setIsMisplacedScanning} />
+            <MisplacedFilesScanner config={config} disabled={isScanning || scanBlocked} onBusyChange={setIsMisplacedScanning} />
           </div>
         </div>
 

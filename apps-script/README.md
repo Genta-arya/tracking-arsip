@@ -41,3 +41,10 @@ Persentase mengikuti desa yang selesai dibaca, kemudian penyimpanan Firestore.
 Saat satu desa masih dibaca, persentase menunggu respons Google Drive; ini bukan
 estimasi waktu. Jika satu desa gagal, hasil parsial kecamatan tidak menggantikan
 data yang sudah tersimpan.
+
+## Scan bersama antarperangkat
+
+Kode.gs terbaru menambahkan ScriptLock pada router scan. Gunakan bersama
+`firestore.rules` dan frontend terbaru untuk status scan global dan lease
+antarperangkat. Ikuti `docs/shared-drive-scan.md` di root repositori. Publikasikan
+GAS sebagai versi baru; semua perangkat perlu memuat ulang frontend terbaru.

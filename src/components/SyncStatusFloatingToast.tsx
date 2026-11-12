@@ -1,3 +1,4 @@
+import { useSharedDriveScan } from '@/context/SharedDriveScanContext';
 import { DocumentScanner } from '@/components/DocumentScanner';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +18,7 @@ export function SyncStatusFloatingToast({
   lastSyncedBy,
   onOpenSyncModal,
 }: SyncStatusFloatingToastProps) {
+  const sharedScan = useSharedDriveScan();
   // Kontrol buka/tutup floating message (Default tertutup/minimized agar tidak menutupi layar)
   const [isOpen, setIsOpen] = useState(false);
 
@@ -208,7 +210,7 @@ export function SyncStatusFloatingToast({
                       className="w-full h-8 text-[11px] font-semibold text-kpu-maroon border-red-200 hover:bg-red-50 hover:text-kpu-darkMaroon cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <FolderSearch className="h-3.5 w-3.5" />
-                      <span>Buka Pemindaian Manual Drive</span>
+                      <span>{sharedScan.scan ? `Drive sedang dipindai · ${sharedScan.scan.progress}%` : 'Buka Pemindaian Manual Drive'}</span>
                     </Button>
 
                     <div className="text-center">

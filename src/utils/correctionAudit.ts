@@ -20,6 +20,7 @@ export interface CorrectionAudit {
   before: CorrectionState;
   after: CorrectionState;
   createdAt: string;
+  legacy?: boolean;
 }
 export function correctionState(file: Pick<RawFileItem, 'overrideElection' | 'isResolved' | 'resolutionNote'>): CorrectionState {
   return { overrideElection:file.overrideElection || null, isResolved:!!file.isResolved, resolutionNote:file.resolutionNote || '' };
@@ -41,3 +42,21 @@ export const CORRECTION_LABELS: Record<string,string> = {
   PPWP:'Presiden & Wakil Presiden', DPR_RI:'DPR RI', DPD:'DPD', DPRD_PROV:'DPRD Provinsi', DPRD_KAB:'DPRD Kabupaten/Kota',
   HAPUS:'Dihapus / dipindahkan', IGNORE:'Diabaikan', SUDAH_DIBENARKAN:'Sudah dibenarkan',
 };
+
+/** Data lama hanya membuktikan koreksi terakhir, bukan seluruh urutan aktivitas. */
+export function legacyCorrections(raw:RawTpsData[],overrides:Record<string,unknown>[],audited:CorrectionAudit[]):CorrectionAudit[]{
+ const known=new Set(audited.map(row=>row.fileId)), files=new Map<string,{file:RawFileItem;tps:RawTpsData}>();
+ for(const tps of raw)for(const file of tps.files)if(file.isResolved || file.overrideElection || file.resolvedAt)files.set(file.id,{file,tps});
+ for(const value of overrides){
+  const id=String(value.fileId || '');if(!id)continue;
+  const current=files.get(id),tps=raw.find(t=>t.tpsFolderId===value.tpsFolderId);
+  const file={...(current?.file || tps?.files.find(file=>file.id===id) || {id,name:`Berkas ${id}`,url:''}),...value,id} as RawFileItem;
+  files.set(id,{file,tps:current?.tps || tps || {kecamatan:String(value.kecamatan || 'Tidak tercatat'),desa:String(value.desa || 'Tidak tercatat'),tpsFolderName:String(value.tpsFolderName || 'TPS tidak tercatat'),tpsFolderId:String(value.tpsFolderId || ''),tpsFolderUrl:'',files:[]}});
+ }
+ return [...files.values()].filter(({file})=>!known.has(file.id)).map(({file,tps})=>{
+  const actor=typeof file.resolvedBy==='string'?file.resolvedBy:'';
+  const date=file.resolvedAt && Number.isFinite(Date.parse(file.resolvedAt))?new Date(file.resolvedAt).toISOString():'';
+  const after=correctionState(file);
+  return {...correctionAuditPayload(tps,file,after,{uid:'',email:/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(actor)?actor:'',displayName:actor || 'Admin lama (identitas tidak tercatat)'}),before:correctionState({}),id:`legacy:${file.id}`,createdAt:date,legacy:true};
+ });
+}

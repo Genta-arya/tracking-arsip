@@ -11,7 +11,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  setDoc,
   deleteDoc,
   collection,
   onSnapshot,
@@ -147,7 +146,8 @@ export interface SyncMetadata {
  */
 export async function saveKecamatanScanToFirestore(
   kecamatanName: string,
-  tpsList: RawTpsData[]
+  tpsList: RawTpsData[],
+  scanToken: string
 ): Promise<void> {
   if (!auth.currentUser) {
     throw new Error('Akses ditolak: Anda harus login untuk menyimpan hasil sinkronisasi.');
@@ -156,28 +156,15 @@ export async function saveKecamatanScanToFirestore(
   const cleanKecName = kecamatanName.trim();
   const docRef = doc(db, 'scanned_data', cleanKecName);
 
-  // Bersihkan nilai undefined agar valid untuk Firestore
   const cleanTpsList = JSON.parse(JSON.stringify(tpsList));
-
-  await setDoc(docRef, {
-    kecamatan: cleanKecName,
-    tpsList: cleanTpsList,
-    tpsCount: cleanTpsList.length,
-    updatedAt: new Date().toISOString(),
-    updatedBy: auth.currentUser.email || DEFAULT_AUTH_EMAIL,
+  const user=auth.currentUser;
+  await runTransaction(db,async tx=>{
+    const lease=await tx.get(doc(db,'app_config','drive_scan_lock'));
+    if(!lease.data()?.active || lease.data()?.token!==scanToken)throw new Error('Scan telah beralih ke perangkat lain. Data sesi lama tidak disimpan.');
+    const now=new Date().toISOString();
+    tx.set(docRef,{kecamatan:cleanKecName,tpsList:cleanTpsList,tpsCount:cleanTpsList.length,updatedAt:now,updatedBy:user.email || DEFAULT_AUTH_EMAIL});
+    tx.set(doc(db,'app_config','sync_metadata'),{lastSyncedAt:now,lastSyncedKecamatan:cleanKecName,lastSyncedBy:user.email || DEFAULT_AUTH_EMAIL},{merge:true});
   });
-
-  // Perbarui metadata sinkronisasi global
-  const metaRef = doc(db, 'app_config', 'sync_metadata');
-  await setDoc(
-    metaRef,
-    {
-      lastSyncedAt: new Date().toISOString(),
-      lastSyncedKecamatan: cleanKecName,
-      lastSyncedBy: auth.currentUser.email || DEFAULT_AUTH_EMAIL,
-    },
-    { merge: true }
-  );
 }
 
 /**
@@ -315,3 +302,7 @@ export async function fetchAllFileOverrides(): Promise<Map<string, any>> {
 }
 
 
+
+export function subscribeLegacyOverrides(callback:(rows:Record<string,unknown>[])=>void,onError:(error:Error)=>void){
+ return onSnapshot(collection(db,'file_overrides'),snapshot=>callback(snapshot.docs.map(item=>({...item.data(),fileId:item.id}))),onError);
+}
