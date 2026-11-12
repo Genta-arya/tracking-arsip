@@ -369,6 +369,7 @@ export function App() {
     let anomaly = 0;
     let validSlotFiles = 0;
     let totalPhysicalFiles = 0;
+    let anomalyFilesCount = 0;
 
     processedRecords.forEach((r) => {
       validSlotFiles += r.completedCount;
@@ -377,6 +378,12 @@ export function App() {
         (f) => f.overrideElection !== 'HAPUS' && f.overrideElection !== 'IGNORE'
       );
       totalPhysicalFiles += activeFiles.length;
+      // Hitung berkas anomali secara konsisten: hanya file yang memiliki anomali aktif & belum di-resolve
+      activeFiles.forEach((f) => {
+        if (f.anomalies && f.anomalies.length > 0 && !f.isResolved) {
+          anomalyFilesCount++;
+        }
+      });
       if (r.completedCount === 5) completed++;
       else if (r.completedCount === 0) empty++;
       else partial++;
@@ -388,7 +395,6 @@ export function App() {
     const expectedTotal = totalTPS * 5;
     const completionPercentage =
       expectedTotal > 0 ? (validSlotFiles / expectedTotal) * 100 : 0;
-    const anomalyFilesCount = Math.max(0, totalPhysicalFiles - validSlotFiles);
 
     return {
       totalKecamatan: kecamatanList.length,
@@ -401,8 +407,8 @@ export function App() {
       totalFilesCollected: totalPhysicalFiles, // Sinkron 100% dengan total 497 file di Google Drive & Chart
       expectedFilesTotal: expectedTotal,
       completionPercentage,
-      validFilesCount: validSlotFiles,         // 466 berkas sah yang sudah cocok ke 5 surat suara
-      anomalyFilesCount,                       // 31 berkas anomali penamaan
+      validFilesCount: validSlotFiles,         // Berkas sah yang sudah cocok ke 5 slot pemilihan
+      anomalyFilesCount,                       // Berkas dengan anomali aktif (belum di-resolve), konsisten dengan tabel rekapitulasi
     };
   }, [processedRecords, kecamatanList]);
 
