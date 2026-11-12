@@ -36,7 +36,7 @@ service cloud.firestore {
     match /app_config/drive_scan_lock {
       function validScan() {
         return request.auth != null
-          && request.resource.data.keys().hasOnly(['active','token','actorUid','actorEmail','label','progress','updatedAt'])
+          && request.resource.data.keys().hasOnly(['active','token','actorUid','actorEmail','actorName','deviceId','deviceName','deviceType','os','browser','userAgent','startedAt','label','progress','updatedAt'])
           && request.resource.data.active is bool
           && request.resource.data.token is string
           && request.resource.data.actorUid == request.auth.uid
@@ -44,6 +44,14 @@ service cloud.firestore {
           && request.resource.data.label is string
           && request.resource.data.progress is int
           && request.resource.data.progress >= 0 && request.resource.data.progress <= 100
+          && (!request.resource.data.keys().hasAny(['actorName']) || request.resource.data.actorName is string)
+          && (!request.resource.data.keys().hasAny(['deviceId']) || request.resource.data.deviceId is string)
+          && (!request.resource.data.keys().hasAny(['deviceName']) || (request.resource.data.deviceName is string && request.resource.data.deviceName.size() <= 60))
+          && (!request.resource.data.keys().hasAny(['deviceType']) || request.resource.data.deviceType is string)
+          && (!request.resource.data.keys().hasAny(['os']) || request.resource.data.os is string)
+          && (!request.resource.data.keys().hasAny(['browser']) || request.resource.data.browser is string)
+          && (!request.resource.data.keys().hasAny(['userAgent']) || (request.resource.data.userAgent is string && request.resource.data.userAgent.size() <= 600))
+          && (!request.resource.data.keys().hasAny(['startedAt']) || (request.resource.data.startedAt is timestamp && request.resource.data.startedAt <= request.time))
           && request.resource.data.updatedAt == request.time;
       }
       allow read: if request.auth != null;
