@@ -1,3 +1,4 @@
+import { useSharedDriveScan } from '@/context/SharedDriveScanContext';
 import { CorrectionHistory } from '@/components/CorrectionHistory';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,6 +50,7 @@ import {
 } from '@/types';
 
 export function App() {
+  const sharedScan = useSharedDriveScan();
   // Autentikasi Keamanan (Anti-DevTools Leak)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
@@ -511,6 +513,7 @@ export function App() {
         onExportExcel={handleExportExcel}
         onRefreshData={() => setIsSyncModalOpen(true)}
         isLoading={isLoading}
+        driveScanLabel={sharedScan.scan ? `Sedang scan ${sharedScan.scan.progress}%` : undefined}
         onLogout={handleLogout}
         currentUserEmail={currentUserEmail}
       />
@@ -613,7 +616,7 @@ export function App() {
                 className="bg-kpu-gold hover:bg-amber-400 text-kpu-darkMaroon font-bold text-xs shadow-xs"
               >
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                <span>Mulai Pindai Folder Google Drive Sekarang</span>
+                <span>{sharedScan.scan ? `Drive sedang dipindai · ${sharedScan.scan.progress}%` : 'Mulai Pindai Folder Google Drive Sekarang'}</span>
               </Button>
             ) : (
               <Button
@@ -670,7 +673,7 @@ export function App() {
                 currentUserEmail={currentUserEmail}
               />
 
-              <CorrectionHistory isDemoMode={config.isDemoMode} />
+              <CorrectionHistory isDemoMode={config.isDemoMode} rawData={rawData} />
 
               {/* 2. Peta Pantauan Wilayah Sekadau (Interaktif & Collapsible) */}
               <SekadauInteractiveMap

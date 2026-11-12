@@ -30,5 +30,6 @@ Update/delete riwayat ditolak dari aplikasi. Admin Firebase tetap mengelola data
 melalui akses administratif server/console. Dengan aturan lama, penyimpanan
 koreksi baru akan ditolak agar tidak ada koreksi tanpa catatan riwayat.
 
-Aktivitas dimulai setelah fitur diaktifkan. Data lama hanya menyimpan koreksi
-terakhir, sehingga tidak dibuat riwayat sebelum/sesudah yang tidak diketahui.
+Audit lengkap dimulai setelah fitur diaktifkan. Koreksi terakhir pada data lama
+dan file_overrides ditampilkan dengan label Koreksi lama; email/waktu yang ada
+dipertahankan, status sebelumnya yang tidak diketahui tidak dibuat-buat.

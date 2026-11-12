@@ -7,6 +7,7 @@ interface NavbarProps {
   onExportExcel: () => void;
   onRefreshData: () => void;
   isLoading: boolean;
+  driveScanLabel?: string;
   onLogout?: () => void;
   currentUserEmail?: string | null;
 }
@@ -23,6 +24,7 @@ export function Navbar({
   onExportExcel,
   onRefreshData,
   isLoading,
+  driveScanLabel,
   onLogout,
   currentUserEmail = null,
 }: NavbarProps) {
@@ -109,9 +111,9 @@ export function Navbar({
                   title="Pindai ulang folder Google Drive"
                 >
                   <RefreshCw
-                    className={`h-3.5 w-3.5 shrink-0 ${isLoading ? 'animate-spin' : ''}`}
+                    className={`h-3.5 w-3.5 shrink-0 ${isLoading || driveScanLabel ? 'animate-spin' : ''}`}
                   />
-                  <span>Pindai Drive</span>
+                  <span>{driveScanLabel || 'Pindai Drive'}</span>
                 </motion.button>
 
                 {/* Tombol 3D Export Excel */}
