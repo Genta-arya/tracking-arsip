@@ -712,16 +712,27 @@ export function DailyAnomalyTable3D({
                                 </a>
                               )}
 
-                              {/* Tombol Koreksi / Tetapkan di Modal */}
-                              <button
-                                type="button"
-                                onClick={() => onOpenFileDetail(item.record, item.fileId)}
-                                title="Buka modal detail untuk koreksi anomali berkas ini"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 border border-amber-300 shadow-[0_2px_4px_rgba(217,119,6,0.25),inset_0_1px_0_rgba(255,255,255,0.4)] active:translate-y-0.5 transition-all cursor-pointer"
-                              >
-                                <Wrench className="h-3.5 w-3.5" />
-                                <span>{item.file.overrideElection === 'SUDAH_DIBENARKAN' ? 'Edit Koreksi' : 'Koreksi'}</span>
-                              </button>
+                              {/* Tombol Koreksi (Khusus Admin Teknis) atau Detail (Publik/Petugas) */}
+                              {isAdminTeknis ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenFileDetail(item.record, item.fileId)}
+                                  title="Buka modal detail untuk koreksi anomali berkas ini"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black text-amber-950 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 border border-amber-300 shadow-[0_2px_4px_rgba(217,119,6,0.25),inset_0_1px_0_rgba(255,255,255,0.4)] active:translate-y-0.5 transition-all cursor-pointer"
+                                >
+                                  <Wrench className="h-3.5 w-3.5" />
+                                  <span>{item.file.overrideElection === 'SUDAH_DIBENARKAN' ? 'Edit Koreksi' : 'Koreksi'}</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenFileDetail(item.record)}
+                                  title="Buka rincian berkas TPS ini"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-2xs active:translate-y-0.5 transition-all cursor-pointer"
+                                >
+                                  <span>Lihat</span>
+                                </button>
+                              )}
 
                               {/* Tombol Cepat Hapus / Sudah Dipindahkan */}
                               {isAdminTeknis && onUpdateFileStatus && (
