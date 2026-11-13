@@ -173,7 +173,7 @@ export function DailyAnomalyTable3D({
       setDeletingFileId(null);
     }
   };
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
