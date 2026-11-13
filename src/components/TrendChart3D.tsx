@@ -49,7 +49,6 @@ interface TrendChart3DProps {
   totalFilesCollected: number;
   validFilesCount?: number;
   anomalyFilesCount?: number;
-  resolvedFilesCount?: number;
   chartRange: 'THIS_MONTH' | 'LAST_30' | 'ALL';
   onRangeChange: (range: 'THIS_MONTH' | 'LAST_30' | 'ALL') => void;
 }
@@ -65,7 +64,6 @@ export function TrendChart3D({
   totalFilesCollected,
   validFilesCount,
   anomalyFilesCount,
-  resolvedFilesCount,
   chartRange,
   onRangeChange,
 }: TrendChart3DProps) {
@@ -403,9 +401,6 @@ export function TrendChart3D({
               </div>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
                 {validFilesCount ?? totalFilesCollected} sah • {anomalyFilesCount ?? 0} anomali
-                {(resolvedFilesCount ?? 0) > 0 && (
-                  <span className="text-emerald-600 font-semibold"> • {resolvedFilesCount} dikoreksi</span>
-                )}
               </p>
             </motion.div>
           </div>
