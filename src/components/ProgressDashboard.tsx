@@ -26,6 +26,7 @@ import {
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
+import { ProcessingTimelineDeck3D } from '@/components/ProcessingTimelineDeck3D';
 import { DailyIncomingBreakdownCard } from '@/components/DailyIncomingBreakdownCard';
 import { MobileStackCards3D } from '@/components/MobileStackCards3D';
 import { KecamatanRanking3D } from '@/components/KecamatanRanking3D';
@@ -397,7 +398,7 @@ export function ProgressDashboard({
           />
       </div>
 
-      {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D, Linimasa) */}
+      {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D) */}
       <TrendChart3D
         dailyUploadData={dailyUploadData}
         uploadStats={uploadStats}
@@ -406,7 +407,13 @@ export function ProgressDashboard({
         anomalyFilesCount={stats.anomalyFilesCount}
         chartRange={chartRange}
         onRangeChange={setChartRange}
+      />
+
+      {/* 3. Section Baru: Linimasa Pengerjaan & Durasi Berkas Scan Harian 3D */}
+      <ProcessingTimelineDeck3D
         timelineData={timelineData}
+        chartRange={chartRange}
+        onRangeChange={setChartRange}
       />
       </>}
       </div>
