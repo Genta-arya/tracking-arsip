@@ -33,7 +33,6 @@ import {
   compareArchiveCounts,
   formatArchiveDay,
   formatDurationHuman,
-  formatDurationShort,
   type DailyProcessingTimelineItem,
 } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
