@@ -74,7 +74,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
       title: 'TOTAL BERKAS C-HASIL',
       value: stats.totalFilesCollected,
       unit: `/ ${stats.expectedFilesTotal.toLocaleString('id-ID')}`,
-      subtitle: `${stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • ${stats.anomalyFilesCount ?? 0} Anomali${(stats.resolvedFilesCount ?? 0) > 0 ? ` • ${stats.resolvedFilesCount} Dikoreksi` : ''}`,
+      subtitle: `${stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • ${stats.anomalyFilesCount ?? 0} Anomali`,
       icon: FileCheck,
       borderColor: 'border-l-kpu-gold',
       glowColor: 'rgba(255, 191, 0, 0.28)',

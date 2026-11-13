@@ -287,9 +287,6 @@ export function ProgressDashboard({
                 </div>
                 <p className="text-xs text-slate-600 font-medium">
                   {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali Nama
-                  {(stats.resolvedFilesCount ?? 0) > 0 && (
-                    <span className="text-emerald-600 font-semibold"> • {stats.resolvedFilesCount} Dikoreksi</span>
-                  )}
                 </p>
               </div>
               <motion.div
@@ -398,7 +395,6 @@ export function ProgressDashboard({
         totalFilesCollected={stats.totalFilesCollected}
         validFilesCount={stats.validFilesCount}
         anomalyFilesCount={stats.anomalyFilesCount}
-        resolvedFilesCount={stats.resolvedFilesCount}
         chartRange={chartRange}
         onRangeChange={setChartRange}
       />

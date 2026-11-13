@@ -92,9 +92,6 @@ export function SummaryCards({
               </div>
               <p className="text-xs text-slate-600 font-medium">
                 {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali
-                {(stats.resolvedFilesCount ?? 0) > 0 && (
-                  <span className="text-emerald-600 font-semibold"> • {stats.resolvedFilesCount} Dikoreksi</span>
-                )}
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
