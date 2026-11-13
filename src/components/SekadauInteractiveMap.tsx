@@ -373,7 +373,7 @@ export function SekadauInteractiveMap({
   onSelectDesa,
   records,
 }: SekadauInteractiveMapProps) {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
   const [isExpandedHeight, setIsExpandedHeight] = useState<boolean>(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerStyle>('osm');
 
