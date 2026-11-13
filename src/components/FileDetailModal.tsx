@@ -125,19 +125,23 @@ export function FileDetailModal({
     setSaveErrorMsg(null);
   };
 
-  // Otomatis buka form edit jika diarahkan langsung dari tabel anomali dengan initialFileId
+  // Otomatis buka form edit jika diarahkan langsung dari tabel anomali dengan initialFileId (khusus Admin Teknis)
   useEffect(() => {
-    if (open && initialFileId && record) {
+    if (open && initialFileId && record && isAdminTeknis && !isDemoMode) {
       const targetFile = record.files.find((f) => f.id === initialFileId);
       if (targetFile) {
         handleStartEdit(targetFile);
       }
     }
-  }, [open, initialFileId, record?.id]);
+  }, [open, initialFileId, record?.id, isAdminTeknis, isDemoMode]);
 
   if (!record) return null;
 
   const handleSaveStatus = async (file: ScannedFile) => {
+    if (!isAdminTeknis || isDemoMode) {
+      setSaveErrorMsg('Hanya Admin Teknis yang berhak mengubah atau mengoreksi status berkas.');
+      return;
+    }
     setIsSaving(true);
     setSaveErrorMsg(null);
     setSaveSuccessMsg(null);
@@ -690,9 +694,9 @@ export function FileDetailModal({
                         </div>
                       </div>
 
-                      {/* Panel Form Inline Edit Status 3D dengan AnimatePresence */}
+                      {/* Panel Form Inline Edit Status 3D dengan AnimatePresence (Khusus Admin Teknis) */}
                       <AnimatePresence>
-                        {editingFileId === file.id && (
+                        {editingFileId === file.id && isAdminTeknis && !isDemoMode && (
                           <motion.div
                             initial={{ opacity: 0, height: 0, y: -6 }}
                             animate={{ opacity: 1, height: 'auto', y: 0 }}
