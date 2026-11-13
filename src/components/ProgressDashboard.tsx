@@ -14,7 +14,15 @@ import { ScanCompletionSimulator } from '@/components/ScanCompletionSimulator';
 import { readDashboardRoute, dashboardTabUrl, DASHBOARD_NAVIGATION_EVENT, type DashboardTab } from '@/utils/dashboardNavigation';
 import { useArchiveToday } from '@/hooks/useArchiveToday';
 import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
-import { buildActivityChart, dailyActivityCounts, formatArchiveDay, isActiveArchiveFile, cumulativeUploadCount, previousActiveDay } from '@/utils/progressAnalytics';
+import {
+  buildActivityChart,
+  dailyActivityCounts,
+  formatArchiveDay,
+  isActiveArchiveFile,
+  cumulativeUploadCount,
+  previousActiveDay,
+  calculateDailyProcessingTimeline,
+} from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { TiltCard3D } from '@/components/TiltCard3D';
 import { TrendChart3D } from '@/components/TrendChart3D';
@@ -73,6 +81,7 @@ export function ProgressDashboard({
   const countsByDate = useMemo(() => dailyActivityCounts(allFiles), [allFiles, todayKey]);
   const comparisonDay = useMemo(() => previousActiveDay(countsByDate, todayKey), [countsByDate, todayKey]);
   const dailyUploadData = useMemo(() => buildActivityChart(countsByDate, chartRange), [countsByDate, chartRange, todayKey]);
+  const timelineData = useMemo(() => calculateDailyProcessingTimeline(allFiles, chartRange), [allFiles, chartRange, todayKey]);
   const uploadStats = useMemo(() => {
     const peak = dailyUploadData.reduce<(typeof dailyUploadData)[number] | null>((best, day) => !best || day.harian > best.harian ? day : best, null);
     return {
@@ -388,7 +397,7 @@ export function ProgressDashboard({
           />
       </div>
 
-      {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D) */}
+      {/* 2. Section 3D Command Deck: Tren Unggah Harian (Parallax Tilt, 3D Pods, Area/Pilar 3D, Linimasa) */}
       <TrendChart3D
         dailyUploadData={dailyUploadData}
         uploadStats={uploadStats}
@@ -397,6 +406,7 @@ export function ProgressDashboard({
         anomalyFilesCount={stats.anomalyFilesCount}
         chartRange={chartRange}
         onRangeChange={setChartRange}
+        timelineData={timelineData}
       />
       </>}
       </div>
