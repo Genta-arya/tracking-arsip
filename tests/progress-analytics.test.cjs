@@ -118,3 +118,39 @@ test('no prior active day means no invented zero baseline; today without uploads
   assert.equal(previous.date,'2026-11-07');
   assert.equal(analytics.compareArchiveCounts(0,previous.count).percent,-100);
 });
+
+test('calculateDailyProcessingTimeline computes daily duration and per-file average accurately', () => {
+  const now = new Date('2026-11-10T12:00:00Z');
+  const files = [
+    // Hari 1: 2026-11-10 WIB (UTC 03:00, 03:02 = 120s gap -> 90s base + 120s = 210s)
+    { createdAt: '2026-11-10T03:00:00Z' },
+    { createdAt: '2026-11-10T03:02:00Z' },
+    // Hari 2: 2026-11-09 WIB
+    { createdAt: '2026-11-09T02:00:00Z' },
+    { createdAt: '2026-11-09T02:01:00Z' }, // gap 60s
+    { createdAt: '2026-11-09T03:30:00Z' }, // gap 1.5 jam -> sesi baru (+90s)
+  ];
+
+  const timeline = analytics.calculateDailyProcessingTimeline(files, 'THIS_MONTH', now);
+  assert.equal(timeline.length, 2);
+
+  const day9 = timeline.find(d => d.rawDate === '2026-11-09');
+  assert.ok(day9);
+  assert.equal(day9.fileCount, 3);
+  assert.equal(day9.sessionCount, 2);
+  // 90 (file 1) + 60 (file 2) + 90 (file 3 new session) = 240 detik
+  assert.equal(day9.totalDurationSeconds, 240);
+  assert.equal(day9.avgDurationPerFileSeconds, 80); // 240 / 3
+
+  const day10 = timeline.find(d => d.rawDate === '2026-11-10');
+  assert.ok(day10);
+  assert.equal(day10.fileCount, 2);
+  // 90 + 120 = 210 detik
+  assert.equal(day10.totalDurationSeconds, 210);
+  assert.equal(day10.avgDurationPerFileSeconds, 105); // 210 / 2 = 105s
+
+  assert.equal(analytics.formatDurationHuman(105), '1 mnt 45 dtk');
+  assert.equal(analytics.formatDurationHuman(3665), '1 jam 1 mnt');
+  assert.equal(analytics.formatDurationShort(210), '3m 30s');
+  assert.equal(analytics.formatDurationShort(3665), '1j 1m');
+});

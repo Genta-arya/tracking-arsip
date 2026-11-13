@@ -11,6 +11,9 @@ import {
   BarChart3,
   Waves,
   Calendar,
+  Clock,
+  Timer,
+  Zap,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -23,8 +26,16 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceDot,
+  ComposedChart,
+  Line,
 } from 'recharts';
-import { compareArchiveCounts, formatArchiveDay } from '@/utils/progressAnalytics';
+import {
+  compareArchiveCounts,
+  formatArchiveDay,
+  formatDurationHuman,
+  formatDurationShort,
+  type DailyProcessingTimelineItem,
+} from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 
 export interface DailyUploadItem {
@@ -51,6 +62,7 @@ interface TrendChart3DProps {
   anomalyFilesCount?: number;
   chartRange: 'THIS_MONTH' | 'LAST_30' | 'ALL';
   onRangeChange: (range: 'THIS_MONTH' | 'LAST_30' | 'ALL') => void;
+  timelineData?: DailyProcessingTimelineItem[];
 }
 
 /**
@@ -66,6 +78,7 @@ export function TrendChart3D({
   anomalyFilesCount,
   chartRange,
   onRangeChange,
+  timelineData = [],
 }: TrendChart3DProps) {
   const dailyChange = compareArchiveCounts(uploadStats.todayUploads, uploadStats.previousUploads);
   const GrowthIcon = dailyChange.direction === 'up' ? TrendingUp : dailyChange.direction === 'down' ? TrendingDown : Minus;
@@ -73,7 +86,33 @@ export function TrendChart3D({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
-  const [viewMode, setViewMode] = useState<'AREA_3D' | 'BAR_3D'>('AREA_3D');
+  const [viewMode, setViewMode] = useState<'AREA_3D' | 'BAR_3D' | 'TIMELINE_3D'>('AREA_3D');
+
+  // Metrik statistik linimasa pengerjaan
+  const timelineStats = useMemo(() => {
+    if (!timelineData || timelineData.length === 0) {
+      return {
+        totalDurationSeconds: 0,
+        overallAvgPerFileSeconds: 0,
+        activeDaysCount: 0,
+        fastestDay: null as DailyProcessingTimelineItem | null,
+        busiestDay: null as DailyProcessingTimelineItem | null,
+      };
+    }
+    const totalDuration = timelineData.reduce((acc, curr) => acc + curr.totalDurationSeconds, 0);
+    const totalFiles = timelineData.reduce((acc, curr) => acc + curr.fileCount, 0);
+    const overallAvg = totalFiles > 0 ? totalDuration / totalFiles : 0;
+    const sortedByAvg = [...timelineData].sort((a, b) => a.avgDurationPerFileSeconds - b.avgDurationPerFileSeconds);
+    const sortedByDuration = [...timelineData].sort((a, b) => b.totalDurationSeconds - a.totalDurationSeconds);
+
+    return {
+      totalDurationSeconds: totalDuration,
+      overallAvgPerFileSeconds: Math.round(overallAvg),
+      activeDaysCount: timelineData.length,
+      fastestDay: sortedByAvg[0] || null,
+      busiestDay: sortedByDuration[0] || null,
+    };
+  }, [timelineData]);
 
   // Fisika Spring 3D untuk seluruh deck analitik
   const springConfig = { stiffness: 300, damping: 28, mass: 0.9 };
@@ -257,6 +296,19 @@ export function TrendChart3D({
                   <BarChart3 className="h-3.5 w-3.5" />
                   <span>Pilar</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('TIMELINE_3D')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    viewMode === 'TIMELINE_3D'
+                      ? 'bg-gradient-to-r from-amber-600 to-kpu-maroon text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Visualisasi Linimasa Pengerjaan & Durasi Berkas"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Linimasa</span>
+                </button>
               </div>
 
               {/* Filter Rentang Waktu */}
@@ -301,108 +353,211 @@ export function TrendChart3D({
             style={{ transform: 'translateZ(25px)', transformStyle: 'preserve-3d' }}
             className="grid grid-cols-2 lg:grid-cols-4 gap-3.5"
           >
-            {/* Pod 1: Upload Hari Ini (Maroon) */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-kpu-maroon shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Upload Hari Ini
-                </span>
-                <div className="p-1.5 rounded-lg bg-red-50 text-kpu-maroon shadow-2xs group-hover:scale-110 transition-transform">
-                  <Sparkles className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <div className="mt-1 flex items-baseline gap-1.5">
-                <AnimatedCounter
-                  value={uploadStats.todayUploads}
-                  className="text-xl sm:text-2xl font-black text-slate-900"
-                />
-                <span className="text-xs font-semibold text-slate-500">berkas</span>
-              </div>
-              <div aria-label="Perubahan upload dibandingkan hari aktif sebelumnya" className="mt-2 space-y-1">
-                <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold ${dailyChange.direction === 'up' ? 'bg-emerald-50 text-emerald-700' : dailyChange.direction === 'down' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'}`}><GrowthIcon className="h-3 w-3" aria-hidden="true" />{growthLabel}</span>
-                <p className="text-[10px] leading-relaxed text-slate-500">{dailyChange.delta !== null && `${dailyChange.delta > 0 ? '+' : ''}${dailyChange.delta.toLocaleString('id-ID')} berkas · `}{uploadStats.previousDate ? `dibandingkan ${formatArchiveDay(uploadStats.previousDate)} (WIB)` : 'Belum ada hari aktif sebelum hari ini'}</p>
-              </div>
-            </motion.div>
+            {viewMode === 'TIMELINE_3D' ? (
+              <>
+                {/* Pod 1 Timeline: Rata-Rata Per Berkas (Rose) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-rose-500 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Rata-rata Waktu / Berkas
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <Timer className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-black text-rose-600">
+                      {formatDurationHuman(timelineStats.overallAvgPerFileSeconds)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">
+                    Kecepatan alur kerja per berkas
+                  </p>
+                </motion.div>
 
-            {/* Pod 2: Puncak Tertinggi (Emerald) */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-emerald-600 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Puncak Tertinggi
-                </span>
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 shadow-2xs group-hover:scale-110 transition-transform">
-                  <Trophy className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <div className="mt-1 flex items-baseline gap-1.5">
-                <AnimatedCounter
-                  value={uploadStats.peakUpload}
-                  className="text-xl sm:text-2xl font-black text-emerald-600"
-                />
-                <span className="text-xs font-semibold text-slate-500">berkas</span>
-              </div>
-              <p className="text-[11px] text-emerald-700 font-semibold mt-0.5 truncate">
-                Rekor: {uploadStats.peakDate || '-'}
-              </p>
-            </motion.div>
+                {/* Pod 2 Timeline: Total Durasi Kerja (Amber) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-amber-500 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Total Waktu Pengerjaan
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <Clock className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-black text-slate-900">
+                      {formatDurationHuman(timelineStats.totalDurationSeconds)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1 truncate">
+                    Akumulasi rentang {timelineStats.activeDaysCount} hari aktif
+                  </p>
+                </motion.div>
 
-            {/* Pod 3: Rata-Rata Upload (Gold/Amber) */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-amber-500 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Rata-rata Upload
-                </span>
-                <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 shadow-2xs group-hover:scale-110 transition-transform">
-                  <Activity className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <div className="mt-1 flex items-baseline gap-1.5">
-                <AnimatedCounter
-                  value={uploadStats.averagePerDay}
-                  className="text-xl sm:text-2xl font-black text-amber-600"
-                />
-                <span className="text-xs font-semibold text-slate-500">berkas/hari</span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Laju harian arsip</p>
-            </motion.div>
+                {/* Pod 3 Timeline: Hari Paling Sibuk (Indigo) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-indigo-600 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Hari Kerja Terlama
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <Activity className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-lg sm:text-xl font-black text-indigo-700 truncate">
+                      {timelineStats.busiestDay ? timelineStats.busiestDay.totalDurationFormatted : '-'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1 truncate">
+                    {timelineStats.busiestDay ? `${timelineStats.busiestDay.date} (${timelineStats.busiestDay.fileCount} berkas)` : 'Belum ada data'}
+                  </p>
+                </motion.div>
 
-            {/* Pod 4: Total Arsip di Drive (Indigo/Sapphire) */}
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-indigo-600 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Total Arsip di Drive
-                </span>
-                <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 shadow-2xs group-hover:scale-110 transition-transform">
-                  <HardDrive className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <div className="mt-1 flex items-baseline gap-1.5">
-                <AnimatedCounter
-                  value={totalFilesCollected}
-                  className="text-xl sm:text-2xl font-black text-slate-900"
-                />
-                <span className="text-xs font-semibold text-slate-500">file</span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
-                {validFilesCount ?? totalFilesCollected} sah • {anomalyFilesCount ?? 0} anomali
-              </p>
-            </motion.div>
+                {/* Pod 4 Timeline: Laju Tercepat (Emerald) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-emerald-600 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Rata-Rata Tercepat
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <Zap className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-black text-emerald-600">
+                      {timelineStats.fastestDay ? timelineStats.fastestDay.avgDurationFormatted : '-'}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">/berkas</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1 truncate">
+                    {timelineStats.fastestDay ? `Pada ${timelineStats.fastestDay.date}` : 'Belum ada data'}
+                  </p>
+                </motion.div>
+              </>
+            ) : (
+              <>
+                {/* Pod 1: Upload Hari Ini (Maroon) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-kpu-maroon shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Upload Hari Ini
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-red-50 text-kpu-maroon shadow-2xs group-hover:scale-110 transition-transform">
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <AnimatedCounter
+                      value={uploadStats.todayUploads}
+                      className="text-xl sm:text-2xl font-black text-slate-900"
+                    />
+                    <span className="text-xs font-semibold text-slate-500">berkas</span>
+                  </div>
+                  <div aria-label="Perubahan upload dibandingkan hari aktif sebelumnya" className="mt-2 space-y-1">
+                    <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold ${dailyChange.direction === 'up' ? 'bg-emerald-50 text-emerald-700' : dailyChange.direction === 'down' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'}`}><GrowthIcon className="h-3 w-3" aria-hidden="true" />{growthLabel}</span>
+                    <p className="text-[10px] leading-relaxed text-slate-500">{dailyChange.delta !== null && `${dailyChange.delta > 0 ? '+' : ''}${dailyChange.delta.toLocaleString('id-ID')} berkas · `}{uploadStats.previousDate ? `dibandingkan ${formatArchiveDay(uploadStats.previousDate)} (WIB)` : 'Belum ada hari aktif sebelum hari ini'}</p>
+                  </div>
+                </motion.div>
+
+                {/* Pod 2: Puncak Tertinggi (Emerald) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-emerald-600 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Puncak Tertinggi
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <Trophy className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <AnimatedCounter
+                      value={uploadStats.peakUpload}
+                      className="text-xl sm:text-2xl font-black text-emerald-600"
+                    />
+                    <span className="text-xs font-semibold text-slate-500">berkas</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-0.5 truncate">
+                    Rekor: {uploadStats.peakDate || '-'}
+                  </p>
+                </motion.div>
+
+                {/* Pod 3: Rata-Rata Upload (Gold/Amber) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-amber-500 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Rata-rata Upload
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <Activity className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <AnimatedCounter
+                      value={uploadStats.averagePerDay}
+                      className="text-xl sm:text-2xl font-black text-amber-600"
+                    />
+                    <span className="text-xs font-semibold text-slate-500">berkas/hari</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Laju harian arsip</p>
+                </motion.div>
+
+                {/* Pod 4: Total Arsip di Drive (Indigo/Sapphire) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200/90 border-l-[4px] border-l-indigo-600 shadow-[0_4px_16px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Total Arsip di Drive
+                    </span>
+                    <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 shadow-2xs group-hover:scale-110 transition-transform">
+                      <HardDrive className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <AnimatedCounter
+                      value={totalFilesCollected}
+                      className="text-xl sm:text-2xl font-black text-slate-900"
+                    />
+                    <span className="text-xs font-semibold text-slate-500">file</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
+                    {validFilesCount ?? totalFilesCollected} sah • {anomalyFilesCount ?? 0} anomali
+                  </p>
+                </motion.div>
+              </>
+            )}
           </div>
 
           {/* 3D Chart Stage Canvas */}
@@ -661,12 +816,171 @@ export function TrendChart3D({
                       isAnimationActive
                     />
                   </BarChart>
+                ) : (
+                  /* Mode TIMELINE_3D: Linimasa Pengerjaan Harian & Rata-rata Per Berkas */
+                  <ComposedChart
+                    data={timelineData}
+                    margin={{ top: 22, right: 15, left: -5, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="timelineBarGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.9} />
+                        <stop offset="50%" stopColor="#d97706" stopOpacity={0.75} />
+                        <stop offset="100%" stopColor="#92400e" stopOpacity={0.6} />
+                      </linearGradient>
+                      <linearGradient id="timelineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#7f1d1d" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#cbd5e1' }}
+                    />
+                    {/* Sumbu Y Kiri: Total Durasi Harian (menit) */}
+                    <YAxis
+                      yAxisId="left"
+                      tick={{ fontSize: 10, fill: '#d97706', fontWeight: 600 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(val) => `${Math.round(val / 60)}m`}
+                      allowDecimals={false}
+                    />
+                    {/* Sumbu Y Kanan: Rata-rata Durasi Per Berkas (detik) */}
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 10, fill: '#ef4444', fontWeight: 600 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(val) => `${val}s`}
+                      allowDecimals={false}
+                    />
+
+                    <Tooltip
+                      wrapperStyle={{ outline: 'none', zIndex: 50 }}
+                      cursor={{ stroke: '#f59e0b', strokeWidth: 1.5, strokeDasharray: '4 4' }}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const item = payload[0]?.payload as DailyProcessingTimelineItem | undefined;
+                          if (!item) return null;
+                          return (
+                            <div
+                              style={{ backgroundColor: '#090d16', borderColor: '#334155' }}
+                              className="text-white p-3.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-xs space-y-2 border min-w-[240px] select-none pointer-events-none"
+                            >
+                              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <div className="flex items-center gap-1.5 text-amber-400 font-extrabold">
+                                  <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                                  <span>{label}</span>
+                                </div>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold">
+                                  {item.sessionCount} Sesi Kerja
+                                </span>
+                              </div>
+
+                              <div className="space-y-1.5 pt-0.5">
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="flex items-center gap-1.5 text-slate-300 font-semibold">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
+                                    Total Waktu Pengerjaan:
+                                  </span>
+                                  <span className="font-black text-amber-300 text-sm">
+                                    {item.totalDurationFormatted}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="flex items-center gap-1.5 text-slate-300 font-semibold">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] shrink-0" />
+                                    Rata-rata per Berkas:
+                                  </span>
+                                  <span className="font-black text-rose-400 text-sm">
+                                    {item.avgDurationFormatted} <span className="text-[10px] text-slate-400 font-normal">/berkas</span>
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-4 border-t border-slate-800/90 pt-1.5 text-[11px]">
+                                  <span className="text-slate-400 font-medium">Volume Berkas Masuk:</span>
+                                  <span className="font-bold text-white">
+                                    {item.fileCount} berkas
+                                  </span>
+                                </div>
+
+                                {item.firstUploadTime && item.lastUploadTime && (
+                                  <div className="flex items-center justify-between gap-4 text-[10px] text-slate-400 pt-0.5">
+                                    <span>Rentang Jam:</span>
+                                    <span className="font-mono text-slate-300">
+                                      {item.firstUploadTime} - {item.lastUploadTime} WIB
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+
+                    {/* Bar Total Durasi Pengerjaan Per Hari (dalam detik) */}
+                    <Bar
+                      yAxisId="left"
+                      dataKey="totalDurationSeconds"
+                      name="Total Waktu Pengerjaan"
+                      fill="url(#timelineBarGrad)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={40}
+                    />
+
+                    {/* Line Rata-rata Durasi Per Berkas (dalam detik) */}
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="avgDurationPerFileSeconds"
+                      name="Rata-rata per Berkas"
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#ef4444', stroke: '#ffffff', strokeWidth: 2 }}
+                      activeDot={{ r: 6, fill: '#b91c1c', stroke: '#ffffff', strokeWidth: 2 }}
+                    />
+                  </ComposedChart>
                 )}
               </ResponsiveContainer>}
             </div>
 
-            {/* Banner Indikator Rekor Puncak di Atas Grafik */}
-            {peakItem && (
+            {/* Banner Indikator & Legenda Bawah Grafik */}
+            {viewMode === 'TIMELINE_3D' ? (
+              <div className="mt-3 flex items-center justify-between flex-wrap gap-2 pt-2.5 border-t border-slate-200/60 text-xs text-slate-500">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                  </span>
+                  <span className="font-semibold text-slate-700">
+                    Rata-rata Keseluruhan:{' '}
+                    <strong className="text-amber-800 font-black">
+                      {formatDurationHuman(timelineStats.overallAvgPerFileSeconds)}
+                    </strong>{' '}
+                    per berkas • Total Kerja: <strong className="text-slate-800 font-bold">{formatDurationHuman(timelineStats.totalDurationSeconds)}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" />
+                    Total Durasi Harian
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                    Rata-rata per Berkas
+                  </span>
+                </div>
+              </div>
+            ) : peakItem ? (
               <div className="mt-3 flex items-center justify-between flex-wrap gap-2 pt-2.5 border-t border-slate-200/60 text-xs text-slate-500">
                 <div className="flex items-center gap-2">
                   <span className="flex h-2.5 w-2.5 relative">
@@ -689,7 +1003,7 @@ export function TrendChart3D({
                   </span>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </motion.div>
