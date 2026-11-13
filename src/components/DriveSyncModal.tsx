@@ -1,10 +1,19 @@
 import { ActiveDriveScanDetails } from '@/components/ActiveDriveScanDetails';
 import { currentScanDevice, nameScanDevice } from '@/utils/scanDevice';
-import { withDriveScan, driveScanToken, ensureDriveScanOwned, reportDriveScan } from '@/services/driveScanLock';
+import {
+  withDriveScan,
+  driveScanToken,
+  ensureDriveScanOwned,
+  reportDriveScan,
+  cancelDriveScan,
+  getScanElapsedMs,
+  SCAN_TIMEOUT_MS,
+  DriveScanCancelledError,
+} from '@/services/driveScanLock';
 import { useSharedDriveScan } from '@/context/SharedDriveScanContext';
-import { useState, useEffect, useId } from 'react';
+import { useState, useEffect, useId, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Play, Layers, Maximize2, Minus, CheckCircle2, Clock, FolderOpen, ShieldCheck, FileSearch } from 'lucide-react';
+import { RefreshCw, Play, Layers, Maximize2, Minus, CheckCircle2, Clock, FolderOpen, ShieldCheck, FileSearch, XCircle, Timer } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { GasKecamatanItem, fetchKecamatanList, scanKecamatanFolder } from '@/services/driveService';
@@ -13,6 +22,14 @@ import { RawTpsData, AppConfig } from '@/types';
 import { MisplacedFilesScanner } from '@/components/MisplacedFilesScanner';
 import { Scan3DAnimation } from '@/components/Scan3DAnimation';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
+
+/** Format ms ke mm:ss */
+function formatCountdown(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+  const s = (totalSec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
 
 interface DriveSyncModalProps {
   open: boolean;
@@ -47,6 +64,38 @@ export function DriveSyncModal({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'info' | 'error' | 'success'>('info');
   const [completedKecamatans, setCompletedKecamatans] = useState<string[]>([]);
+  /** Sisa waktu (ms) sebelum scan otomatis dibatalkan */
+  const [scanCountdownMs, setScanCountdownMs] = useState(SCAN_TIMEOUT_MS);
+  const [isCancelRequested, setIsCancelRequested] = useState(false);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /* Mulai/stop interval countdown sesuai status scanning */
+  useEffect(() => {
+    if (isScanning) {
+      setScanCountdownMs(SCAN_TIMEOUT_MS);
+      setIsCancelRequested(false);
+      countdownRef.current = setInterval(() => {
+        const remaining = SCAN_TIMEOUT_MS - getScanElapsedMs();
+        setScanCountdownMs(Math.max(0, remaining));
+      }, 1000);
+    } else {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    }
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [isScanning]);
+
+  /** Batalkan scan secara manual dari UI */
+  const handleCancelScan = useCallback(() => {
+    setIsCancelRequested(true);
+    cancelDriveScan('Pemindaian dibatalkan oleh pengguna.');
+    setStatusMessage('Pemindaian dibatalkan. Data tidak akan disimpan ke Firestore.');
+    setStatusType('error');
+  }, []);
 
   // Hitung berkas yang sudah tersimpan di Firestore lokal untuk tiap kecamatan
   const getKecamatanSyncedFileCount = (kecName: string) => {
@@ -176,8 +225,13 @@ export function DriveSyncModal({
         setStatusType('success');
       }
     } catch (err: any) {
-      setStatusMessage(`Gagal memindai ${kec.name}: ${err.message}`);
-      setStatusType('error');
+      if (err instanceof DriveScanCancelledError) {
+        setStatusMessage('Pemindaian dibatalkan. Data tidak disimpan ke Firestore.');
+        setStatusType('error');
+      } else {
+        setStatusMessage(`Gagal memindai ${kec.name}: ${err.message}`);
+        setStatusType('error');
+      }
     } finally {
       setIsScanning(false);
       setCurrentScanningKec(null);
@@ -273,6 +327,14 @@ export function DriveSyncModal({
         combinedData.push(...scannedKecData);
         setCompletedKecamatans((prev) => Array.from(new Set([...prev, kec.name])));
       } catch (err: any) {
+        if (err instanceof DriveScanCancelledError) {
+          // Hentikan loop — data tidak akan disimpan lebih lanjut
+          setIsScanning(false);
+          setCurrentScanningKec(null);
+          setStatusMessage('Pemindaian dibatalkan. Data yang belum selesai tidak disimpan ke Firestore.');
+          setStatusType('error');
+          return;
+        }
         console.error(`Gagal memindai ${kec.name}:`, err);
         scanErrors.push(kec.name);
       }
@@ -281,7 +343,16 @@ export function DriveSyncModal({
 
     setScanProgress(100);
     try { await ensureDriveScanOwned(); }
-    catch(error){setIsScanning(false);setCurrentScanningKec(null);throw error;}
+    catch(error){
+      setIsScanning(false);
+      setCurrentScanningKec(null);
+      if (error instanceof DriveScanCancelledError) {
+        setStatusMessage('Pemindaian dibatalkan. Data tidak disimpan ke Firestore.');
+        setStatusType('error');
+        return;
+      }
+      throw error;
+    }
     onSyncComplete(combinedData);
     setIsScanning(false);
     setCurrentScanningKec(null);
@@ -301,8 +372,20 @@ export function DriveSyncModal({
   };
 
   useEffect(()=>{if(isScanning)reportDriveScan(scanProgress,currentScanningKec ? `Memindai ${currentScanningKec}` : 'Memindai seluruh kecamatan');},[isScanning,scanProgress,currentScanningKec]);
-  const handleScanSingleKecamatan = async (kec:GasKecamatanItem) => {try{await withDriveScan(`Memindai ${kec.name}`,()=>scanSingle(kec));}catch(e){setStatusType('error');setStatusMessage(e instanceof Error?e.message:String(e));}};
-  const handleScanAllKecamatan = async () => {try{await withDriveScan('Memindai seluruh kecamatan',scanAll);}catch(e){setStatusType('error');setStatusMessage(e instanceof Error?e.message:String(e));}};
+  const handleScanSingleKecamatan = async (kec: GasKecamatanItem) => {
+    try { await withDriveScan(`Memindai ${kec.name}`, () => scanSingle(kec)); }
+    catch(e) {
+      if (e instanceof DriveScanCancelledError) return;
+      setStatusType('error'); setStatusMessage(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const handleScanAllKecamatan = async () => {
+    try { await withDriveScan('Memindai seluruh kecamatan', scanAll); }
+    catch(e) {
+      if (e instanceof DriveScanCancelledError) return;
+      setStatusType('error'); setStatusMessage(e instanceof Error ? e.message : String(e));
+    }
+  };
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -371,8 +454,36 @@ export function DriveSyncModal({
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><label className="block text-[10px] font-semibold text-slate-600" htmlFor={`${tabsId}-device-name`}>Nama perangkat ini (misalnya Tablet Admin 1)</label><input id={`${tabsId}-device-name`} value={deviceName} maxLength={60} disabled={scanBlocked || isScanning || isMisplacedScanning} onChange={e=>setDeviceName(e.target.value)} onBlur={()=>{try{setDeviceName(nameScanDevice(deviceName));setDeviceError('');}catch(e){setDeviceError(e instanceof Error?e.message:String(e));}}} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 disabled:opacity-50"/><p className="mt-1 text-[9px] text-slate-500">Identitas lokal: {currentScanDevice().deviceId.slice(0,8)} · Nama ini terlihat oleh admin lain saat perangkat memindai.</p>{deviceError&&<p role="alert" className="mt-1 text-[10px] text-rose-700">{deviceError}</p>}</div>
           <div role="tabpanel" id={`${tabsId}-regular-panel`} aria-labelledby={`${tabsId}-regular-tab`} hidden={activeTab !== 'regular'} className="space-y-4">
           {hasScanStarted && <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3" role="status" aria-live="polite">
-            <div className="mb-2 flex items-center justify-between gap-3"><span className="text-xs font-bold text-slate-800">{isScanning ? 'Progres pemindaian biasa' : statusType === 'error' ? 'Proses berakhir dengan kendala' : 'Proses pemindaian selesai'}</span><strong className="font-mono text-lg font-black text-kpu-maroon">{scanProgress}%</strong></div>
-            <div role="progressbar" aria-label="Progres pemindaian biasa" aria-valuemin={0} aria-valuemax={100} aria-valuenow={scanProgress} className="h-2 overflow-hidden rounded-full bg-amber-100"><div className="h-full rounded-full bg-gradient-to-r from-kpu-maroon to-kpu-orange transition-[width]" style={{ width: `${scanProgress}%` }} /></div>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-xs font-bold text-slate-800">{isScanning ? 'Progres pemindaian biasa' : statusType === 'error' ? 'Proses berakhir dengan kendala' : 'Proses pemindaian selesai'}</span>
+              <strong className="font-mono text-lg font-black text-kpu-maroon">{scanProgress}%</strong>
+            </div>
+            <div role="progressbar" aria-label="Progres pemindaian biasa" aria-valuemin={0} aria-valuemax={100} aria-valuenow={scanProgress} className="h-2 overflow-hidden rounded-full bg-amber-100">
+              <div className="h-full rounded-full bg-gradient-to-r from-kpu-maroon to-kpu-orange transition-[width]" style={{ width: `${scanProgress}%` }} />
+            </div>
+
+            {/* Countdown + Batalkan saat sedang scanning */}
+            {isScanning && (
+              <div className="mt-2.5 flex items-center justify-between gap-2">
+                <div className={`flex items-center gap-1.5 text-[11px] font-mono font-bold ${scanCountdownMs < 5 * 60 * 1000 ? 'text-rose-600 animate-pulse' : 'text-amber-700'}`}>
+                  <Timer className="h-3.5 w-3.5 shrink-0" />
+                  <span>Batas: {formatCountdown(scanCountdownMs)}</span>
+                  {scanCountdownMs < 5 * 60 * 1000 && <span className="text-[10px] font-normal text-rose-500">(Hampir habis!)</span>}
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="button"
+                  onClick={handleCancelScan}
+                  disabled={isCancelRequested}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 transition disabled:opacity-50 cursor-pointer"
+                >
+                  <XCircle className="h-3.5 w-3.5 shrink-0" />
+                  {isCancelRequested ? 'Membatalkan...' : 'Batalkan Scan'}
+                </motion.button>
+              </div>
+            )}
+
             <p className="mt-2 text-[10px] leading-relaxed text-slate-500">Progres mengikuti tahapan baca dan simpan, atau jumlah kecamatan yang selesai diproses. Lihat pesan hasil untuk memastikan semua data berhasil disimpan.</p>
           </div>}
           {isMisplacedScanning && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Pemindaian PDF sedang berjalan di tab Berkas Tersesat. Hentikan atau tunggu selesai sebelum memindai kecamatan.</p>}
@@ -682,9 +793,26 @@ export function DriveSyncModal({
             </div>
           </div>
 
+          {/* Countdown + Batalkan */}
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className={`flex items-center gap-1 text-[10px] font-mono font-bold ${scanCountdownMs < 5 * 60 * 1000 ? 'text-rose-400 animate-pulse' : 'text-kpu-lightGold/80'}`}>
+              <Timer className="h-3 w-3 shrink-0" />
+              <span>Batas: {formatCountdown(scanCountdownMs)}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelScan}
+              disabled={isCancelRequested}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700 transition disabled:opacity-50 cursor-pointer"
+            >
+              <XCircle className="h-3 w-3 shrink-0" />
+              {isCancelRequested ? 'Membatalkan...' : 'Batalkan'}
+            </button>
+          </div>
+
           {/* Status message */}
           <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-amber-200/80">
-            <span className="truncate max-w-[270px]">
+            <span className="truncate max-w-[240px]">
               {statusMessage || 'Sedang memproses berkas...'}
             </span>
             {onReopenModal && (
