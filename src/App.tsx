@@ -370,6 +370,7 @@ export function App() {
     let validSlotFiles = 0;
     let totalPhysicalFiles = 0;
     let anomalyFilesCount = 0;
+    let resolvedFilesCount = 0;
 
     processedRecords.forEach((r) => {
       validSlotFiles += r.completedCount;
@@ -378,10 +379,13 @@ export function App() {
         (f) => f.overrideElection !== 'HAPUS' && f.overrideElection !== 'IGNORE'
       );
       totalPhysicalFiles += activeFiles.length;
-      // Hitung berkas anomali secara konsisten: hanya file yang memiliki anomali aktif & belum di-resolve
+      // Hitung berkas anomali aktif dan berkas yang sudah di-resolve
       activeFiles.forEach((f) => {
         if (f.anomalies && f.anomalies.length > 0 && !f.isResolved) {
           anomalyFilesCount++;
+        }
+        if (f.isResolved || (f.overrideElection && f.overrideElection !== 'IGNORE')) {
+          resolvedFilesCount++;
         }
       });
       if (r.completedCount === 5) completed++;
@@ -395,6 +399,7 @@ export function App() {
     const expectedTotal = totalTPS * 5;
     const completionPercentage =
       expectedTotal > 0 ? (validSlotFiles / expectedTotal) * 100 : 0;
+    const validPhysicalFiles = Math.max(0, totalPhysicalFiles - anomalyFilesCount);
 
     return {
       totalKecamatan: kecamatanList.length,
@@ -404,11 +409,12 @@ export function App() {
       partialTPS: partial,
       emptyTPS: empty,
       anomalyTPS: anomaly,
-      totalFilesCollected: totalPhysicalFiles, // Sinkron 100% dengan total 497 file di Google Drive & Chart
+      totalFilesCollected: totalPhysicalFiles, // Sinkron 100% dengan total file fisik di Google Drive & Chart
       expectedFilesTotal: expectedTotal,
       completionPercentage,
-      validFilesCount: validSlotFiles,         // Berkas sah yang sudah cocok ke 5 slot pemilihan
+      validFilesCount: validPhysicalFiles,     // Berkas fisik sah (totalPhysicalFiles - anomalyFilesCount) sehingga pas dengan total berkas
       anomalyFilesCount,                       // Berkas dengan anomali aktif (belum di-resolve), konsisten dengan tabel rekapitulasi
+      resolvedFilesCount,                      // Berkas yang sudah dikoreksi/di-resolve oleh admin
     };
   }, [processedRecords, kecamatanList]);
 

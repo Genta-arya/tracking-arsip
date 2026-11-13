@@ -111,8 +111,9 @@ export interface GlobalStats {
   totalFilesCollected: number; // Total semua berkas fisik yang ada di Google Drive
   expectedFilesTotal: number;
   completionPercentage: number;
-  validFilesCount: number;     // Jumlah berkas yang sudah sah mengisi 5 slot pemilihan
+  validFilesCount: number;     // Jumlah berkas fisik yang sah (totalPhysicalFiles - anomalyFilesCount)
   anomalyFilesCount: number;   // Jumlah berkas anomali / belum dikenali
+  resolvedFilesCount?: number; // Jumlah berkas yang telah dikoreksi/di-resolve oleh admin
 }
 
 export type StatusFilterOption = 'ALL' | 'COMPLETE' | 'PARTIAL' | 'EMPTY' | 'ANOMALY' | 'MISMATCH_DESA';
