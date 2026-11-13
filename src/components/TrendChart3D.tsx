@@ -557,7 +557,7 @@ export function TrendChart3D({
                       />
                     )}
                   </AreaChart>
-                ) : viewMode === 'BAR_3D' ? (
+                ) : (
                   <BarChart data={dailyUploadData} margin={{ top: 22, right: 15, left: -15, bottom: 5 }}>
                     <defs>
                       {/* Gradient Pilar Isometrik Normal */}

@@ -6,7 +6,6 @@ import {
   Zap,
   Activity,
   Calendar,
-  Layers,
   Sparkles,
 } from 'lucide-react';
 import {
