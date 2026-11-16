@@ -38,6 +38,7 @@ import {
   updateFileAnomalyStatus,
   SyncMetadata,
 } from '@/services/firebase';
+import { checkAndNotifyAnomalies } from '@/services/fonnteService';
 import {
   RawTpsData,
   TPSRecord,
@@ -486,6 +487,11 @@ export function App() {
     };
     setConfig(updatedConfig);
     saveAppConfig(updatedConfig);
+
+    // Otomatis cek anomali baru & kirim notifikasi WhatsApp via Fonnte (anti-spam terdata)
+    checkAndNotifyAnomalies(updatedData).catch((err) => {
+      console.warn('[Fonnte] Gagal mengeksekusi pengecekan notifikasi anomali:', err);
+    });
   };
 
   // Handler Export Excel

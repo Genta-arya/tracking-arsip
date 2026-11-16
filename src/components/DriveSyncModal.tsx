@@ -449,7 +449,7 @@ export function DriveSyncModal({
         {/* Content */}
         <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
           
-          {shared.scan && <ActiveDriveScanDetails scan={shared.scan}/>}
+          {shared.scan && <ActiveDriveScanDetails scan={shared.scan} localProgress={isScanning ? scanProgress : undefined}/>}
           {(shared.error || !shared.ready) && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{shared.error || 'Menghubungkan status scan bersama…'}</p>}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><label className="block text-[10px] font-semibold text-slate-600" htmlFor={`${tabsId}-device-name`}>Nama perangkat ini (misalnya Tablet Admin 1)</label><input id={`${tabsId}-device-name`} value={deviceName} maxLength={60} disabled={scanBlocked || isScanning || isMisplacedScanning} onChange={e=>setDeviceName(e.target.value)} onBlur={()=>{try{setDeviceName(nameScanDevice(deviceName));setDeviceError('');}catch(e){setDeviceError(e instanceof Error?e.message:String(e));}}} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 disabled:opacity-50"/><p className="mt-1 text-[9px] text-slate-500">Identitas lokal: {currentScanDevice().deviceId.slice(0,8)} · Nama ini terlihat oleh admin lain saat perangkat memindai.</p>{deviceError&&<p role="alert" className="mt-1 text-[10px] text-rose-700">{deviceError}</p>}</div>
           <div role="tabpanel" id={`${tabsId}-regular-panel`} aria-labelledby={`${tabsId}-regular-tab`} hidden={activeTab !== 'regular'} className="space-y-4">
