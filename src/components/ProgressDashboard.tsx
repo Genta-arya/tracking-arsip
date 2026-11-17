@@ -16,6 +16,7 @@ import { useArchiveToday } from '@/hooks/useArchiveToday';
 import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
 import {
   buildActivityChart,
+  computeUploaderStats,
   dailyActivityCounts,
   formatArchiveDay,
   isActiveArchiveFile,
@@ -98,31 +99,25 @@ export function ProgressDashboard({
   const cumulativePrevious = comparisonDay ? cumulativeUploadCount(countsByDate, comparisonDay.date) : null;
 
   // 3. Leaderboard Staf Pengunggah (Uploader Insights)
+  const uploaderStats = useMemo(() => computeUploaderStats(allFiles, chartRange), [
+    allFiles,
+    chartRange,
+  ]);
+
   const uploaderLeaderboard = useMemo(() => {
-    const map = new Map<string, { total: number; valid: number; anomaly: number }>();
-
-    allFiles.forEach((file) => {
-      const uploader = file.uploader?.trim() || 'Staf KPU Sekadau (Arsip Lama)';
-      const cur = map.get(uploader) || { total: 0, valid: 0, anomaly: 0 };
-      cur.total += 1;
-      if (file.anomalies.length > 0 && !file.isResolved) {
-        cur.anomaly += 1;
-      } else {
-        cur.valid += 1;
-      }
-      map.set(uploader, cur);
-    });
-
-    return Array.from(map.entries())
-      .map(([name, data]) => ({
-        name,
-        total: data.total,
-        valid: data.valid,
-        anomaly: data.anomaly,
-        accuracy: data.total > 0 ? ((data.valid / data.total) * 100).toFixed(1) : '100',
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [allFiles]);
+    return uploaderStats.map((s) => ({
+      name: s.name,
+      total: s.totalFiles,
+      valid: s.valid,
+      anomaly: s.anomaly,
+      accuracy:
+        s.totalFiles > 0 ? ((s.valid / s.totalFiles) * 100).toFixed(1) : '100',
+      filesPerDay: s.filesPerDay,
+      activeDays: s.activeDays,
+      avgSecondsPerFile: s.avgSecondsPerFile,
+      avgSecondsPerFileFormatted: s.avgSecondsPerFileFormatted,
+    }));
+  }, [uploaderStats]);
 
   // 4. Kelengkapan Berkas per 5 Jenis Surat Suara
   const electionBreakdown = useMemo(() => {

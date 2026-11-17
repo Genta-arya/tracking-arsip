@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Users, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 
 export interface UploaderItem {
@@ -8,6 +8,10 @@ export interface UploaderItem {
   valid: number;
   anomaly: number;
   accuracy: string;
+  filesPerDay: number;
+  activeDays: number;
+  avgSecondsPerFile: number;
+  avgSecondsPerFileFormatted: string;
 }
 
 interface UploaderLeaderboard3DProps {
@@ -69,6 +73,8 @@ export function UploaderLeaderboard3D({
               <th className="px-4 py-3.5 text-center w-14">No</th>
               <th className="px-4 py-3.5">Nama / Akun Staf Pengunggah</th>
               <th className="px-4 py-3.5 text-center">Total Berkas Diunggah</th>
+              <th className="px-4 py-3.5 text-center">Rata-rata Berkas/Hari</th>
+              <th className="px-4 py-3.5 text-center">Kecepatan Upload</th>
               <th className="px-4 py-3.5 text-center">Format Sesuai (Normal)</th>
               <th className="px-4 py-3.5 text-center">Ada Anomali Nama</th>
               <th className="px-4 py-3.5 text-center">Tingkat Akurasi</th>
@@ -133,6 +139,34 @@ export function UploaderLeaderboard3D({
                       <div className="inline-flex items-center gap-1">
                         <AnimatedCounter value={item.total} />
                         <span className="text-[11px] font-semibold text-slate-500">file</span>
+                      </div>
+                    </td>
+
+                    {/* Rata-rata Berkas per Hari */}
+                    <td className="px-4 py-3.5 text-center font-bold text-xs text-slate-700">
+                      <div className="inline-flex items-center gap-1">
+                        <AnimatedCounter value={item.filesPerDay} decimals={1} />
+                        <span className="text-[11px] font-semibold text-slate-500">/hari</span>
+                      </div>
+                    </td>
+
+                    {/* Kecepatan Upload */}
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="inline-flex items-center gap-1.5">
+                        <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                            item.avgSecondsPerFile <= 60
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90 shadow-[0_1px_3px_rgba(16,185,129,0.15)]'
+                              : item.avgSecondsPerFile <= 300
+                              ? 'bg-amber-50 text-amber-800 border-amber-200/90 shadow-[0_1px_3px_rgba(217,119,6,0.15)]'
+                              : 'bg-rose-50 text-rose-800 border-rose-200/90 shadow-[0_1px_3px_rgba(225,29,72,0.15)]'
+                          }`}
+                          title={`Rata-rata ${item.avgSecondsPerFileFormatted} per berkas`}
+                        >
+                          <span>{item.avgSecondsPerFileFormatted}</span>
+                          <span className="text-[10px] opacity-80">/berkas</span>
+                        </span>
                       </div>
                     </td>
 

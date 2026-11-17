@@ -1,4 +1,4 @@
-import type { RawFileItem, TPSRecord, ElectionType } from '@/types';
+import type { RawFileItem, ScannedFile, TPSRecord, ElectionType } from '@/types';
 
 export const ARCHIVE_TIME_ZONE = 'Asia/Jakarta';
 const archiveDayFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -72,6 +72,101 @@ export function cumulativeUploadCount(counts: Map<string, number>, throughDate: 
   let total = 0;
   for (const [date, count] of counts) if (date <= throughDate) total += count;
   return total;
+}
+
+export interface UploaderStats {
+  name: string;
+  totalFiles: number;
+  valid: number;
+  anomaly: number;
+  activeDays: number;
+  filesPerDay: number;
+  firstUpload?: string;
+  lastUpload?: string;
+  avgSecondsPerFile: number;
+  avgSecondsPerFileFormatted: string;
+}
+
+export function computeUploaderStats(
+  files: ScannedFile[],
+  range: AnalyticsRange = 'ALL',
+  now = new Date()
+): UploaderStats[] {
+  const today = archiveDateKey(now)!;
+  let start = today.slice(0, 7) + '-01';
+  if (range === 'LAST_30') {
+    start = today;
+    for (let i = 0; i < 29; i++) start = previousCalendarDay(start);
+  }
+
+  const byUploader = new Map<string, ScannedFile[]>();
+  for (const file of files) {
+    if (!isActiveArchiveFile(file)) continue;
+    const dateKey = fileActivityDay(file);
+    if (!dateKey || dateKey > today) continue;
+    if (range !== 'ALL' && dateKey < start) continue;
+
+    const name = file.uploader?.trim() || 'Staf KPU Sekadau (Arsip Lama)';
+    const list = byUploader.get(name) || [];
+    list.push(file);
+    byUploader.set(name, list);
+  }
+
+  const result: UploaderStats[] = [];
+  for (const [name, list] of byUploader) {
+    const totalFiles = list.length;
+    const days = new Set<string>();
+    const times: number[] = [];
+    let valid = 0;
+    let anomaly = 0;
+
+    for (const file of list) {
+      const dk = fileActivityDay(file);
+      if (dk) days.add(dk);
+      const t = file.createdAt ? new Date(file.createdAt).getTime() : NaN;
+      if (!Number.isNaN(t)) times.push(t);
+
+      if (file.anomalies.length > 0 && !file.isResolved) {
+        anomaly += 1;
+      } else {
+        valid += 1;
+      }
+    }
+
+    times.sort((a, b) => a - b);
+    const activeDays = days.size;
+    const filesPerDay = activeDays > 0 ? totalFiles / activeDays : 0;
+
+    let avgSeconds = 0;
+    if (times.length === 0) {
+      avgSeconds = 0;
+    } else if (times.length === 1) {
+      avgSeconds = 90;
+    } else {
+      let sum = 0;
+      for (let i = 1; i < times.length; i++) {
+        sum += Math.max(20, (times[i] - times[i - 1]) / 1000);
+      }
+      avgSeconds = sum / (times.length - 1);
+    }
+
+    const roundedAvg = Math.round(avgSeconds);
+
+    result.push({
+      name,
+      totalFiles,
+      valid,
+      anomaly,
+      activeDays,
+      filesPerDay: Math.round(filesPerDay * 10) / 10,
+      firstUpload: times.length > 0 ? new Date(times[0]).toISOString() : undefined,
+      lastUpload: times.length > 0 ? new Date(times[times.length - 1]).toISOString() : undefined,
+      avgSecondsPerFile: roundedAvg,
+      avgSecondsPerFileFormatted: formatDurationShort(roundedAvg),
+    });
+  }
+
+  return result.sort((a, b) => b.totalFiles - a.totalFiles || a.name.localeCompare(b.name));
 }
 
 export interface DistrictActivity { name: string; count: number }
