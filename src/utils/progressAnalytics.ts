@@ -164,7 +164,7 @@ export function computeUploaderStats(
       valid,
       anomaly,
       activeDays,
-      filesPerDay: Math.round(filesPerDay * 10) / 10,
+      filesPerDay: Math.round(filesPerDay),
       firstUpload: times.length > 0 ? new Date(times[0]).toISOString() : undefined,
       lastUpload: times.length > 0 ? new Date(times[times.length - 1]).toISOString() : undefined,
       avgSecondsPerFile: roundedAvg,
