@@ -11,8 +11,6 @@ import {
   BarChart3,
   Waves,
   Calendar,
-  Layers,
-  Eye,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -537,7 +535,7 @@ export function TrendChart3D({
                               <div className="space-y-1.5 pt-0.5">
                                 {payload.map((entry, idx) => (
                                   <div
-                                    key={entry.dataKey || idx}
+                                    key={String(entry.dataKey ?? idx)}
                                     className={`flex items-center justify-between gap-4 ${
                                       idx > 0 ? 'border-t border-slate-800/90 pt-1.5' : ''
                                     }`}
