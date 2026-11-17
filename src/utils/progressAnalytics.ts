@@ -137,19 +137,25 @@ export function computeUploaderStats(
     const activeDays = days.size;
     const filesPerDay = activeDays > 0 ? totalFiles / activeDays : 0;
 
-    let avgSeconds = 0;
-    if (times.length === 0) {
-      avgSeconds = 0;
-    } else if (times.length === 1) {
-      avgSeconds = 90;
+    let totalSeconds = 0;
+    if (times.length <= 1) {
+      totalSeconds = times.length === 1 ? 90 : 0;
     } else {
-      let sum = 0;
-      for (let i = 1; i < times.length; i++) {
-        sum += Math.max(20, (times[i] - times[i - 1]) / 1000);
+      for (let i = 0; i < times.length; i++) {
+        if (i === 0) {
+          totalSeconds += 90;
+          continue;
+        }
+        const gapSec = Math.max(0, (times[i] - times[i - 1]) / 1000);
+        if (gapSec > 1800) {
+          totalSeconds += 90;
+        } else {
+          totalSeconds += Math.max(20, gapSec);
+        }
       }
-      avgSeconds = sum / (times.length - 1);
     }
 
+    const avgSeconds = totalFiles > 0 ? totalSeconds / totalFiles : 0;
     const roundedAvg = Math.round(avgSeconds);
 
     result.push({
