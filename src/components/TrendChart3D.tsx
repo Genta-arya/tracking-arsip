@@ -11,6 +11,8 @@ import {
   BarChart3,
   Waves,
   Calendar,
+  Layers,
+  Eye,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -74,6 +76,7 @@ export function TrendChart3D({
   const [isHovered, setIsHovered] = useState(false);
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
   const [viewMode, setViewMode] = useState<'AREA_3D' | 'BAR_3D'>('AREA_3D');
+  const [metricFilter, setMetricFilter] = useState<'HARIAN' | 'KUMULATIF' | 'BOTH'>('HARIAN');
 
   // Fisika Spring 3D untuk seluruh deck analitik
   const springConfig = { stiffness: 300, damping: 28, mass: 0.9 };
@@ -256,6 +259,46 @@ export function TrendChart3D({
                 >
                   <BarChart3 className="h-3.5 w-3.5" />
                   <span>Pilar</span>
+                </button>
+              </div>
+
+              {/* Selector Data: Harian Saja (Default) vs Kumulatif vs Keduanya */}
+              <div className="inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-2xs backdrop-blur-xs">
+                <button
+                  type="button"
+                  onClick={() => setMetricFilter('HARIAN')}
+                  className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    metricFilter === 'HARIAN'
+                      ? 'bg-kpu-maroon text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Tampilkan data berkas harian saja tanpa kumulatif"
+                >
+                  Harian Saja
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetricFilter('KUMULATIF')}
+                  className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    metricFilter === 'KUMULATIF'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Tampilkan hanya garis kumulatif"
+                >
+                  Kumulatif
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetricFilter('BOTH')}
+                  className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    metricFilter === 'BOTH'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Tampilkan keduanya (Harian & Kumulatif)"
+                >
+                  Keduanya
                 </button>
               </div>
 
@@ -492,26 +535,41 @@ export function TrendChart3D({
                                 <span>{label}</span>
                               </div>
                               <div className="space-y-1.5 pt-0.5">
-                                <div className="flex items-center justify-between gap-4">
-                                  <span className="flex items-center gap-1.5 text-slate-200 font-semibold">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] shrink-0" />
-                                    Upload Hari Ini:
-                                  </span>
-                                  <span className="font-black text-white text-sm">
-                                    {payload[0]?.value} <span className="text-[11px] font-medium text-slate-400">berkas</span>
-                                  </span>
-                                </div>
-                                {payload[1] && (
-                                  <div className="flex items-center justify-between gap-4 border-t border-slate-800/90 pt-1.5">
-                                    <span className="flex items-center gap-1.5 text-amber-200 font-semibold">
-                                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)] shrink-0" />
-                                      Kumulatif Rentang:
+                                {payload.map((entry, idx) => (
+                                  <div
+                                    key={entry.dataKey || idx}
+                                    className={`flex items-center justify-between gap-4 ${
+                                      idx > 0 ? 'border-t border-slate-800/90 pt-1.5' : ''
+                                    }`}
+                                  >
+                                    <span
+                                      className={`flex items-center gap-1.5 font-semibold ${
+                                        entry.dataKey === 'kumulatif'
+                                          ? 'text-amber-200'
+                                          : 'text-slate-200'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                          entry.dataKey === 'kumulatif'
+                                            ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.9)]'
+                                            : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]'
+                                        }`}
+                                      />
+                                      {entry.name || (entry.dataKey === 'kumulatif' ? 'Kumulatif:' : 'Upload Harian:')}
                                     </span>
-                                    <span className="font-black text-amber-300 text-sm">
-                                      {payload[1]?.value} <span className="text-[11px] font-medium text-amber-200/80">file</span>
+                                    <span
+                                      className={`font-black text-sm ${
+                                        entry.dataKey === 'kumulatif' ? 'text-amber-300' : 'text-white'
+                                      }`}
+                                    >
+                                      {entry.value}{' '}
+                                      <span className="text-[11px] font-medium text-slate-400">
+                                        {entry.dataKey === 'kumulatif' ? 'file' : 'berkas'}
+                                      </span>
                                     </span>
                                   </div>
-                                )}
+                                ))}
                               </div>
                             </div>
                           );
@@ -521,32 +579,36 @@ export function TrendChart3D({
                     />
 
                     {/* Area Gelombang Harian dengan Filter Kedalaman 3D */}
-                    <Area
-                      type="monotone"
-                      dataKey="harian"
-                      dot={{ r: 3 }}
-                      name="Upload Harian"
-                      stroke="#800000"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#colorUpload3D)"
-                      filter="url(#waveShadow3D)"
-                    />
+                    {(metricFilter === 'HARIAN' || metricFilter === 'BOTH') && (
+                      <Area
+                        type="monotone"
+                        dataKey="harian"
+                        dot={{ r: 3 }}
+                        name="Upload Harian"
+                        stroke="#800000"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#colorUpload3D)"
+                        filter="url(#waveShadow3D)"
+                      />
+                    )}
 
                     {/* Area Gelombang Kumulatif Emas */}
-                    <Area
-                      type="monotone"
-                      dataKey="kumulatif"
-                      name="Kumulatif Rentang"
-                      stroke="#d97706"
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      fillOpacity={1}
-                      fill="url(#colorKumulatif3D)"
-                    />
+                    {(metricFilter === 'KUMULATIF' || metricFilter === 'BOTH') && (
+                      <Area
+                        type="monotone"
+                        dataKey="kumulatif"
+                        name="Kumulatif Rentang"
+                        stroke="#d97706"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        fillOpacity={1}
+                        fill="url(#colorKumulatif3D)"
+                      />
+                    )}
 
-                    {/* Penanda Titik Puncak Rekor 3D */}
-                    {peakItem && (
+                    {/* Penanda Titik Puncak Rekor 3D (hanya jika data harian ditampilkan) */}
+                    {peakItem && (metricFilter === 'HARIAN' || metricFilter === 'BOTH') && (
                       <ReferenceDot
                         x={peakItem.date}
                         y={peakItem.harian}
@@ -679,14 +741,18 @@ export function TrendChart3D({
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-kpu-maroon inline-block" />
-                    Upload Harian
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block border border-dashed border-amber-600" />
-                    Kumulatif Rentang
-                  </span>
+                  {(metricFilter === 'HARIAN' || metricFilter === 'BOTH') && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-kpu-maroon inline-block" />
+                      Upload Harian
+                    </span>
+                  )}
+                  {(metricFilter === 'KUMULATIF' || metricFilter === 'BOTH') && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block border border-dashed border-amber-600" />
+                      Kumulatif Rentang
+                    </span>
+                  )}
                 </div>
               </div>
             )}
