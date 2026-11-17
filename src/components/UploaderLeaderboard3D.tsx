@@ -1,5 +1,14 @@
 import { motion } from 'framer-motion';
-import { Users, AlertTriangle, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
+import {
+  Users,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  Clock,
+  Calendar,
+  FileCheck2,
+  TrendingUp,
+} from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 
 export interface UploaderItem {
@@ -23,6 +32,49 @@ export function UploaderLeaderboard3D({
   uploaders,
   onViewAnomalies,
 }: UploaderLeaderboard3DProps) {
+  // Hitung metrik agregat tim / seluruh staf
+  const summary = uploaders.reduce(
+    (acc, curr) => {
+      acc.totalFiles += curr.total;
+      acc.validFiles += curr.valid;
+      acc.anomalyFiles += curr.anomaly;
+      acc.totalActiveDays = Math.max(acc.totalActiveDays, curr.activeDays);
+      acc.weightedSpeedSum += curr.avgSecondsPerFile * curr.total;
+      return acc;
+    },
+    {
+      totalFiles: 0,
+      validFiles: 0,
+      anomalyFiles: 0,
+      totalActiveDays: 0,
+      weightedSpeedSum: 0,
+    }
+  );
+
+  const teamCount = uploaders.length;
+  const overallAvgFilesPerDay =
+    summary.totalActiveDays > 0
+      ? Math.round((summary.totalFiles / summary.totalActiveDays) * 10) / 10
+      : 0;
+  const overallAvgSpeedSeconds =
+    summary.totalFiles > 0
+      ? Math.round(summary.weightedSpeedSum / summary.totalFiles)
+      : 0;
+
+  const formatShortDuration = (seconds: number) => {
+    if (!seconds || seconds <= 0) return '0 dtk';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hours > 0) return minutes > 0 ? `${hours}j ${minutes}m` : `${hours}j`;
+    return minutes > 0 ? `${minutes}m ${secs > 0 ? secs + 's' : ''}`.trim() : `${secs} dtk`;
+  };
+
+  const overallAccuracy =
+    summary.totalFiles > 0
+      ? ((summary.validFiles / summary.totalFiles) * 100).toFixed(1)
+      : '100';
+
   return (
     <div className="relative rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.07),0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden transition-all duration-300">
       {/* Top 3D Specular Highlight Rim */}
@@ -33,8 +85,8 @@ export function UploaderLeaderboard3D({
 
       {/* 3D Command Deck Header */}
       <div className="relative bg-gradient-to-r from-slate-50/95 via-white/85 to-slate-50/95 backdrop-blur-xs border-b border-slate-200/80 p-4 sm:p-5 z-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
             {/* 3D Floating Isometric Amber Gem */}
             <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-amber-950 flex items-center justify-center shadow-[0_4px_12px_rgba(245,158,11,0.35),inset_0_1.5px_1px_rgba(255,255,255,0.7),inset_0_-2px_1px_rgba(180,83,9,0.3)] border border-amber-300/80 shrink-0">
               <Users className="h-5 w-5 drop-shadow-xs" />
@@ -42,11 +94,18 @@ export function UploaderLeaderboard3D({
             </div>
 
             <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-                Monitoring Aktivitas Tim & Staf Pengunggah di Google Drive
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  Monitoring Aktivitas Tim & Staf Pengunggah di Google Drive
+                </h3>
+                {teamCount > 0 && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-900 border border-amber-200/90">
+                    {teamCount} Akun Kontributor
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Memantau siapa saja akun yang mengunggah file scan ke Drive, jumlah berkas, dan tingkat ketepatan penamaan
+                Pemantauan produktivitas harian, kecepatan unggah per berkas, dan ketepatan penamaan arsip tiap staf
               </p>
             </div>
           </div>
@@ -62,6 +121,77 @@ export function UploaderLeaderboard3D({
             <span>Lihat Daftar Berkas Anomali</span>
           </button>
         </div>
+
+        {/* Highlight Cards Redesign: Rangkuman Metrik Tim */}
+        {uploaders.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-4 pt-3.5 border-t border-slate-200/70">
+            {/* Card 1: Total Berkas Masuk */}
+            <div className="relative rounded-xl p-2.5 sm:p-3 bg-gradient-to-br from-slate-50 via-white to-slate-100/50 border border-slate-200/80 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200/60">
+                  <FileCheck2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-500">Total Berkas Diunggah</span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-base sm:text-lg font-black text-slate-900">
+                  <AnimatedCounter value={summary.totalFiles} />
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500">berkas</span>
+              </div>
+            </div>
+
+            {/* Card 2: Rata-rata Berkas/Hari Tim */}
+            <div className="relative rounded-xl p-2.5 sm:p-3 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/30 border border-amber-200/70 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-100/80 text-amber-700 border border-amber-300/60">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-600">Rata-rata Tim/Hari</span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-base sm:text-lg font-black text-amber-950">
+                  <AnimatedCounter value={overallAvgFilesPerDay} decimals={1} />
+                </span>
+                <span className="text-[10px] font-semibold text-amber-700">berkas / hari</span>
+              </div>
+            </div>
+
+            {/* Card 3: Rata-rata Waktu Upload Tim per Berkas */}
+            <div className="relative rounded-xl p-2.5 sm:p-3 bg-gradient-to-br from-indigo-50/50 via-white to-indigo-50/30 border border-indigo-200/70 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-100/80 text-indigo-700 border border-indigo-300/60">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-600">Rata-rata Waktu Upload</span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-base sm:text-lg font-black text-indigo-950">
+                  {formatShortDuration(overallAvgSpeedSeconds)}
+                </span>
+                <span className="text-[10px] font-semibold text-indigo-700">/ berkas</span>
+              </div>
+            </div>
+
+            {/* Card 4: Akurasi Format Tim */}
+            <div className="relative rounded-xl p-2.5 sm:p-3 bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/30 border border-emerald-200/70 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-100/80 text-emerald-700 border border-emerald-300/60">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-600">Akurasi Penamaan</span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-base sm:text-lg font-black text-emerald-950">
+                  {overallAccuracy}%
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-700">
+                  ({summary.validFiles} valid)
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3D Data Table Container */}
@@ -72,11 +202,11 @@ export function UploaderLeaderboard3D({
             <tr>
               <th className="px-4 py-3.5 text-center w-14">No</th>
               <th className="px-4 py-3.5">Nama / Akun Staf Pengunggah</th>
-              <th className="px-4 py-3.5 text-center">Total Berkas Diunggah</th>
-              <th className="px-4 py-3.5 text-center">Rata-rata Berkas/Hari</th>
-              <th className="px-4 py-3.5 text-center">Kecepatan Upload</th>
-              <th className="px-4 py-3.5 text-center">Format Sesuai (Normal)</th>
-              <th className="px-4 py-3.5 text-center">Ada Anomali Nama</th>
+              <th className="px-4 py-3.5 text-center">Total Berkas</th>
+              <th className="px-4 py-3.5 text-center">Rata-rata / Hari</th>
+              <th className="px-4 py-3.5 text-center">Waktu / Berkas</th>
+              <th className="px-4 py-3.5 text-center">Sesuai Format</th>
+              <th className="px-4 py-3.5 text-center">Anomali Nama</th>
               <th className="px-4 py-3.5 text-center">Tingkat Akurasi</th>
             </tr>
           </thead>
@@ -84,7 +214,7 @@ export function UploaderLeaderboard3D({
           <tbody className="divide-y divide-slate-100/80">
             {uploaders.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-10 text-slate-400">
+                <td colSpan={8} className="text-center py-10 text-slate-400">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Users className="h-8 w-8 text-slate-300 animate-pulse" />
                     <span className="font-medium text-xs">
@@ -116,7 +246,17 @@ export function UploaderLeaderboard3D({
                     {/* Nomor Urut */}
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex items-center justify-center">
-                        <span className="w-6 h-6 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shadow-2xs">
+                        <span
+                          className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shadow-2xs border ${
+                            idx === 0
+                              ? 'bg-gradient-to-b from-amber-100 to-amber-200 text-amber-950 border-amber-300'
+                              : idx === 1
+                              ? 'bg-slate-200 text-slate-700 border-slate-300'
+                              : idx === 2
+                              ? 'bg-amber-100/60 text-amber-900 border-amber-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
                           {idx + 1}
                         </span>
                       </div>
@@ -128,9 +268,14 @@ export function UploaderLeaderboard3D({
                         <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 border border-white shadow-2xs flex items-center justify-center font-bold text-xs text-slate-700 shrink-0">
                           {item.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-kpu-maroon transition block truncate">
-                          {item.name}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-kpu-maroon transition block truncate">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {item.activeDays > 0 ? `${item.activeDays} hari aktif unggah` : 'Arsip terekam'}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
@@ -143,29 +288,30 @@ export function UploaderLeaderboard3D({
                     </td>
 
                     {/* Rata-rata Berkas per Hari */}
-                    <td className="px-4 py-3.5 text-center font-bold text-xs text-slate-700">
-                      <div className="inline-flex items-center gap-1">
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 font-bold text-xs">
+                        <Calendar className="h-3 w-3 text-amber-600 shrink-0" />
                         <AnimatedCounter value={item.filesPerDay} decimals={1} />
-                        <span className="text-[11px] font-semibold text-slate-500">/hari</span>
+                        <span className="text-[10px] font-medium text-amber-800/80">/hari</span>
                       </div>
                     </td>
 
-                    {/* Kecepatan Upload */}
+                    {/* Kecepatan Upload (Waktu per berkas) */}
                     <td className="px-4 py-3.5 text-center">
                       <div className="inline-flex items-center gap-1.5">
-                        <Clock className="h-3 w-3 text-slate-400 shrink-0" />
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
                             item.avgSecondsPerFile <= 60
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90 shadow-[0_1px_3px_rgba(16,185,129,0.15)]'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90 shadow-[0_1px_3px_rgba(16,185,129,0.12)]'
                               : item.avgSecondsPerFile <= 300
-                              ? 'bg-amber-50 text-amber-800 border-amber-200/90 shadow-[0_1px_3px_rgba(217,119,6,0.15)]'
-                              : 'bg-rose-50 text-rose-800 border-rose-200/90 shadow-[0_1px_3px_rgba(225,29,72,0.15)]'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200/90 shadow-[0_1px_3px_rgba(217,119,6,0.12)]'
+                              : 'bg-rose-50 text-rose-800 border-rose-200/90 shadow-[0_1px_3px_rgba(225,29,72,0.12)]'
                           }`}
                           title={`Rata-rata ${item.avgSecondsPerFileFormatted} per berkas`}
                         >
+                          <Clock className="h-3 w-3 opacity-75 shrink-0" />
                           <span>{item.avgSecondsPerFileFormatted}</span>
-                          <span className="text-[10px] opacity-80">/berkas</span>
+                          <span className="text-[10px] font-normal opacity-80">/berkas</span>
                         </span>
                       </div>
                     </td>
@@ -215,4 +361,3 @@ export function UploaderLeaderboard3D({
     </div>
   );
 }
-

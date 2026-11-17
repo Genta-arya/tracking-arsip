@@ -154,3 +154,51 @@ test('calculateDailyProcessingTimeline computes daily duration and per-file aver
   assert.equal(analytics.formatDurationShort(210), '3m 30s');
   assert.equal(analytics.formatDurationShort(3665), '1j 1m');
 });
+
+test('computeUploaderStats computes filesPerDay and upload speed per file accurately', () => {
+  const now = new Date('2026-11-10T12:00:00Z');
+  const files = [
+    // Uploader A: 2 file di 2026-11-10 WIB, gap 60s (90s base + 60s = 150s, 150/2 = 75s avg)
+    {
+      uploader: 'Budi Santoso',
+      createdAt: '2026-11-10T03:00:00Z',
+      anomalies: [],
+    },
+    {
+      uploader: 'Budi Santoso',
+      createdAt: '2026-11-10T03:01:00Z',
+      anomalies: [],
+    },
+    // Uploader B: 1 file
+    {
+      uploader: 'Siti Rahma',
+      createdAt: '2026-11-10T04:00:00Z',
+      anomalies: ['KECAMATAN_MISMATCH'],
+      isResolved: false,
+    },
+  ];
+
+  const stats = analytics.computeUploaderStats(files, 'THIS_MONTH', now);
+  assert.equal(stats.length, 2);
+
+  const budi = stats.find(s => s.name === 'Budi Santoso');
+  assert.ok(budi);
+  assert.equal(budi.totalFiles, 2);
+  assert.equal(budi.activeDays, 1);
+  assert.equal(budi.filesPerDay, 2);
+  assert.equal(budi.avgSecondsPerFile, 75); // 150s total / 2 file
+  assert.equal(budi.avgSecondsPerFileFormatted, '1m 15s');
+  assert.equal(budi.valid, 2);
+  assert.equal(budi.anomaly, 0);
+
+  const siti = stats.find(s => s.name === 'Siti Rahma');
+  assert.ok(siti);
+  assert.equal(siti.totalFiles, 1);
+  assert.equal(siti.activeDays, 1);
+  assert.equal(siti.filesPerDay, 1);
+  assert.equal(siti.avgSecondsPerFile, 90);
+  assert.equal(siti.avgSecondsPerFileFormatted, '1m 30s');
+  assert.equal(siti.valid, 0);
+  assert.equal(siti.anomaly, 1);
+});
+
