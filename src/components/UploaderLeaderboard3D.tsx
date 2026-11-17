@@ -54,7 +54,7 @@ export function UploaderLeaderboard3D({
   const teamCount = uploaders.length;
   const overallAvgFilesPerDay =
     summary.totalActiveDays > 0
-      ? Math.round((summary.totalFiles / summary.totalActiveDays) * 10) / 10
+      ? Math.round(summary.totalFiles / summary.totalActiveDays)
       : 0;
   const overallAvgSpeedSeconds =
     summary.totalFiles > 0
@@ -151,7 +151,7 @@ export function UploaderLeaderboard3D({
               </div>
               <div className="mt-2 flex items-baseline gap-1.5">
                 <span className="text-base sm:text-lg font-black text-amber-950">
-                  <AnimatedCounter value={overallAvgFilesPerDay} decimals={1} />
+                  <AnimatedCounter value={overallAvgFilesPerDay} />
                 </span>
                 <span className="text-[10px] font-semibold text-amber-700">berkas / hari</span>
               </div>
@@ -291,7 +291,7 @@ export function UploaderLeaderboard3D({
                     <td className="px-4 py-3.5 text-center">
                       <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 font-bold text-xs">
                         <Calendar className="h-3 w-3 text-amber-600 shrink-0" />
-                        <AnimatedCounter value={item.filesPerDay} decimals={1} />
+                        <AnimatedCounter value={item.filesPerDay} />
                         <span className="text-[10px] font-medium text-amber-800/80">/hari</span>
                       </div>
                     </td>
