@@ -21,15 +21,18 @@ export interface UploaderItem {
   activeDays: number;
   avgSecondsPerFile: number;
   avgSecondsPerFileFormatted: string;
+  contributionPercent?: string;
 }
 
 interface UploaderLeaderboard3DProps {
   uploaders: UploaderItem[];
+  totalFiles?: number;
   onViewAnomalies: () => void;
 }
 
 export function UploaderLeaderboard3D({
   uploaders,
+  totalFiles,
   onViewAnomalies,
 }: UploaderLeaderboard3DProps) {
   // Hitung metrik agregat tim / seluruh staf
@@ -203,10 +206,9 @@ export function UploaderLeaderboard3D({
               <th className="px-4 py-3.5 text-center w-14">No</th>
               <th className="px-4 py-3.5">Nama / Akun Staf Pengunggah</th>
               <th className="px-4 py-3.5 text-center">Total Berkas</th>
+              <th className="px-4 py-3.5 text-center">Kontribusi</th>
               <th className="px-4 py-3.5 text-center">Rata-rata / Hari</th>
               <th className="px-4 py-3.5 text-center">Waktu / Berkas</th>
-              <th className="px-4 py-3.5 text-center">Sesuai Format</th>
-              <th className="px-4 py-3.5 text-center">Anomali Nama</th>
               <th className="px-4 py-3.5 text-center">Tingkat Akurasi</th>
             </tr>
           </thead>
@@ -214,7 +216,7 @@ export function UploaderLeaderboard3D({
           <tbody className="divide-y divide-slate-100/80">
             {uploaders.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-10 text-slate-400">
+                <td colSpan={7} className="text-center py-10 text-slate-400">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Users className="h-8 w-8 text-slate-300 animate-pulse" />
                     <span className="font-medium text-xs">
@@ -234,6 +236,15 @@ export function UploaderLeaderboard3D({
                     : accNum >= 75
                     ? 'bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 border-amber-300/90 shadow-[0_2px_5px_rgba(245,158,11,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]'
                     : 'bg-gradient-to-b from-rose-50 via-rose-100 to-rose-200 text-rose-900 border-rose-300/90 shadow-[0_2px_5px_rgba(225,29,72,0.15),inset_0_1px_0_rgba(255,255,255,0.9)]';
+
+                const computedTotal = totalFiles && totalFiles > 0
+                  ? totalFiles
+                  : summary.totalFiles > 0
+                  ? summary.totalFiles
+                  : uploaders.reduce((acc, u) => acc + u.total, 0);
+                const percentVal = computedTotal > 0
+                  ? ((item.total / computedTotal) * 100).toFixed(1)
+                  : '0';
 
                 return (
                   <motion.tr
@@ -279,11 +290,39 @@ export function UploaderLeaderboard3D({
                       </div>
                     </td>
 
-                    {/* Total Berkas Diunggah */}
-                    <td className="px-4 py-3.5 text-center font-black text-xs sm:text-sm text-slate-900">
-                      <div className="inline-flex items-center gap-1">
-                        <AnimatedCounter value={item.total} />
-                        <span className="text-[11px] font-semibold text-slate-500">file</span>
+                    {/* Total Berkas Diunggah + Anomali dipindah ke sini */}
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <div className="inline-flex items-center gap-1 font-black text-xs sm:text-sm text-slate-900">
+                          <AnimatedCounter value={item.total} />
+                          <span className="text-[11px] font-semibold text-slate-500">file</span>
+                        </div>
+                        {item.anomaly > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200 shadow-2xs">
+                            <AlertTriangle className="h-2.5 w-2.5 text-amber-700 shrink-0" />
+                            <span>{item.anomaly} anomali</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700">
+                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 shrink-0" />
+                            <span>Semua valid</span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Kontribusi Persentase terhadap total yang discan */}
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="inline-flex flex-col items-center justify-center gap-1 min-w-[70px]">
+                        <span className="font-black text-xs sm:text-sm text-slate-800">
+                          {item.contributionPercent || percentVal}%
+                        </span>
+                        <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/60">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-kpu-maroon rounded-full"
+                            style={{ width: `${Math.min(100, parseFloat(item.contributionPercent || percentVal))}%` }}
+                          />
+                        </div>
                       </div>
                     </td>
 
@@ -314,33 +353,6 @@ export function UploaderLeaderboard3D({
                           <span className="text-[10px] font-normal opacity-80">/berkas</span>
                         </span>
                       </div>
-                    </td>
-
-                    {/* Format Sesuai (Normal) */}
-                    <td className="px-4 py-3.5 text-center font-bold text-xs text-emerald-700">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50/70 border border-emerald-200/70">
-                        <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                        <span>
-                          <AnimatedCounter value={item.valid} /> file
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Ada Anomali Nama */}
-                    <td className="px-4 py-3.5 text-center">
-                      {item.anomaly > 0 ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-b from-amber-50 via-amber-100 to-amber-200 text-amber-950 font-black text-[11px] border border-amber-300/90 shadow-[0_2px_4px_rgba(245,158,11,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]">
-                          <AlertTriangle className="h-3 w-3 text-amber-700" />
-                          <span>
-                            <AnimatedCounter value={item.anomaly} /> file
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-slate-400 font-semibold text-[11px]">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                          <span>0</span>
-                        </span>
-                      )}
                     </td>
 
                     {/* Tingkat Akurasi (3D Pill Badge) */}
