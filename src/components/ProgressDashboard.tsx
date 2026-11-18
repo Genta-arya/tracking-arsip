@@ -105,7 +105,7 @@ export function ProgressDashboard({
   ]);
 
   const uploaderLeaderboard = useMemo(() => {
-    const totalAll = allFiles.length;
+    const targetGlobal = stats.expectedFilesTotal > 0 ? stats.expectedFilesTotal : allFiles.length;
     return uploaderStats.map((s) => ({
       name: s.name,
       total: s.totalFiles,
@@ -117,9 +117,9 @@ export function ProgressDashboard({
       activeDays: s.activeDays,
       avgSecondsPerFile: s.avgSecondsPerFile,
       avgSecondsPerFileFormatted: s.avgSecondsPerFileFormatted,
-      contributionPercent: totalAll > 0 ? ((s.totalFiles / totalAll) * 100).toFixed(1) : '0',
+      contributionPercent: targetGlobal > 0 ? ((s.totalFiles / targetGlobal) * 100).toFixed(1) : '0',
     }));
-  }, [uploaderStats, allFiles.length]);
+  }, [uploaderStats, stats.expectedFilesTotal, allFiles.length]);
 
   // 4. Kelengkapan Berkas per 5 Jenis Surat Suara
   const electionBreakdown = useMemo(() => {
@@ -441,7 +441,7 @@ export function ProgressDashboard({
       {/* 4. Leaderboard Pengunggah Berkas (Monitoring Staf Pengunggah di Drive 3D) */}
       <UploaderLeaderboard3D
         uploaders={uploaderLeaderboard}
-        totalFiles={allFiles.length}
+        totalFiles={stats.expectedFilesTotal > 0 ? stats.expectedFilesTotal : allFiles.length}
         onViewAnomalies={() => onNavigateToRekap({ status: 'ANOMALY' })}
       />
       </>}
