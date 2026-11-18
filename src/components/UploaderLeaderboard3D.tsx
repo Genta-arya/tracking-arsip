@@ -206,7 +206,7 @@ export function UploaderLeaderboard3D({
               <th className="px-4 py-3.5 text-center w-14">No</th>
               <th className="px-4 py-3.5">Nama / Akun Staf Pengunggah</th>
               <th className="px-4 py-3.5 text-center">Total Berkas</th>
-              <th className="px-4 py-3.5 text-center">Kontribusi</th>
+              <th className="px-4 py-3.5 text-center">Persentase</th>
               <th className="px-4 py-3.5 text-center">Rata-rata / Hari</th>
               <th className="px-4 py-3.5 text-center">Waktu / Berkas</th>
               <th className="px-4 py-3.5 text-center">Tingkat Akurasi</th>
