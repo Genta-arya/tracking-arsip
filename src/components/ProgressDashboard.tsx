@@ -118,6 +118,8 @@ export function ProgressDashboard({
       avgSecondsPerFile: s.avgSecondsPerFile,
       avgSecondsPerFileFormatted: s.avgSecondsPerFileFormatted,
       contributionPercent: targetGlobal > 0 ? ((s.totalFiles / targetGlobal) * 100).toFixed(1) : '0',
+      electionCounts: s.electionCounts,
+      totalSheets: s.totalSheets,
     }));
   }, [uploaderStats, stats.expectedFilesTotal, allFiles.length]);
 

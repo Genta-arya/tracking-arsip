@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useState, Fragment } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
   AlertTriangle,
@@ -8,8 +9,13 @@ import {
   Calendar,
   FileCheck2,
   TrendingUp,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  FileText,
 } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
+import type { UploaderElectionBreakdown } from '@/utils/progressAnalytics';
 
 export interface UploaderItem {
   name: string;
@@ -22,6 +28,8 @@ export interface UploaderItem {
   avgSecondsPerFile: number;
   avgSecondsPerFileFormatted: string;
   contributionPercent?: string;
+  electionCounts?: UploaderElectionBreakdown;
+  totalSheets?: number;
 }
 
 interface UploaderLeaderboard3DProps {
@@ -35,6 +43,21 @@ export function UploaderLeaderboard3D({
   totalFiles,
   onViewAnomalies,
 }: UploaderLeaderboard3DProps) {
+  // State untuk menyimpan daftar uploader yang di-expand rinciannya (default: tutup semua)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(() => new Set());
+
+  const toggleRow = (name: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
+
   // Hitung metrik agregat tim / seluruh staf
   const summary = uploaders.reduce(
     (acc, curr) => {
@@ -210,13 +233,14 @@ export function UploaderLeaderboard3D({
               <th className="px-4 py-3.5 text-center">Rata-rata / Hari</th>
               <th className="px-4 py-3.5 text-center">Waktu / Berkas</th>
               <th className="px-4 py-3.5 text-center">Tingkat Akurasi</th>
+              <th className="px-4 py-3.5 text-center w-24">Rincian</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-100/80">
             {uploaders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-slate-400">
+                <td colSpan={8} className="text-center py-10 text-slate-400">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Users className="h-8 w-8 text-slate-300 animate-pulse" />
                     <span className="font-medium text-xs">
@@ -228,6 +252,7 @@ export function UploaderLeaderboard3D({
             ) : (
               uploaders.map((item, idx) => {
                 const accNum = parseFloat(item.accuracy);
+                const isExpanded = expandedRows.has(item.name);
 
                 // 3D Accuracy Badges
                 const accuracyBadge =
@@ -246,124 +271,260 @@ export function UploaderLeaderboard3D({
                   ? ((item.total / computedTotal) * 100).toFixed(1)
                   : '0';
 
+                const el = item.electionCounts || {
+                  PPWP: 0,
+                  DPR_RI: 0,
+                  DPD: 0,
+                  DPRD_PROV: 0,
+                  DPRD_KAB: 0,
+                  UNKNOWN: 0,
+                };
+
+                const ppwpSheets = el.PPWP * 3;
+                const dpdSheets = el.DPD * 4;
+                const dprRiSheets = el.DPR_RI * 20;
+                const dprdProvSheets = el.DPRD_PROV * 20;
+                const dprdKabSheets = el.DPRD_KAB * 20;
+                const calculatedTotalSheets = item.totalSheets ?? (ppwpSheets + dpdSheets + dprRiSheets + dprdProvSheets + dprdKabSheets);
+
                 return (
-                  <motion.tr
-                    key={item.name}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.03 + 0.1, duration: 0.2 }}
-                    className="hover:bg-gradient-to-r hover:from-amber-50/40 hover:via-white hover:to-amber-50/20 transition-all duration-200 group"
-                  >
-                    {/* Nomor Urut */}
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center">
+                  <Fragment key={item.name}>
+                    <motion.tr
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 + 0.1, duration: 0.2 }}
+                      className={`hover:bg-gradient-to-r hover:from-amber-50/40 hover:via-white hover:to-amber-50/20 transition-all duration-200 group ${
+                        isExpanded ? 'bg-amber-50/25' : ''
+                      }`}
+                    >
+                      {/* Nomor Urut */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex items-center justify-center">
+                          <span
+                            className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shadow-2xs border ${
+                              idx === 0
+                                ? 'bg-gradient-to-b from-amber-100 to-amber-200 text-amber-950 border-amber-300'
+                                : idx === 1
+                                ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                : idx === 2
+                                ? 'bg-amber-100/60 text-amber-900 border-amber-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Uploader Name & Avatar */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 border border-white shadow-2xs flex items-center justify-center font-bold text-xs text-slate-700 shrink-0">
+                            {item.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-kpu-maroon transition block truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {item.activeDays > 0 ? `${item.activeDays} hari aktif unggah` : 'Arsip terekam'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Total Berkas Diunggah + Anomali dipindah ke sini */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <div className="inline-flex items-center gap-1 font-black text-xs sm:text-sm text-slate-900">
+                            <AnimatedCounter value={item.total} />
+                            <span className="text-[11px] font-semibold text-slate-500">file</span>
+                          </div>
+                          {item.anomaly > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200 shadow-2xs">
+                              <AlertTriangle className="h-2.5 w-2.5 text-amber-700 shrink-0" />
+                              <span>{item.anomaly} anomali</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700">
+                              <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 shrink-0" />
+                              <span>Semua valid</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Kontribusi Persentase terhadap total yang discan */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="inline-flex flex-col items-center justify-center gap-1 min-w-[70px]">
+                          <span className="font-black text-xs sm:text-sm text-slate-800">
+                            {item.contributionPercent || percentVal}%
+                          </span>
+                          <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/60">
+                            <div
+                              className="h-full bg-gradient-to-r from-amber-500 to-kpu-maroon rounded-full"
+                              style={{ width: `${Math.min(100, parseFloat(item.contributionPercent || percentVal))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Rata-rata Berkas per Hari */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 font-bold text-xs">
+                          <Calendar className="h-3 w-3 text-amber-600 shrink-0" />
+                          <AnimatedCounter value={item.filesPerDay} />
+                          <span className="text-[10px] font-medium text-amber-800/80">/hari</span>
+                        </div>
+                      </td>
+
+                      {/* Kecepatan Upload (Waktu per berkas) */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="inline-flex items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                              item.avgSecondsPerFile <= 60
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90 shadow-[0_1px_3px_rgba(16,185,129,0.12)]'
+                                : item.avgSecondsPerFile <= 300
+                                ? 'bg-amber-50 text-amber-800 border-amber-200/90 shadow-[0_1px_3px_rgba(217,119,6,0.12)]'
+                                : 'bg-rose-50 text-rose-800 border-rose-200/90 shadow-[0_1px_3px_rgba(225,29,72,0.12)]'
+                            }`}
+                            title={`Rata-rata ${item.avgSecondsPerFileFormatted} per berkas`}
+                          >
+                            <Clock className="h-3 w-3 opacity-75 shrink-0" />
+                            <span>{item.avgSecondsPerFileFormatted}</span>
+                            <span className="text-[10px] font-normal opacity-80">/berkas</span>
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Tingkat Akurasi (3D Pill Badge) */}
+                      <td className="px-4 py-3.5 text-center font-black">
                         <span
-                          className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shadow-2xs border ${
-                            idx === 0
-                              ? 'bg-gradient-to-b from-amber-100 to-amber-200 text-amber-950 border-amber-300'
-                              : idx === 1
-                              ? 'bg-slate-200 text-slate-700 border-slate-300'
-                              : idx === 2
-                              ? 'bg-amber-100/60 text-amber-900 border-amber-200'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          className={`inline-block px-3 py-1 rounded-xl text-[11px] font-black border tracking-tight ${accuracyBadge}`}
+                        >
+                          {item.accuracy}%
+                        </span>
+                      </td>
+
+                      {/* Tombol Detail Expand/Collapse */}
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleRow(item.name)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer border ${
+                            isExpanded
+                              ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200 shadow-2xs'
                           }`}
                         >
-                          {idx + 1}
-                        </span>
-                      </div>
-                    </td>
+                          <span>Detail</span>
+                          {isExpanded ? (
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                          )}
+                        </button>
+                      </td>
+                    </motion.tr>
 
-                    {/* Uploader Name & Avatar */}
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 border border-white shadow-2xs flex items-center justify-center font-bold text-xs text-slate-700 shrink-0">
-                          {item.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-kpu-maroon transition block truncate">
-                            {item.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            {item.activeDays > 0 ? `${item.activeDays} hari aktif unggah` : 'Arsip terekam'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Total Berkas Diunggah + Anomali dipindah ke sini */}
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        <div className="inline-flex items-center gap-1 font-black text-xs sm:text-sm text-slate-900">
-                          <AnimatedCounter value={item.total} />
-                          <span className="text-[11px] font-semibold text-slate-500">file</span>
-                        </div>
-                        {item.anomaly > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-200 shadow-2xs">
-                            <AlertTriangle className="h-2.5 w-2.5 text-amber-700 shrink-0" />
-                            <span>{item.anomaly} anomali</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700">
-                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 shrink-0" />
-                            <span>Semua valid</span>
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Kontribusi Persentase terhadap total yang discan */}
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="inline-flex flex-col items-center justify-center gap-1 min-w-[70px]">
-                        <span className="font-black text-xs sm:text-sm text-slate-800">
-                          {item.contributionPercent || percentVal}%
-                        </span>
-                        <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/60">
-                          <div
-                            className="h-full bg-gradient-to-r from-amber-500 to-kpu-maroon rounded-full"
-                            style={{ width: `${Math.min(100, parseFloat(item.contributionPercent || percentVal))}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Rata-rata Berkas per Hari */}
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 font-bold text-xs">
-                        <Calendar className="h-3 w-3 text-amber-600 shrink-0" />
-                        <AnimatedCounter value={item.filesPerDay} />
-                        <span className="text-[10px] font-medium text-amber-800/80">/hari</span>
-                      </div>
-                    </td>
-
-                    {/* Kecepatan Upload (Waktu per berkas) */}
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="inline-flex items-center gap-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                            item.avgSecondsPerFile <= 60
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90 shadow-[0_1px_3px_rgba(16,185,129,0.12)]'
-                              : item.avgSecondsPerFile <= 300
-                              ? 'bg-amber-50 text-amber-800 border-amber-200/90 shadow-[0_1px_3px_rgba(217,119,6,0.12)]'
-                              : 'bg-rose-50 text-rose-800 border-rose-200/90 shadow-[0_1px_3px_rgba(225,29,72,0.12)]'
-                          }`}
-                          title={`Rata-rata ${item.avgSecondsPerFileFormatted} per berkas`}
+                    {/* Expandable Detail Sub-Row: 5 Kategori Pemilu + Estimasi Lembaran */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.tr
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="bg-gradient-to-b from-amber-50/40 via-slate-50/60 to-white border-y border-amber-200/60"
                         >
-                          <Clock className="h-3 w-3 opacity-75 shrink-0" />
-                          <span>{item.avgSecondsPerFileFormatted}</span>
-                          <span className="text-[10px] font-normal opacity-80">/berkas</span>
-                        </span>
-                      </div>
-                    </td>
+                          <td colSpan={8} className="px-4 sm:px-6 py-4">
+                            <div className="flex flex-col gap-3">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center">
+                                    <Layers className="h-3.5 w-3.5" />
+                                  </div>
+                                  <span className="font-extrabold text-xs text-slate-800">
+                                    Rincian 5 Kategori Berkas & Kalkulasi Lembaran Fisik: {item.name}
+                                  </span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-amber-300 text-amber-950 font-black text-xs shadow-2xs">
+                                  <FileText className="h-3.5 w-3.5 text-amber-600" />
+                                  <span>Total Estimasi:</span>
+                                  <span className="text-kpu-maroon text-sm font-black">{calculatedTotalSheets.toLocaleString('id-ID')}</span>
+                                  <span className="text-[10px] font-normal text-slate-500">lembar</span>
+                                </div>
+                              </div>
 
-                    {/* Tingkat Akurasi (3D Pill Badge) */}
-                    <td className="px-4 py-3.5 text-center font-black">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-xl text-[11px] font-black border tracking-tight ${accuracyBadge}`}
-                      >
-                        {item.accuracy}%
-                      </span>
-                    </td>
-                  </motion.tr>
+                              {/* 5 Cards Grid untuk 5 Kategori Pemilu */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                                {/* 1. PPWP: 3 Lembar */}
+                                <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Presiden (PPWP)</span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">×3 lbr</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="font-black text-sm text-slate-800">{el.PPWP} <span className="text-[10px] font-normal text-slate-400">berkas</span></span>
+                                    <span className="font-bold text-xs text-amber-700">{ppwpSheets} <span className="text-[9px] font-normal text-slate-400">lbr</span></span>
+                                  </div>
+                                </div>
+
+                                {/* 2. DPD: 4 Lembar */}
+                                <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DPD RI</span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-semibold">×4 lbr</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="font-black text-sm text-slate-800">{el.DPD} <span className="text-[10px] font-normal text-slate-400">berkas</span></span>
+                                    <span className="font-bold text-xs text-rose-700">{dpdSheets} <span className="text-[9px] font-normal text-slate-400">lbr</span></span>
+                                  </div>
+                                </div>
+
+                                {/* 3. DPR RI: 20 Lembar */}
+                                <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DPR RI</span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-50 text-yellow-800 font-semibold">×20 lbr</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="font-black text-sm text-slate-800">{el.DPR_RI} <span className="text-[10px] font-normal text-slate-400">berkas</span></span>
+                                    <span className="font-bold text-xs text-yellow-700">{dprRiSheets} <span className="text-[9px] font-normal text-slate-400">lbr</span></span>
+                                  </div>
+                                </div>
+
+                                {/* 4. DPRD Provinsi: 20 Lembar */}
+                                <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DPRD Prov</span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">×20 lbr</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="font-black text-sm text-slate-800">{el.DPRD_PROV} <span className="text-[10px] font-normal text-slate-400">berkas</span></span>
+                                    <span className="font-bold text-xs text-blue-700">{dprdProvSheets} <span className="text-[9px] font-normal text-slate-400">lbr</span></span>
+                                  </div>
+                                </div>
+
+                                {/* 5. DPRD Kab/Kota: 20 Lembar */}
+                                <div className="p-3 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">DPRD Kab/Ko</span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">×20 lbr</span>
+                                  </div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="font-black text-sm text-slate-800">{el.DPRD_KAB} <span className="text-[10px] font-normal text-slate-400">berkas</span></span>
+                                    <span className="font-bold text-xs text-emerald-700">{dprdKabSheets} <span className="text-[9px] font-normal text-slate-400">lbr</span></span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      )}
+                    </AnimatePresence>
+                  </Fragment>
                 );
               })
             )}
