@@ -74,6 +74,15 @@ export function cumulativeUploadCount(counts: Map<string, number>, throughDate: 
   return total;
 }
 
+export interface UploaderElectionBreakdown {
+  PPWP: number;
+  DPR_RI: number;
+  DPD: number;
+  DPRD_PROV: number;
+  DPRD_KAB: number;
+  UNKNOWN: number;
+}
+
 export interface UploaderStats {
   name: string;
   totalFiles: number;
@@ -85,6 +94,8 @@ export interface UploaderStats {
   lastUpload?: string;
   avgSecondsPerFile: number;
   avgSecondsPerFileFormatted: string;
+  electionCounts: UploaderElectionBreakdown;
+  totalSheets: number;
 }
 
 export function computeUploaderStats(
@@ -120,11 +131,27 @@ export function computeUploaderStats(
     let valid = 0;
     let anomaly = 0;
 
+    const electionCounts: UploaderElectionBreakdown = {
+      PPWP: 0,
+      DPR_RI: 0,
+      DPD: 0,
+      DPRD_PROV: 0,
+      DPRD_KAB: 0,
+      UNKNOWN: 0,
+    };
+
     for (const file of list) {
       const dk = fileActivityDay(file);
       if (dk) days.add(dk);
       const t = file.createdAt ? new Date(file.createdAt).getTime() : NaN;
       if (!Number.isNaN(t)) times.push(t);
+
+      const el = file.detectedElection || 'UNKNOWN';
+      if (el in electionCounts) {
+        electionCounts[el as keyof UploaderElectionBreakdown]++;
+      } else {
+        electionCounts.UNKNOWN++;
+      }
 
       if (file.anomalies.length > 0 && !file.isResolved) {
         anomaly += 1;
@@ -132,6 +159,14 @@ export function computeUploaderStats(
         valid += 1;
       }
     }
+
+    // Kalkulasi lembaran: Presiden 3 lbr, DPD 4 lbr, DPR RI 20 lbr, DPRD Prov 20 lbr, DPRD Kab/Kota 20 lbr
+    const totalSheets =
+      electionCounts.PPWP * 3 +
+      electionCounts.DPD * 4 +
+      electionCounts.DPR_RI * 20 +
+      electionCounts.DPRD_PROV * 20 +
+      electionCounts.DPRD_KAB * 20;
 
     times.sort((a, b) => a - b);
     const activeDays = days.size;
@@ -169,6 +204,8 @@ export function computeUploaderStats(
       lastUpload: times.length > 0 ? new Date(times[times.length - 1]).toISOString() : undefined,
       avgSecondsPerFile: roundedAvg,
       avgSecondsPerFileFormatted: formatDurationShort(roundedAvg),
+      electionCounts,
+      totalSheets,
     });
   }
 
