@@ -8,10 +8,14 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Sparkles,
   BarChart2,
   PieChart as PieChartIcon,
+  Users,
+  ExternalLink,
+  ShieldCheck,
+  AlertTriangle,
+  FolderOpen,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,7 +33,8 @@ import { useArchiveToday } from '@/hooks/useArchiveToday';
 import { ArchiveComparisonCard } from '@/components/ArchiveComparisonCard';
 import { dailyDistrictActivity, fileActivityDay, formatArchiveDay, isActiveArchiveFile, previousActiveDay } from '@/utils/progressAnalytics';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
-import { TPSRecord, ElectionType, ELECTION_LIST, FilterState } from '@/types';
+import { TPSRecord, ElectionType, ELECTION_LIST, FilterState, ScannedFile } from '@/types';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface DailyBreakdownProps {
   records: TPSRecord[];
@@ -123,12 +128,32 @@ interface DayStats {
   unknown: number;
 }
 
+export interface ElectionFileItem {
+  file: ScannedFile;
+  kecamatan: string;
+  desa: string;
+  tpsNumber: number;
+  tpsFolderName: string;
+  tpsFolderUrl: string;
+}
+
+export interface UploaderDailyElectionStat {
+  name: string;
+  count: number;
+  validCount: number;
+  anomalyCount: number;
+  files: ElectionFileItem[];
+}
+
 export function DailyIncomingBreakdownCard({
   records,
   onNavigateToRekap,
 }: DailyBreakdownProps) {
   const calendarToday = useArchiveToday();
   const [chartType, setChartType] = useState<'BAR' | 'DONUT'>('BAR');
+
+  // Modal State untuk melihat rincian pengunggah per kategori surat suara
+  const [modalElection, setModalElection] = useState<ElectionType | null>(null);
 
   // 1. Ekstrak seluruh berkas dan kumpulkan statistik per hari beserta rincian pemilihannya
   const { allDays, todayKey } = useMemo(() => {
@@ -220,6 +245,56 @@ export function DailyIncomingBreakdownCard({
 
   const districtActivity = useMemo(() => dailyDistrictActivity(records, activeDay.rawDate), [records, activeDay.rawDate]);
 
+  // Hitung rincian staf pengunggah untuk kategori pemilihan yang sedang aktif di modal pada tanggal yang dipilih
+  const modalUploaderStats = useMemo(() => {
+    if (!modalElection) return [];
+
+    const map = new Map<string, UploaderDailyElectionStat>();
+
+    records.forEach((record) => {
+      record.files.forEach((file) => {
+        if (!isActiveArchiveFile(file)) return;
+        if (fileActivityDay(file) !== activeDay.rawDate) return;
+
+        const elCandidate =
+          file.overrideElection && file.overrideElection !== 'SUDAH_DIBENARKAN'
+            ? file.overrideElection
+            : file.detectedElection;
+
+        if (elCandidate !== modalElection) return;
+
+        const uploaderName = file.uploader?.trim() || 'Staf KPU Sekadau (Arsip Lama)';
+        const stat = map.get(uploaderName) || {
+          name: uploaderName,
+          count: 0,
+          validCount: 0,
+          anomalyCount: 0,
+          files: [],
+        };
+
+        stat.count += 1;
+        if (file.anomalies.length > 0 && !file.isResolved) {
+          stat.anomalyCount += 1;
+        } else {
+          stat.validCount += 1;
+        }
+
+        stat.files.push({
+          file,
+          kecamatan: record.kecamatan,
+          desa: record.desa,
+          tpsNumber: record.tpsNumber,
+          tpsFolderName: record.tpsFolderName,
+          tpsFolderUrl: record.tpsFolderUrl,
+        });
+
+        map.set(uploaderName, stat);
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [records, modalElection, activeDay.rawDate]);
+
   // Data untuk grafik bar / donut per jenis pemilihan pada hari terpilih
   const chartData = useMemo(() => {
     return ELECTION_LIST.map((el) => {
@@ -258,322 +333,360 @@ export function DailyIncomingBreakdownCard({
   };
 
   const isToday = activeDay.rawDate === todayKey;
-  const previousDay = useMemo(() => previousActiveDay(new Map(allDays.map(day => [day.rawDate, day.total])), activeDay.rawDate), [allDays, activeDay.rawDate]);
+  const allCounts = useMemo(() => new Map(allDays.map(day => [day.rawDate, day.total])), [allDays]);
+  const previousDay = useMemo(() => previousActiveDay(allCounts, activeDay.rawDate), [allCounts, activeDay.rawDate]);
 
+  const selectedElectionConfig = modalElection ? ELECTION_LIST.find((el) => el.key === modalElection) : null;
+  const selectedTheme = modalElection ? ELECTION_THEMES[modalElection] : null;
 
   return (
-    <div role="region" aria-label="Pantauan Berkas Masuk Per Hari" className="relative rounded-3xl bg-white border border-slate-200/90 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.07),0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden transition-all duration-300">
-      {/* 3D Top Bevel Highlight Rim */}
-      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400/50 via-white/80 to-transparent pointer-events-none z-20" />
+    <div className="space-y-6">
+      {/* 3D Header Command Deck & Selector Tanggal */}
+      <div className="relative rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.07),0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden transition-all duration-300">
+        {/* Top 3D Specular Highlight Rim */}
+        <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white to-transparent pointer-events-none z-20" />
 
-      {/* Ambient Radial Accent */}
-      <div className="absolute -top-20 -right-20 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Ambient Top-Right Maroon Glow */}
+        <div className="absolute -top-16 -right-16 w-48 h-48 bg-kpu-maroon/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header Deck: Judul, Selector Tanggal, dan Switch Grafik */}
-      <div className="relative bg-gradient-to-r from-slate-50/95 via-white/90 to-slate-50/95 border-b border-slate-200/80 p-4 sm:p-6 z-10">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Judul & Badge Pantauan */}
-          <div className="flex items-start gap-3.5">
-            <motion.div
-              whileHover={{ rotate: [0, -10, 10, -5, 0], scale: 1.1 }}
-              transition={{ duration: 0.5 }}
-              className="p-3 rounded-2xl bg-gradient-to-br from-kpu-maroon to-red-900 text-white shadow-lg shadow-red-950/20 shrink-0 border border-red-500/30"
-            >
-              <Calendar className="h-5 w-5" />
-            </motion.div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                  Pantauan Berkas Masuk Per Hari
+        <div className="relative bg-gradient-to-r from-slate-50/95 via-white/85 to-slate-50/95 backdrop-blur-xs border-b border-slate-200/80 p-4 sm:p-5 z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Title Section dengan Ikon Gem 3D */}
+            <div className="flex items-center gap-3">
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-700 text-white flex items-center justify-center shadow-[0_4px_12px_rgba(225,29,72,0.35),inset_0_1.5px_1px_rgba(255,255,255,0.7),inset_0_-2px_1px_rgba(159,18,57,0.3)] border border-rose-300/80 shrink-0">
+                <Calendar className="h-5 w-5 drop-shadow-xs" />
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-300 ring-2 ring-white animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Rincian Berkas Masuk Harian</span>
+                  {isToday && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                      Hari Ini
+                    </span>
+                  )}
                 </h3>
-                {isToday ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    HARI INI
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
-                    <Clock className="h-3 w-3 text-slate-500" />
-                    ARSIP TANGGAL
-                  </span>
-                )}
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Distribusi 5 jenis surat suara (C-Hasil) yang diunggah dan terdeteksi per tanggal
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                Rincian penerimaan berkas scan C-Hasil per jenis pemilihan (PPWP, DPR RI, DPD, DPRD Prov, DPRD Kab)
-              </p>
-            </div>
-          </div>
-
-          {/* Kontrol Selector Tanggal & Tipe Chart */}
-          <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-auto">
-            {/* Selector Tanggal (Dropdown + Tombol Panah Navigasi) */}
-            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
-              <button
-                type="button"
-                onClick={handlePrevDay}
-                disabled={!hasOlder}
-                title="Hari Sebelumnya"
-                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <select
-                aria-label="Tanggal pantauan berkas"
-                value={activeDay.rawDate}
-                disabled={allDays.length === 0}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent font-bold text-xs sm:text-sm text-slate-800 px-2 py-1 outline-none cursor-pointer border-none"
-              >
-                {allDays.length === 0 && <option value={activeDay.rawDate}>Belum ada aktivitas bertanggal</option>}
-                {allDays.map((d) => (
-                  <option key={d.rawDate} value={d.rawDate}>
-                    {d.dayName}, {d.displayDate} ({d.total} berkas)
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                onClick={handleNextDay}
-                disabled={!hasNewer}
-                title="Hari Berikutnya"
-                className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
 
-            {/* Toggle Tipe Chart (Bar vs Donut) */}
-            <div className="inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setChartType('BAR')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  chartType === 'BAR'
-                    ? 'bg-kpu-maroon text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Tampilan Grafik Batang"
-              >
-                <BarChart2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Batang</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartType('DONUT')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  chartType === 'DONUT'
-                    ? 'bg-kpu-maroon text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Tampilan Grafik Donut / Lingkaran"
-              >
-                <PieChartIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Proporsi</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+            {/* Kontrol Navigasi Tanggal & Toggle Tipe Grafik */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Stepper Tanggal */}
+              <div className="flex items-center bg-slate-100/80 rounded-xl p-1 border border-slate-200/80 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={handlePrevDay}
+                  disabled={!hasOlder}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                  title="Hari Sebelumnya"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
 
-      {/* Konten Utama: 5 Kartu Breakdown Mini + Visual Chart */}
-      <div className="p-4 sm:p-6 space-y-6">
-        {/* Banner Ringkasan Hari Ini */}
-        <div role="region" aria-label="Total Penerimaan Berkas" className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-red-50/80 via-amber-50/60 to-slate-50/80 border border-red-100 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
-              <Layers className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Total Penerimaan Berkas ({activeDay.dayName}, {activeDay.displayDate})
-              </p>
-              <div className="flex items-baseline gap-2">
-                <AnimatedCounter
-                  value={activeDay.total}
-                  className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
-                />
-                <span className="text-xs font-bold text-slate-600">berkas scan masuk</span>
+                <div className="px-3 py-1 text-center min-w-[130px]">
+                  <span className="block text-xs font-black text-slate-800 leading-tight">
+                    {activeDay.displayDate}
+                  </span>
+                  <span className="block text-[10px] font-semibold text-slate-400">
+                    {activeDay.dayName}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleNextDay}
+                  disabled={!hasNewer}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                  title="Hari Berikutnya"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Tombol Toggle Grafik Batang / Donut */}
+              <div className="flex items-center bg-slate-100/80 rounded-xl p-1 border border-slate-200/80 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setChartType('BAR')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    chartType === 'BAR'
+                      ? 'bg-kpu-maroon text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Tampilan Grafik Batang"
+                >
+                  <BarChart2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Batang</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartType('DONUT')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    chartType === 'DONUT'
+                      ? 'bg-kpu-maroon text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Tampilan Grafik Donut / Lingkaran"
+                >
+                  <PieChartIcon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Proporsi</span>
+                </button>
               </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto text-xs font-semibold text-slate-500">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>
-              Terdistribusi ke <strong className="text-slate-800 font-bold">{chartData.length} kategori aktif</strong>
-            </span>
-          </div>
-          {districtActivity.focus.length > 0 && <div role="group" aria-label="Fokus pemindaian berdasarkan penerimaan" className="w-full space-y-2 border-t border-red-100 pt-3">
-            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-kpu-maroon"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{isToday ? 'Indikasi fokus tim hari ini' : 'Aktivitas tinggi pada tanggal ini'}</p>
-            <div className="flex flex-wrap gap-2">{districtActivity.focus.map(location => <span key={location.name} className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full bg-emerald-500 ${isToday ? 'motion-safe:animate-pulse' : ''}`} />{location.name}<span className="font-medium">· {location.count} berkas</span></span>)}</div>
-            <p className="text-[10px] leading-relaxed text-slate-500">Berdasarkan penerimaan lebih dari 50 berkas per kecamatan pada tanggal yang dipilih.</p>
-          </div>}
         </div>
 
-        <ArchiveComparisonCard title="Perubahan penerimaan · tanggal terpilih" current={activeDay.total} previous={previousDay?.count ?? null}
-          currentLabel={formatArchiveDay(activeDay.rawDate)} previousLabel={previousDay ? formatArchiveDay(previousDay.date) : 'Belum ada hari aktif sebelumnya'}
-          />
+        {/* Konten Utama: 5 Kartu Breakdown Mini + Visual Chart */}
+        <div className="p-4 sm:p-6 space-y-6">
+          {/* Banner Ringkasan Hari Ini */}
+          <div role="region" aria-label="Total Penerimaan Berkas" className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-red-50/80 via-amber-50/60 to-slate-50/80 border border-red-100 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+                <Layers className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Total Penerimaan Berkas ({activeDay.dayName}, {activeDay.displayDate})
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <AnimatedCounter
+                    value={activeDay.total}
+                    className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
+                  />
+                  <span className="text-xs font-bold text-slate-600">berkas scan masuk</span>
+                </div>
+              </div>
+            </div>
 
-        {/* 5 Card Mini Breakdown Jenis Pemilihan (Presiden, DPR RI, DPD, DPRD Prov, DPRD Kab) */}
-        <div className="grid grid-cols-2 sm:grid-cols-6 lg:grid-cols-5 gap-3 sm:gap-4">
-          {ELECTION_LIST.map((el) => {
-            const count = activeDay.breakdown[el.key] || 0;
-            const locations = districtActivity.byElection[el.key];
-            const theme = ELECTION_THEMES[el.key];
+            <div className="flex items-center gap-2 self-start sm:self-auto text-xs font-semibold text-slate-500">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>
+                Terdistribusi ke <strong className="text-slate-800 font-bold">{chartData.length} kategori aktif</strong>
+              </span>
+            </div>
+            {districtActivity.focus.length > 0 && <div role="group" aria-label="Fokus pemindaian berdasarkan penerimaan" className="w-full space-y-2 border-t border-red-100 pt-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-kpu-maroon"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{isToday ? 'Indikasi fokus tim hari ini' : 'Aktivitas tinggi pada tanggal ini'}</p>
+              <div className="flex flex-wrap gap-2">{districtActivity.focus.map(location => <span key={location.name} className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full bg-emerald-500 ${isToday ? 'motion-safe:animate-pulse' : ''}`} />{location.name}<span className="font-medium">· {location.count} berkas</span></span>)}</div>
+              <p className="text-[10px] leading-relaxed text-slate-500">Berdasarkan penerimaan lebih dari 50 berkas per kecamatan pada tanggal yang dipilih.</p>
+            </div>}
+          </div>
 
-            return (
-              <motion.div
-                key={el.key}
-                role="group" aria-label={`Berkas ${el.shortLabel}`}
-                whileHover={{ y: -4, scale: 1.02 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                className={`relative last:col-span-2 sm:col-span-2 sm:last:col-span-3 sm:[&:nth-last-child(2)]:col-span-3 lg:col-span-1 lg:last:col-span-1 lg:[&:nth-last-child(2)]:col-span-1 rounded-2xl p-3.5 sm:p-4 bg-white border ${theme.border} shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden group cursor-pointer`}
-                onClick={() => onNavigateToRekap?.()}
-                title={`Klik untuk lihat berkas ${el.label}`}
-              >
-                {/* Aksen Indikator Warna Surat Suara di Sisi Kiri */}
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-1.5"
-                  style={{ backgroundColor: theme.hex }}
-                />
+          <ArchiveComparisonCard title="Perubahan penerimaan · tanggal terpilih" current={activeDay.total} previous={previousDay?.count ?? null}
+            currentLabel={formatArchiveDay(activeDay.rawDate)} previousLabel={previousDay ? formatArchiveDay(previousDay.date) : 'Belum ada hari aktif sebelumnya'}
+            />
 
-                {/* Header Kartu: Label Singkat & Badge */}
-                <div className="flex items-start justify-between gap-1">
-                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${theme.badgeBg}`}>
-                    {el.shortLabel}
-                  </span>
+          {/* 5 Card Mini Breakdown Jenis Pemilihan (Presiden, DPR RI, DPD, DPRD Prov, DPRD Kab) */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 lg:grid-cols-5 gap-3 sm:gap-4">
+            {ELECTION_LIST.map((el) => {
+              const count = activeDay.breakdown[el.key] || 0;
+              const locations = districtActivity.byElection[el.key];
+              const theme = ELECTION_THEMES[el.key];
+
+              return (
+                <motion.div
+                  key={el.key}
+                  role="group"
+                  aria-label={`Berkas ${el.shortLabel}`}
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className={`relative flex flex-col justify-between last:col-span-2 sm:col-span-2 sm:last:col-span-3 sm:[&:nth-last-child(2)]:col-span-3 lg:col-span-1 lg:last:col-span-1 lg:[&:nth-last-child(2)]:col-span-1 rounded-2xl p-3.5 sm:p-4 bg-white border ${theme.border} shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden group`}
+                >
+                  {/* Aksen Indikator Warna Surat Suara di Sisi Kiri */}
                   <div
-                    className="w-2.5 h-2.5 rounded-full"
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
                     style={{ backgroundColor: theme.hex }}
                   />
-                </div>
 
-                {/* Nama Lengkap Pemilihan */}
-                <p className="text-[11px] font-bold text-slate-700 mt-2 line-clamp-1 group-hover:text-slate-900 transition-colors">
-                  {el.label}
-                </p>
+                  <div>
+                    {/* Header Kartu: Label Singkat & Badge */}
+                    <div className="flex items-start justify-between gap-1">
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${theme.badgeBg}`}>
+                        {el.shortLabel}
+                      </span>
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: theme.hex }}
+                      />
+                    </div>
 
-                {/* Angka Total Masuk Hari Ini */}
-                <div className="mt-2 flex items-baseline justify-between gap-1">
-                  <div className="flex items-baseline gap-1">
-                    <AnimatedCounter
-                      value={count}
-                      className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
-                    />
-                    <span className="text-[11px] font-semibold text-slate-500">berkas</span>
+                    {/* Nama Lengkap Pemilihan */}
+                    <p className="text-[11px] font-bold text-slate-700 mt-2 line-clamp-1 group-hover:text-slate-900 transition-colors">
+                      {el.label}
+                    </p>
+
+                    {/* Angka Total Masuk Hari Ini */}
+                    <div className="mt-2 flex items-baseline justify-between gap-1">
+                      <div className="flex items-baseline gap-1">
+                        <AnimatedCounter
+                          value={count}
+                          className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
+                        />
+                        <span className="text-[11px] font-semibold text-slate-500">berkas</span>
+                      </div>
+                    </div>
+
+                    {/* List Kecamatan Penerima */}
+                    <div className="mt-3 border-t border-slate-100 pt-2">
+                      <p className="mb-1.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                        <MapPin className="h-3 w-3" aria-hidden="true" />
+                        Kecamatan penerima
+                      </p>
+                      {locations.length > 0 ? (
+                        <ul className="space-y-1.5">
+                          {locations.slice(0, 3).map((location) => (
+                            <li key={location.name} className="flex items-start justify-between gap-1 text-[10px] leading-relaxed">
+                              <span className="min-w-0 break-words font-semibold text-slate-700 truncate">{location.name}</span>
+                              <span className="shrink-0 rounded bg-slate-50 px-1.5 font-bold tabular-nums text-slate-500">{location.count}</span>
+                            </li>
+                          ))}
+                          {locations.length > 3 && (
+                            <li className="text-[9px] text-slate-400 font-medium">
+                              +{locations.length - 3} kecamatan lainnya
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <p className="text-[10px] text-slate-400">Belum ada penerimaan</p>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-3 border-t border-slate-100 pt-2">
-                  <p className="mb-1.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-slate-400"><MapPin className="h-3 w-3" aria-hidden="true" />Kecamatan penerima</p>
-                  {locations.length > 0 ? <ul className="space-y-1.5">{locations.map(location => <li key={location.name} className="flex items-start justify-between gap-1 text-[10px] leading-relaxed"><span className="min-w-0 break-words font-semibold text-slate-700">{location.name}</span><span className="shrink-0 rounded bg-slate-50 px-1.5 font-bold tabular-nums text-slate-500">{location.count}</span></li>)}</ul> : <p className="text-[10px] text-slate-400">Belum ada penerimaan</p>}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Bagian Visual Grafik: Batang atau Donut Proporsi */}
-        <div className="rounded-2xl bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 p-4 sm:p-5 border border-slate-200/80 shadow-inner">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-kpu-maroon" />
-              <span>
-                Visualisasi Perbandingan Masuk Berkas ({activeDay.displayDate})
-              </span>
-            </h4>
-            <span className="text-[11px] text-slate-500 font-semibold">
-              Total {activeDay.total} Berkas Masuk
-            </span>
+                  {/* Tombol Aksi Detail Pengunggah & Navigasi Rekap */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalElection(el.key);
+                      }}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-black bg-gradient-to-b from-slate-50 via-slate-100 to-slate-200/90 text-slate-800 border border-slate-300/80 shadow-2xs hover:from-white hover:to-slate-100 hover:border-slate-400 hover:text-slate-900 active:translate-y-0.5 transition cursor-pointer"
+                      title={`Lihat rincian staf pengunggah berkas ${el.shortLabel}`}
+                    >
+                      <Users className="h-3 w-3 text-slate-600" />
+                      <span>Rincian Pengunggah</span>
+                    </button>
+                    {onNavigateToRekap && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigateToRekap();
+                        }}
+                        className="px-2 py-1.5 rounded-xl text-[10px] font-bold bg-white text-slate-600 hover:text-kpu-maroon border border-slate-200 hover:border-rose-200 hover:bg-rose-50/50 shadow-2xs transition cursor-pointer"
+                        title="Buka Rekapitulasi Berkas"
+                      >
+                        Rekap
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
 
-          <div className={chartType === 'DONUT' && activeDay.total > 0 ? 'w-full min-h-64' : 'w-full h-64 sm:h-72'}>
-            {activeDay.total === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-                <FileText className="h-8 w-8 text-slate-300" />
-                <p className="text-xs font-medium">Belum ada berkas scan yang masuk pada tanggal ini.</p>
-              </div>
-            ) : chartType === 'BAR' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 20, right: 20, left: -10, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
-                  <XAxis
-                    dataKey="name"
-                    stroke="#64748b"
-                    fontSize={12}
-                    fontWeight={700}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke="#64748b"
-                    fontSize={11}
-                    fontWeight={600}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const item = payload[0].payload;
-                        return (
-                          <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 select-none">
-                            <div className="flex items-center gap-2 font-black border-b border-slate-800 pb-1.5">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full"
-                                style={{ backgroundColor: item.color }}
-                              />
-                              <span>{item.fullName}</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-4 pt-0.5">
-                              <span className="text-slate-300">Jumlah Masuk:</span>
-                              <span className="font-black text-amber-300 text-sm">
-                                {item.count} berkas
-                              </span>
-                            </div>
-                            <div className="border-t border-slate-700 pt-1.5"><p className="text-slate-300">Kecamatan penerima:</p><ul className="mt-1 space-y-1">{item.locations.map((location: { name: string; count: number }) => <li key={location.name} className="flex justify-between gap-3"><span>{location.name}</span><strong>{location.count} berkas</strong></li>)}</ul></div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar
-                    dataKey="count"
-                    radius={[8, 8, 0, 0]}
-                    animationDuration={1000}
+          {/* Bagian Visual Grafik: Batang atau Donut Proporsi */}
+          <div className="rounded-2xl bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 p-4 sm:p-5 border border-slate-200/80 shadow-inner">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-kpu-maroon" />
+                <span>
+                  Visualisasi Perbandingan Masuk Berkas ({activeDay.displayDate})
+                </span>
+              </h4>
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Total {activeDay.total} Berkas Masuk
+              </span>
+            </div>
+
+            <div className={chartType === 'DONUT' && activeDay.total > 0 ? 'w-full min-h-64' : 'w-full h-64 sm:h-72'}>
+              {activeDay.total === 0 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
+                  <FileText className="h-8 w-8 text-slate-300" />
+                  <p className="text-xs font-medium">Belum ada berkas scan yang masuk pada tanggal ini.</p>
+                </div>
+              ) : chartType === 'BAR' ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 20, right: 20, left: -10, bottom: 5 }}
                   >
-                    {chartData.map((entry) => (
-                      <Cell
-                        key={`cell-${entry.key}`}
-                        fill={entry.color}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-6">
-                <div className="w-full sm:w-1/2 h-52 sm:h-64">
-                  <ResponsiveContainer width="100%" height="100%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
+                    <XAxis
+                      dataKey="name"
+                      stroke="#64748b"
+                      fontSize={12}
+                      fontWeight={700}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#64748b"
+                      fontSize={11}
+                      fontWeight={600}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1 border border-slate-700">
+                              <p className="font-bold flex items-center gap-1.5">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full"
+                                  style={{ backgroundColor: data.color }}
+                                />
+                                {data.fullName}
+                              </p>
+                              <p className="text-slate-300 font-medium">
+                                Jumlah Masuk: <span className="font-bold text-white">{data.count} berkas</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar
+                      dataKey="count"
+                      radius={[8, 8, 0, 0]}
+                      animationDuration={1000}
+                    >
+                      {chartData.map((entry) => (
+                        <Cell
+                          key={`cell-${entry.key}`}
+                          fill={entry.color}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 h-full">
+                  <ResponsiveContainer width="100%" height={260} className="sm:w-1/2">
                     <PieChart>
                       <Tooltip
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
-                            const item = payload[0].payload;
+                            const data = payload[0].payload;
+                            const percentage = activeDay.total > 0
+                              ? ((data.count / activeDay.total) * 100).toFixed(1)
+                              : 0;
                             return (
-                              <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1 select-none">
-                                <span className="font-bold">{item.fullName}</span>
-                                <div className="text-amber-300 font-black">
-                                  {item.count} berkas
-                                </div>
-                                <p className="max-w-xs text-slate-300">{item.locations.map((location: { name: string; count: number }) => `${location.name}: ${location.count}`).join(' · ')}</p>
+                              <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl text-xs space-y-1 border border-slate-700">
+                                <p className="font-bold flex items-center gap-1.5">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full"
+                                    style={{ backgroundColor: data.color }}
+                                  />
+                                  {data.fullName}
+                                </p>
+                                <p className="text-slate-300 font-medium">
+                                  {data.count} Berkas ({percentage}%)
+                                </p>
                               </div>
                             );
                           }
@@ -600,34 +713,187 @@ export function DailyIncomingBreakdownCard({
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
-                </div>
 
-                {/* Legend Kustom Donut */}
-                <div className="w-full sm:w-1/2 space-y-2">
-                  {chartData.map((item) => (
-                    <div
-                      key={item.key}
-                      className="flex items-center justify-between text-xs p-2 rounded-xl bg-white border border-slate-100 shadow-2xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-3 h-3 rounded-md shrink-0"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <div className="min-w-0"><span className="font-bold text-slate-800">{item.fullName}</span><p className="mt-0.5 break-words text-[10px] leading-relaxed text-slate-500">{item.locations.map(location => `${location.name}: ${location.count}`).join(' · ')}</p></div>
+                  {/* Legend Kustom Donut */}
+                  <div className="w-full sm:w-1/2 space-y-2">
+                    {chartData.map((item) => (
+                      <div
+                        key={item.key}
+                        className="flex items-center justify-between text-xs p-2 rounded-xl bg-white border border-slate-100 shadow-2xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-3 h-3 rounded-md shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <div className="min-w-0">
+                            <span className="font-bold text-slate-800">{item.fullName}</span>
+                            <p className="mt-0.5 break-words text-[10px] leading-relaxed text-slate-500">
+                              {item.locations.map(location => `${location.name}: ${location.count}`).join(' · ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-black text-slate-900">{item.count}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-black text-slate-900">{item.count}</span>
-
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* MODAL DETAIL PENGUNGGAH PER KATEGORI PEMILU */}
+      <Dialog open={Boolean(modalElection)} onOpenChange={(open) => !open && setModalElection(null)}>
+        <DialogContent
+          onClose={() => setModalElection(null)}
+          className="max-w-2xl max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl bg-white select-none"
+        >
+          {/* Header Modal 3D */}
+          <div
+            className={`relative p-4 sm:p-5 text-white border-b border-white/20 shadow-md ${
+              selectedTheme ? `bg-gradient-to-r ${selectedTheme.gradient}` : 'bg-slate-900'
+            }`}
+          >
+            <div className="flex items-center justify-between pr-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white shadow-inner border border-white/30 shrink-0">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-white/30 text-white border border-white/40">
+                      {selectedElectionConfig?.shortLabel}
+                    </span>
+                    <h3 className="text-sm sm:text-base font-black leading-tight tracking-tight">
+                      Rincian Staf Pengunggah {selectedElectionConfig?.shortLabel}
+                    </h3>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-white/85 mt-0.5 font-medium">
+                    {selectedElectionConfig?.label} · {activeDay.displayDate} ({activeDay.dayName})
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Summary Pill Bar */}
+            <div className="mt-3.5 pt-3 border-t border-white/25 flex items-center justify-between text-xs font-bold text-white/95">
+              <span>
+                Total Masuk: <strong>{activeDay.breakdown[modalElection || 'PPWP'] || 0} berkas</strong>
+              </span>
+              <span>
+                Kontributor: <strong>{modalUploaderStats.length} staf pengunggah</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* Body Modal: Daftar Staf Pengunggah */}
+          <div className="p-4 sm:p-5 overflow-y-auto max-h-[60vh] space-y-3">
+            {modalUploaderStats.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 space-y-2">
+                <Users className="h-10 w-10 text-slate-300 mx-auto animate-pulse" />
+                <p className="text-xs font-semibold">
+                  Belum ada berkas {selectedElectionConfig?.shortLabel} yang diunggah pada tanggal {activeDay.displayDate}.
+                </p>
+              </div>
+            ) : (
+              modalUploaderStats.map((item, idx) => (
+                <div
+                  key={item.name}
+                  className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-slate-50/70 via-white to-slate-50/40 p-3.5 sm:p-4 shadow-2xs hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-lg font-black text-xs flex items-center justify-center shrink-0 border ${
+                          idx === 0
+                            ? 'bg-amber-100 text-amber-950 border-amber-300'
+                            : idx === 1
+                            ? 'bg-slate-200 text-slate-700 border-slate-300'
+                            : idx === 2
+                            ? 'bg-amber-50 text-amber-900 border-amber-200'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {idx + 1}
+                      </div>
+
+                      <div className="min-w-0">
+                        <span className="font-black text-xs sm:text-sm text-slate-900 truncate block">
+                          {item.name}
+                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                          <span className="inline-flex items-center gap-1 text-emerald-700">
+                            <ShieldCheck className="h-3 w-3" />
+                            {item.validCount} valid
+                          </span>
+                          {item.anomalyCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-amber-700">
+                              <AlertTriangle className="h-3 w-3" />
+                              {item.anomalyCount} anomali
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="inline-flex items-baseline gap-1 px-3 py-1 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                        <span className="text-sm sm:text-base font-black text-slate-900">
+                          {item.count}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500">berkas</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List Ringkas Berkas yang Diunggah */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100/90 space-y-1.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      Sebaran Lokasi TPS:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.files.map((fItem, fIdx) => (
+                        <a
+                          key={`${fItem.file.id}-${fIdx}`}
+                          href={fItem.file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-slate-200/80 text-slate-700 hover:text-kpu-maroon hover:border-rose-300 hover:bg-rose-50/50 shadow-2xs transition-all"
+                          title={`Buka file: ${fItem.file.name}`}
+                        >
+                          <FolderOpen className="h-3 w-3 text-slate-400 group-hover:text-rose-500" />
+                          <span>
+                            {fItem.kecamatan} · {fItem.desa} (TPS {fItem.tpsNumber})
+                          </span>
+                          <ExternalLink className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Footer Modal */}
+          <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-500">
+              * Data diambil dari metadata akun pengunggah di Google Drive
+            </span>
+            <button
+              type="button"
+              onClick={() => setModalElection(null)}
+              className="px-4 py-1.5 rounded-xl font-bold text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 transition cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
