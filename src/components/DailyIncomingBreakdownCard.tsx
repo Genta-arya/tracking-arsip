@@ -566,7 +566,7 @@ export function DailyIncomingBreakdownCard({
                       title={`Lihat rincian staf pengunggah berkas ${el.shortLabel}`}
                     >
                       <Users className="h-3 w-3 text-slate-600" />
-                      <span>Rincian Pengunggah</span>
+                      <span>Rincian</span>
                     </button>
                     {onNavigateToRekap && (
                       <button
