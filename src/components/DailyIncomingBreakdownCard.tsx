@@ -39,6 +39,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 interface DailyBreakdownProps {
   records: TPSRecord[];
   onNavigateToRekap?: (filterUpdate?: Partial<FilterState>) => void;
+  isDemoMode?: boolean;
 }
 
 // Konfigurasi visual untuk 5 jenis surat suara resmi KPU
@@ -148,6 +149,7 @@ export interface UploaderDailyElectionStat {
 export function DailyIncomingBreakdownCard({
   records,
   onNavigateToRekap,
+  isDemoMode = false,
 }: DailyBreakdownProps) {
   const calendarToday = useArchiveToday();
   const [chartType, setChartType] = useState<'BAR' | 'DONUT'>('BAR');
@@ -856,22 +858,36 @@ export function DailyIncomingBreakdownCard({
                       Sebaran Lokasi TPS:
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {item.files.map((fItem, fIdx) => (
-                        <a
-                          key={`${fItem.file.id}-${fIdx}`}
-                          href={fItem.file.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-slate-200/80 text-slate-700 hover:text-kpu-maroon hover:border-rose-300 hover:bg-rose-50/50 shadow-2xs transition-all"
-                          title={`Buka file: ${fItem.file.name}`}
-                        >
-                          <FolderOpen className="h-3 w-3 text-slate-400 group-hover:text-rose-500" />
-                          <span>
-                            {fItem.kecamatan} · {fItem.desa} (TPS {fItem.tpsNumber})
+                      {item.files.map((fItem, fIdx) => {
+                        const labelText = `${fItem.kecamatan} · ${fItem.desa} (TPS ${fItem.tpsNumber})`;
+                        if (!isDemoMode && fItem.file.url) {
+                          return (
+                            <a
+                              key={`${fItem.file.id}-${fIdx}`}
+                              href={fItem.file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-slate-200/80 text-slate-700 hover:text-kpu-maroon hover:border-rose-300 hover:bg-rose-50/50 shadow-2xs transition-all"
+                              title={`Buka file: ${fItem.file.name}`}
+                            >
+                              <FolderOpen className="h-3 w-3 text-slate-400 group-hover:text-rose-500" />
+                              <span>{labelText}</span>
+                              <ExternalLink className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
+                            </a>
+                          );
+                        }
+
+                        return (
+                          <span
+                            key={`${fItem.file.id}-${fIdx}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-white border border-slate-200/80 text-slate-700 shadow-2xs select-none"
+                            title={`TPS: ${labelText}`}
+                          >
+                            <FolderOpen className="h-3 w-3 text-slate-400" />
+                            <span>{labelText}</span>
                           </span>
-                          <ExternalLink className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100" />
-                        </a>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

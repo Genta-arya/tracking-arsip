@@ -48,6 +48,7 @@ export function ProgressDashboard({
   stats,
   kecamatanSummaries,
   onNavigateToRekap,
+  isDemoMode = false,
 }: ProgressDashboardProps) {
   const tabsId = useId();
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>(() => typeof window === 'undefined' ? 'summary' : readDashboardRoute(window.location.search).dashboardTab);
@@ -418,7 +419,7 @@ export function ProgressDashboard({
       </div>
 
       <div role="tabpanel" id={`${tabsId}-daily-panel`} aria-labelledby={`${tabsId}-daily-tab`} hidden={dashboardTab !== 'daily'}>
-      {visitedTabs.has('daily') && <DailyIncomingBreakdownCard records={records} onNavigateToRekap={onNavigateToRekap} />}
+      {visitedTabs.has('daily') && <DailyIncomingBreakdownCard records={records} onNavigateToRekap={onNavigateToRekap} isDemoMode={isDemoMode} />}
       </div>
 
       <div role="tabpanel" id={`${tabsId}-analysis-panel`} aria-labelledby={`${tabsId}-analysis-tab`} hidden={dashboardTab !== 'analysis'} className="space-y-6">
