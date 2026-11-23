@@ -305,9 +305,12 @@ export function KecamatanRanking3D({
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                      <div className="flex flex-col gap-2">
                         {electionItems.map((el) => {
                           const isComplete = el.missing === 0;
+                          const collected = Math.max(0, kec.totalTPS - el.missing);
+                          const pct = kec.totalTPS > 0 ? (collected / kec.totalTPS) * 100 : 0;
+
                           return (
                             <div
                               key={el.key}
@@ -318,35 +321,56 @@ export function KecamatanRanking3D({
                                   missingElection: el.key,
                                 });
                               }}
-                              className={`p-2.5 rounded-xl bg-white border transition-all duration-150 flex flex-col justify-between shadow-2xs hover:shadow-xs cursor-pointer ${
+                              className={`p-3 rounded-xl border transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer ${
                                 isComplete
-                                  ? 'border-emerald-200/80 bg-emerald-50/20 hover:border-emerald-300'
-                                  : 'border-amber-200/80 bg-gradient-to-b from-white to-amber-50/30 hover:border-amber-400'
+                                  ? 'border-emerald-200/90 bg-emerald-50/20 hover:border-emerald-300'
+                                  : 'border-amber-200/90 bg-gradient-to-r from-white via-amber-50/20 to-white hover:border-amber-400'
                               }`}
                               title={`Klik untuk memfilter TPS di ${kec.name} yang belum memiliki berkas ${el.label}`}
                             >
-                              <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
-                                  {el.code}
-                                </span>
-                                <span className={`text-[8.5px] px-1 py-0.2 rounded font-bold ${el.badgeBg}`}>
-                                  {isComplete ? 'Lengkap' : 'Kurang'}
-                                </span>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-black shrink-0 ${el.badgeBg}`}>
+                                    {el.code}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <span className="text-xs font-bold text-slate-800 truncate block">
+                                      {el.label}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-medium block">
+                                      Sudah ada {collected} dari {kec.totalTPS} berkas ({pct.toFixed(0)}%)
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <div className="text-right">
+                                    {isComplete ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+                                        ✓ Lengkap
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-950 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs">
+                                        Kurang {el.missing} berkas
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border border-slate-200">
+                                    <ExternalLink className="h-3 w-3" />
+                                  </div>
+                                </div>
                               </div>
 
-                              <div className="flex items-baseline justify-between mt-1">
-                                <span className={`text-sm font-black ${isComplete ? 'text-emerald-700' : 'text-amber-900'}`}>
-                                  {el.missing}
-                                  <span className="text-[9px] font-medium text-slate-400 ml-0.5">berkas</span>
-                                </span>
-                                <span className="text-[9px] text-slate-400 font-semibold">
-                                  / {kec.totalTPS} target
-                                </span>
-                              </div>
-
-                              <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-500 font-medium">
-                                <span className="truncate">{el.label}</span>
-                                <ExternalLink className="h-2.5 w-2.5 text-slate-400 shrink-0 ml-1" />
+                              {/* Progress bar per kategori */}
+                              <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden mt-2 border border-slate-200/50">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    isComplete
+                                      ? 'bg-emerald-500'
+                                      : 'bg-gradient-to-r from-amber-500 to-kpu-maroon'
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                                />
                               </div>
                             </div>
                           );
