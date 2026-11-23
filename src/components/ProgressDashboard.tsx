@@ -430,6 +430,7 @@ export function ProgressDashboard({
         {/* Kolom Kiri: Peringkat Progres 7 Kecamatan (3D Micro-Cards) */}
         <KecamatanRanking3D
           sortedKecamatans={sortedKecamatans}
+          records={records}
           onNavigateToRekap={onNavigateToRekap}
         />
 

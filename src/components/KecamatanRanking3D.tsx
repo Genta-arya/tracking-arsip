@@ -1,17 +1,64 @@
-import { motion } from 'framer-motion';
-import { BarChart3, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BarChart3, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, Layers, ExternalLink } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
-import { KecamatanSummary, FilterState } from '@/types';
+import { KecamatanSummary, FilterState, TPSRecord, ElectionType } from '@/types';
 
 interface KecamatanRanking3DProps {
   sortedKecamatans: KecamatanSummary[];
+  records?: TPSRecord[];
   onNavigateToRekap: (filterUpdate?: Partial<FilterState>) => void;
 }
 
 export function KecamatanRanking3D({
   sortedKecamatans,
+  records = [],
   onNavigateToRekap,
 }: KecamatanRanking3DProps) {
+  // State untuk expand kekurangan data per kecamatan (default tertutup)
+  const [expandedKecamatan, setExpandedKecamatan] = useState<Set<string>>(() => new Set());
+
+  const toggleExpand = (kecName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedKecamatan((prev) => {
+      const next = new Set(prev);
+      if (next.has(kecName)) {
+        next.delete(kecName);
+      } else {
+        next.add(kecName);
+      }
+      return next;
+    });
+  };
+
+  // Hitung kekurangan berkas per jenis pemilihan untuk tiap kecamatan dari records
+  const missingByKecamatan = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        PPWP: number;
+        DPR_RI: number;
+        DPD: number;
+        DPRD_PROV: number;
+        DPRD_KAB: number;
+      }
+    >();
+
+    records.forEach((r) => {
+      let counts = map.get(r.kecamatan);
+      if (!counts) {
+        counts = { PPWP: 0, DPR_RI: 0, DPD: 0, DPRD_PROV: 0, DPRD_KAB: 0 };
+        map.set(r.kecamatan, counts);
+      }
+      if (!r.slotPPWP) counts.PPWP++;
+      if (!r.slotDPR_RI) counts.DPR_RI++;
+      if (!r.slotDPD) counts.DPD++;
+      if (!r.slotDPRD_PROV) counts.DPRD_PROV++;
+      if (!r.slotDPRD_KAB) counts.DPRD_KAB++;
+    });
+
+    return map;
+  }, [records]);
   return (
     <div className="relative rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.07),0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden transition-all duration-300">
       {/* Top 3D Specular Highlight Rim */}
@@ -184,10 +231,24 @@ export function KecamatanRanking3D({
 
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {missingFiles > 0 ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold bg-gradient-to-r from-amber-50 to-orange-50 text-amber-900 border border-amber-300 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={(e) => toggleExpand(kec.name, e)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition-all border cursor-pointer ${
+                        expandedKecamatan.has(kec.name)
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                          : 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-900 border-amber-300 hover:border-amber-400 hover:bg-amber-100 shadow-2xs'
+                      }`}
+                      title="Klik untuk melihat rincian jenis pemilihan yang masih kurang"
+                    >
                       <span>📉</span>
                       <span>Kurang <strong>{missingFiles}</strong> Berkas</span>
-                    </span>
+                      {expandedKecamatan.has(kec.name) ? (
+                        <ChevronDown className="h-3 w-3 shrink-0 ml-0.5" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 shrink-0 ml-0.5" />
+                      )}
+                    </button>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 border border-emerald-300 shadow-2xs">
                       <span>✓</span>
@@ -203,6 +264,98 @@ export function KecamatanRanking3D({
                   )}
                 </div>
               </div>
+
+              {/* Expandable Section: Rincian Kekurangan per 5 Jenis Pemilihan */}
+              <AnimatePresence>
+                {expandedKecamatan.has(kec.name) && (() => {
+                  const counts = missingByKecamatan.get(kec.name) || {
+                    PPWP: 0,
+                    DPR_RI: 0,
+                    DPD: 0,
+                    DPRD_PROV: 0,
+                    DPRD_KAB: 0,
+                  };
+
+                  const electionItems: { key: ElectionType; label: string; code: string; missing: number; colorClass: string; badgeBg: string }[] = [
+                    { key: 'PPWP', label: 'Presiden & Wapres', code: 'PPWP', missing: counts.PPWP, colorClass: 'border-slate-300 text-slate-800', badgeBg: 'bg-slate-100 text-slate-700' },
+                    { key: 'DPD', label: 'DPD Republik Indonesia', code: 'DPD', missing: counts.DPD, colorClass: 'border-rose-200 text-rose-900', badgeBg: 'bg-rose-50 text-rose-700' },
+                    { key: 'DPR_RI', label: 'DPR Republik Indonesia', code: 'DPR-RI', missing: counts.DPR_RI, colorClass: 'border-yellow-300 text-yellow-900', badgeBg: 'bg-yellow-50 text-yellow-800' },
+                    { key: 'DPRD_PROV', label: 'DPRD Provinsi Kalbar', code: 'DPRD-PROV', missing: counts.DPRD_PROV, colorClass: 'border-blue-200 text-blue-900', badgeBg: 'bg-blue-50 text-blue-700' },
+                    { key: 'DPRD_KAB', label: 'DPRD Kab. Sekadau', code: 'DPRD-KAB', missing: counts.DPRD_KAB, colorClass: 'border-emerald-200 text-emerald-900', badgeBg: 'bg-emerald-50 text-emerald-700' },
+                  ];
+
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.22, ease: 'easeInOut' }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-3 pt-3 border-t border-dashed border-amber-200/90 overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5 text-amber-600" />
+                          <span className="text-[11px] font-black text-slate-800">
+                            Rincian Kekurangan Berkas C-Hasil ({kec.name})
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          Total target: {kec.totalTPS} berkas/kategori
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                        {electionItems.map((el) => {
+                          const isComplete = el.missing === 0;
+                          return (
+                            <div
+                              key={el.key}
+                              onClick={() => {
+                                onNavigateToRekap({
+                                  kecamatan: kec.name,
+                                  desa: 'ALL',
+                                  missingElection: el.key,
+                                });
+                              }}
+                              className={`p-2.5 rounded-xl bg-white border transition-all duration-150 flex flex-col justify-between shadow-2xs hover:shadow-xs cursor-pointer ${
+                                isComplete
+                                  ? 'border-emerald-200/80 bg-emerald-50/20 hover:border-emerald-300'
+                                  : 'border-amber-200/80 bg-gradient-to-b from-white to-amber-50/30 hover:border-amber-400'
+                              }`}
+                              title={`Klik untuk memfilter TPS di ${kec.name} yang belum memiliki berkas ${el.label}`}
+                            >
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 truncate">
+                                  {el.code}
+                                </span>
+                                <span className={`text-[8.5px] px-1 py-0.2 rounded font-bold ${el.badgeBg}`}>
+                                  {isComplete ? 'Lengkap' : 'Kurang'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-baseline justify-between mt-1">
+                                <span className={`text-sm font-black ${isComplete ? 'text-emerald-700' : 'text-amber-900'}`}>
+                                  {el.missing}
+                                  <span className="text-[9px] font-medium text-slate-400 ml-0.5">TPS</span>
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-semibold">
+                                  / {kec.totalTPS}
+                                </span>
+                              </div>
+
+                              <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-500 font-medium">
+                                <span className="truncate">{el.label}</span>
+                                <ExternalLink className="h-2.5 w-2.5 text-slate-400 shrink-0 ml-1" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
             </motion.div>
           );
         })}
