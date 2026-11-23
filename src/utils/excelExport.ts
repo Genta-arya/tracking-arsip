@@ -501,8 +501,13 @@ export function exportToExcel(
     'KECAMATAN',
     'DESA',
     'TPS',
-    'BERKAS YANG BELUM ADA',
-    'JUMLAH SUDAH TERSEDIA',
+    'PPWP (PRESIDEN)',
+    'DPD',
+    'DPR RI',
+    'DPRD PROV',
+    'DPRD KAB/KOTA',
+    'JUMLAH TERSEDIA',
+    'STATUS KELENGKAPAN',
     'CATATAN PERBAIKAN / ANOMALI',
     'STATUS KOREKSI',
     'LINK FOLDER GOOGLE DRIVE',
@@ -513,13 +518,6 @@ export function exportToExcel(
   );
 
   incompleteList.forEach((tps, idx) => {
-    const missing: string[] = [];
-    if (!tps.slotPPWP) missing.push('PPWP (Presiden)');
-    if (!tps.slotDPD) missing.push('DPD');
-    if (!tps.slotDPR_RI) missing.push('DPR RI');
-    if (!tps.slotDPRD_PROV) missing.push('DPRD Prov');
-    if (!tps.slotDPRD_KAB) missing.push('DPRD Kab/Kota');
-
     const anomalyNotes = tps.anomalies.map((a) => a.message).join('; ');
 
     // Cek apakah ada file yang ditandai SUDAH_DIBENARKAN
@@ -532,14 +530,26 @@ export function exportToExcel(
       ? 'Perlu Koreksi / Pengecekan'
       : 'Menunggu Unggah Berkas';
 
+    let statusKelengkapan = 'LENGKAP (5/5)';
+    if (tps.completedCount === 0) {
+      statusKelengkapan = 'KOSONG (0/5)';
+    } else if (tps.completedCount < 5) {
+      statusKelengkapan = `KURANG (${tps.completedCount}/5)`;
+    }
+
     incompleteRows.push([
       idx + 1,
       tps.kecamatan,
       tps.desa,
       tps.tpsFolderName,
-      missing.join(', ') || 'Semua 5 Berkas Ada (Periksa Anomali)',
+      tps.slotPPWP ? '✓' : '-',
+      tps.slotDPD ? '✓' : '-',
+      tps.slotDPR_RI ? '✓' : '-',
+      tps.slotDPRD_PROV ? '✓' : '-',
+      tps.slotDPRD_KAB ? '✓' : '-',
       `${tps.completedCount}/5`,
-      anomalyNotes || 'Menunggu operator mengunggah berkas yang kurang',
+      statusKelengkapan,
+      anomalyNotes || (tps.completedCount === 5 ? 'Normal (Lengkap)' : 'Menunggu operator mengunggah berkas yang kurang'),
       statusKoreksi,
       tps.tpsFolderUrl || '-',
     ]);
@@ -548,14 +558,14 @@ export function exportToExcel(
   const wsIncomplete = XLSX.utils.aoa_to_sheet(incompleteRows);
 
   // Styling Header Sheet 9
-  const headerColsInc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+  const headerColsInc = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'];
   headerColsInc.forEach((col) => {
     if (wsIncomplete[`${col}1`]) {
       wsIncomplete[`${col}1`].s = STYLE_HEADER_MAROON;
     }
   });
 
-  // Styling Data Rows Sheet 9 & Buat Hyperlink Interaktif pada Kolom I
+  // Styling Data Rows Sheet 9 & Buat Hyperlink Interaktif pada Kolom N
   for (let idx = 0; idx < incompleteList.length; idx++) {
     const rowNum = idx + 2;
     const tps = incompleteList[idx];
@@ -564,23 +574,45 @@ export function exportToExcel(
     if (wsIncomplete[`B${rowNum}`]) wsIncomplete[`B${rowNum}`].s = STYLE_DESA_NAME;
     if (wsIncomplete[`C${rowNum}`]) wsIncomplete[`C${rowNum}`].s = STYLE_DESA_NAME;
     if (wsIncomplete[`D${rowNum}`]) wsIncomplete[`D${rowNum}`].s = STYLE_TPS_NUM;
-    if (wsIncomplete[`E${rowNum}`]) wsIncomplete[`E${rowNum}`].s = STYLE_STATUS_PARTIAL;
-    if (wsIncomplete[`F${rowNum}`]) wsIncomplete[`F${rowNum}`].s = STYLE_TPS_NUM;
-    if (wsIncomplete[`G${rowNum}`]) {
-      wsIncomplete[`G${rowNum}`].s = tps.hasAnomaly ? STYLE_ANOMALY : STYLE_NORMAL;
+
+    // 5 Kolom Centang Pemilu: E (PPWP), F (DPD), G (DPR RI), H (DPRD PROV), I (DPRD KAB)
+    if (wsIncomplete[`E${rowNum}`]) wsIncomplete[`E${rowNum}`].s = tps.slotPPWP ? STYLE_CHECKED : STYLE_UNCHECKED;
+    if (wsIncomplete[`F${rowNum}`]) wsIncomplete[`F${rowNum}`].s = tps.slotDPD ? STYLE_CHECKED : STYLE_UNCHECKED;
+    if (wsIncomplete[`G${rowNum}`]) wsIncomplete[`G${rowNum}`].s = tps.slotDPR_RI ? STYLE_CHECKED : STYLE_UNCHECKED;
+    if (wsIncomplete[`H${rowNum}`]) wsIncomplete[`H${rowNum}`].s = tps.slotDPRD_PROV ? STYLE_CHECKED : STYLE_UNCHECKED;
+    if (wsIncomplete[`I${rowNum}`]) wsIncomplete[`I${rowNum}`].s = tps.slotDPRD_KAB ? STYLE_CHECKED : STYLE_UNCHECKED;
+
+    // Kolom J: Jumlah Tersedia
+    if (wsIncomplete[`J${rowNum}`]) wsIncomplete[`J${rowNum}`].s = STYLE_TPS_NUM;
+
+    // Kolom K: Status Kelengkapan
+    if (wsIncomplete[`K${rowNum}`]) {
+      wsIncomplete[`K${rowNum}`].s =
+        tps.completedCount === 5
+          ? STYLE_STATUS_COMPLETE
+          : tps.completedCount === 0
+          ? STYLE_STATUS_EMPTY
+          : STYLE_STATUS_PARTIAL;
     }
-    if (wsIncomplete[`H${rowNum}`]) {
+
+    // Kolom L: Catatan Anomali
+    if (wsIncomplete[`L${rowNum}`]) {
+      wsIncomplete[`L${rowNum}`].s = tps.hasAnomaly ? STYLE_ANOMALY : STYLE_NORMAL;
+    }
+
+    // Kolom M: Status Koreksi
+    if (wsIncomplete[`M${rowNum}`]) {
       const isPending = tps.files.some((f) => f.overrideElection === 'SUDAH_DIBENARKAN');
-      wsIncomplete[`H${rowNum}`].s = isPending
+      wsIncomplete[`M${rowNum}`].s = isPending
         ? STYLE_STATUS_PARTIAL
         : tps.hasAnomaly
         ? STYLE_STATUS_EMPTY
         : STYLE_NORMAL;
     }
 
-    // Link Interaktif Google Drive
+    // Kolom N: Link Interaktif Google Drive
     if (tps.tpsFolderUrl) {
-      wsIncomplete[`I${rowNum}`] = {
+      wsIncomplete[`N${rowNum}`] = {
         t: 's',
         v: '🔗 Buka Drive TPS',
         f: `HYPERLINK("${tps.tpsFolderUrl}", "🔗 Buka Drive TPS")`,
@@ -588,24 +620,29 @@ export function exportToExcel(
         s: STYLE_DRIVE_LINK,
       };
     } else {
-      if (wsIncomplete[`I${rowNum}`]) wsIncomplete[`I${rowNum}`].s = STYLE_UNCHECKED;
+      if (wsIncomplete[`N${rowNum}`]) wsIncomplete[`N${rowNum}`].s = STYLE_UNCHECKED;
     }
   }
 
   // AutoFilter aktif pada Sheet 9
-  wsIncomplete['!autofilter'] = { ref: `A1:I${incompleteList.length + 1}` };
+  wsIncomplete['!autofilter'] = { ref: `A1:N${incompleteList.length + 1}` };
 
   // Lebar Kolom Sheet 9
   wsIncomplete['!cols'] = [
     { wch: 6 },  // A: NO
-    { wch: 20 }, // B: KECAMATAN
+    { wch: 18 }, // B: KECAMATAN
     { wch: 22 }, // C: DESA
     { wch: 12 }, // D: TPS
-    { wch: 45 }, // E: BERKAS YANG BELUM ADA
-    { wch: 22 }, // F: JUMLAH SUDAH ADA
-    { wch: 45 }, // G: CATATAN ANOMALI
-    { wch: 38 }, // H: STATUS KOREKSI
-    { wch: 25 }, // I: LINK GOOGLE DRIVE
+    { wch: 16 }, // E: PPWP (PRESIDEN)
+    { wch: 12 }, // F: DPD
+    { wch: 14 }, // G: DPR RI
+    { wch: 14 }, // H: DPRD PROV
+    { wch: 16 }, // I: DPRD KAB/KOTA
+    { wch: 16 }, // J: JUMLAH TERSEDIA
+    { wch: 22 }, // K: STATUS KELENGKAPAN
+    { wch: 45 }, // L: CATATAN ANOMALI
+    { wch: 36 }, // M: STATUS KOREKSI
+    { wch: 24 }, // N: LINK GOOGLE DRIVE
   ];
 
   XLSX.utils.book_append_sheet(wb, wsIncomplete, 'DAFTAR KEKURANGAN & ANOMALI');
