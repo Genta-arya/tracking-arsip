@@ -207,7 +207,7 @@ export function exportToExcel(
       { col: 'B', text: 'KECAMATAN' },
       { col: 'C', text: 'JUMLAH DESA' },
       { col: 'D', text: 'JUMLAH TPS' },
-      { col: 'E', text: 'BERKAS MASUK (SAH)' },
+      { col: 'E', text: 'TOTAL BERKAS MASUK' },
       { col: 'F', text: 'TARGET BERKAS (TPS x 5)' },
       { col: 'G', text: 'PERSENTASE (%)' },
       { col: 'H', text: 'TPS LENGKAP (5/5)' },
@@ -224,7 +224,7 @@ export function exportToExcel(
       };
     });
 
-    let sumValidFiles = 0;
+    let sumTotalFiles = 0;
     let sumExpected = 0;
     let sumComplete = 0;
     let sumPartial = 0;
@@ -246,19 +246,22 @@ export function exportToExcel(
         if (wsDataKec[`D${rowIdx}`]) wsDataKec[`D${rowIdx}`].s = STYLE_TPS_NUM;
 
         if (s) {
-          sumValidFiles += s.validFiles ?? s.totalFiles;
+          const fileCount = s.totalFiles ?? s.validFiles ?? 0;
+          sumTotalFiles += fileCount;
           sumExpected += s.expectedFiles;
           sumComplete += s.completedTPS;
           sumPartial += s.partialTPS;
           sumEmpty += s.emptyTPS;
           sumAnomaly += s.anomalyTPS;
 
-          wsDataKec[`E${rowIdx}`] = { t: 'n', v: s.validFiles ?? s.totalFiles, s: STYLE_TPS_NUM };
+          const kecPct = s.expectedFiles > 0 ? (fileCount / s.expectedFiles) * 100 : 0;
+
+          wsDataKec[`E${rowIdx}`] = { t: 'n', v: fileCount, s: STYLE_TPS_NUM };
           wsDataKec[`F${rowIdx}`] = { t: 'n', v: s.expectedFiles, s: STYLE_TPS_NUM };
           wsDataKec[`G${rowIdx}`] = {
             t: 's',
-            v: `${s.percentage.toFixed(1)}%`,
-            s: s.percentage >= 100 ? STYLE_STATUS_COMPLETE : s.percentage > 0 ? STYLE_STATUS_PARTIAL : STYLE_STATUS_EMPTY,
+            v: `${kecPct.toFixed(1)}%`,
+            s: kecPct >= 100 ? STYLE_STATUS_COMPLETE : kecPct > 0 ? STYLE_STATUS_PARTIAL : STYLE_STATUS_EMPTY,
           };
           wsDataKec[`H${rowIdx}`] = { t: 'n', v: s.completedTPS, s: STYLE_STATUS_COMPLETE };
           wsDataKec[`I${rowIdx}`] = { t: 'n', v: s.partialTPS, s: s.partialTPS > 0 ? STYLE_STATUS_PARTIAL : STYLE_NORMAL };
@@ -269,11 +272,11 @@ export function exportToExcel(
     }
 
     // Baris 14: Total Keseluruhan
-    const totalPct = sumExpected > 0 ? (sumValidFiles / sumExpected) * 100 : 0;
+    const totalPct = sumExpected > 0 ? (sumTotalFiles / sumExpected) * 100 : 0;
     wsDataKec['B14'] = { t: 's', v: 'TOTAL KABUPATEN SEKADAU', s: STYLE_TOTAL_ROW };
     if (wsDataKec['C14']) wsDataKec['C14'].s = STYLE_TOTAL_ROW;
     if (wsDataKec['D14']) wsDataKec['D14'].s = STYLE_TOTAL_ROW;
-    wsDataKec['E14'] = { t: 'n', v: sumValidFiles, s: STYLE_TOTAL_ROW };
+    wsDataKec['E14'] = { t: 'n', v: sumTotalFiles, s: STYLE_TOTAL_ROW };
     wsDataKec['F14'] = { t: 'n', v: sumExpected, s: STYLE_TOTAL_ROW };
     wsDataKec['G14'] = { t: 's', v: `${totalPct.toFixed(1)}%`, s: STYLE_TOTAL_ROW };
     wsDataKec['H14'] = { t: 'n', v: sumComplete, s: STYLE_TOTAL_ROW };
