@@ -337,10 +337,10 @@ export function KecamatanRanking3D({
                               <div className="flex items-baseline justify-between mt-1">
                                 <span className={`text-sm font-black ${isComplete ? 'text-emerald-700' : 'text-amber-900'}`}>
                                   {el.missing}
-                                  <span className="text-[9px] font-medium text-slate-400 ml-0.5">TPS</span>
+                                  <span className="text-[9px] font-medium text-slate-400 ml-0.5">berkas</span>
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-semibold">
-                                  / {kec.totalTPS}
+                                  / {kec.totalTPS} target
                                 </span>
                               </div>
 
