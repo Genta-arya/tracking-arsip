@@ -156,8 +156,10 @@ export function FilterSection({
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/80 font-bold text-slate-800 shadow-[0_2px_4px_rgba(0,0,0,0.03),inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-kpu-maroon transition-all cursor-pointer"
             >
               <option value="ALL">Semua Status</option>
-              <option value="COMPLETE">✅ Lengkap (5/5 Berkas)</option>
-              <option value="PARTIAL">⏳ Belum Lengkap (1-4 Berkas)</option>
+              <option value="COMPLETE">✅ Lengkap (5/5 Berkas - 67 Hal)</option>
+              <option value="INCOMPLETE">❌ Berkas Belum Lengkap (&lt; 5 Berkas)</option>
+              <option value="INCOMPLETE_PAGES">📑 Halaman Tidak Lengkap (&lt; 67 Hal / Kurang Lembar)</option>
+              <option value="PARTIAL">⏳ Sebagian Terkumpul (1-4 Berkas)</option>
               <option value="EMPTY">❌ Masih Kosong (0 Berkas)</option>
               <option value="ANOMALY">⚠️ Ada Anomali / Typo</option>
               <option value="MISMATCH_DESA">📍 Salah Folder Desa (Mismatch Desa)</option>

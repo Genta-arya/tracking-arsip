@@ -11,22 +11,34 @@ export interface ElectionConfig {
   shortLabel: string;
   code: string;
   description: string;
+  pages: number;
 }
 
 export const ELECTION_LIST: ElectionConfig[] = [
-  { key: 'PPWP', label: 'Presiden & Wakil Presiden', shortLabel: 'PPWP', code: 'PPWP', description: 'Surat Suara Abu-Abu' },
-  { key: 'DPR_RI', label: 'DPR Republik Indonesia', shortLabel: 'DPR RI', code: 'DPR-RI', description: 'Surat Suara Kuning' },
-  { key: 'DPD', label: 'DPD Republik Indonesia', shortLabel: 'DPD', code: 'DPD', description: 'Surat Suara Merah' },
-  { key: 'DPRD_PROV', label: 'DPRD Provinsi', shortLabel: 'DPRD Prov', code: 'DPRD-PROV', description: 'Surat Suara Biru' },
-  { key: 'DPRD_KAB', label: 'DPRD Kabupaten/Kota', shortLabel: 'DPRD Kab/Ko', code: 'DPRD-KAB', description: 'Surat Suara Hijau' },
+  { key: 'PPWP', label: 'Presiden & Wakil Presiden', shortLabel: 'PPWP', code: 'PPWP', description: 'Surat Suara Abu-Abu', pages: 3 },
+  { key: 'DPR_RI', label: 'DPR Republik Indonesia', shortLabel: 'DPR RI', code: 'DPR-RI', description: 'Surat Suara Kuning', pages: 20 },
+  { key: 'DPD', label: 'DPD Republik Indonesia', shortLabel: 'DPD', code: 'DPD', description: 'Surat Suara Merah', pages: 4 },
+  { key: 'DPRD_PROV', label: 'DPRD Provinsi', shortLabel: 'DPRD Prov', code: 'DPRD-PROV', description: 'Surat Suara Biru', pages: 20 },
+  { key: 'DPRD_KAB', label: 'DPRD Kabupaten/Kota', shortLabel: 'DPRD Kab/Ko', code: 'DPRD-KAB', description: 'Surat Suara Hijau', pages: 20 },
 ];
+
+export const ELECTION_PAGE_COUNTS: Record<ElectionType, number> = {
+  PPWP: 3,
+  DPD: 4,
+  DPR_RI: 20,
+  DPRD_PROV: 20,
+  DPRD_KAB: 20,
+};
+
+export const TOTAL_TPS_PAGES = 67; // 3 + 4 + 20 + 20 + 20
 
 export type AnomalyType = 
   | 'MISMATCH_TPS' 
   | 'MISMATCH_DESA' 
   | 'DUPLICATE' 
   | 'UNKNOWN_FORMAT' 
-  | 'DPRD_AMBIGUOUS';
+  | 'DPRD_AMBIGUOUS'
+  | 'INCOMPLETE_PAGES';
 
 export interface AnomalyItem {
   type: AnomalyType;
@@ -44,6 +56,7 @@ export interface RawFileItem {
   updatedAt?: string; // Tanggal terakhir diedit di Drive
   size?: number;
   uploader?: string; // Nama / email pengunggah berkas di Google Drive
+  pageCount?: number; // Jumlah lembar/halaman fisik yang ada di berkas scan
   overrideElection?: OverrideElectionType;
   isResolved?: boolean;
   resolutionNote?: string;
@@ -54,6 +67,9 @@ export interface RawFileItem {
 export interface ScannedFile extends RawFileItem {
   detectedElection: ElectionType | 'UNKNOWN';
   anomalies: AnomalyItem[];
+  pageCount?: number;
+  expectedPages?: number;
+  isPageIncomplete?: boolean;
 }
 
 export interface RawTpsData {
@@ -83,6 +99,8 @@ export interface TPSRecord {
   isComplete: boolean;
   hasAnomaly: boolean;
   anomalies: AnomalyItem[];
+  scannedPages?: number; // Total lembar/halaman fisik yang sudah terkumpul
+  hasIncompletePages?: boolean; // True jika ada berkas yang kurang halaman atau berkas belum lengkap
 }
 
 export interface KecamatanSummary {
@@ -116,7 +134,15 @@ export interface GlobalStats {
   resolvedFilesCount?: number; // Jumlah berkas yang telah dikoreksi/di-resolve oleh admin
 }
 
-export type StatusFilterOption = 'ALL' | 'COMPLETE' | 'PARTIAL' | 'EMPTY' | 'ANOMALY' | 'MISMATCH_DESA';
+export type StatusFilterOption = 
+  | 'ALL' 
+  | 'COMPLETE' 
+  | 'INCOMPLETE' 
+  | 'INCOMPLETE_PAGES' 
+  | 'PARTIAL' 
+  | 'EMPTY' 
+  | 'ANOMALY' 
+  | 'MISMATCH_DESA';
 
 export interface FilterState {
   kecamatan: string;

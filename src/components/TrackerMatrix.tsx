@@ -78,23 +78,32 @@ export function TrackerMatrix({
     }
 
     const hasFileAnomaly = (file.anomalies?.length ?? 0) > 0 && !file.isResolved;
+    const isPageIncomplete = Boolean(file.isPageIncomplete && !file.isResolved);
 
     return (
       <td className={`px-0.5 py-2 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
         <motion.div
           whileHover={{ scale: 1.15, y: -1 }}
           whileTap={{ scale: 0.95 }}
-          className={`inline-flex items-center justify-center h-6 w-6 rounded-lg cursor-pointer transition-all mx-auto ${
-            hasFileAnomaly
+          className={`relative inline-flex items-center justify-center h-6 w-6 rounded-lg cursor-pointer transition-all mx-auto ${
+            isPageIncomplete
+              ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-red-700 text-white border border-rose-400 shadow-[0_2px_6px_rgba(225,29,72,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-rose-400/50'
+              : hasFileAnomaly
               ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-500 text-amber-950 border border-amber-300 shadow-[0_2px_6px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-amber-400/40'
               : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-600 text-white border border-emerald-300/90 shadow-[0_2px_6px_rgba(16,185,129,0.3),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.15)]'
           }`}
           title={`${label}: ${file.name} ${
-            hasFileAnomaly ? `(⚠️ ${file.anomalies[0].message})` : '(Lengkap & Terverifikasi)'
+            isPageIncomplete
+              ? `(⚠️ Halaman Tidak Lengkap: ${file.pageCount}/${file.expectedPages} hal)`
+              : hasFileAnomaly
+              ? `(⚠️ ${file.anomalies[0].message})`
+              : `(${file.pageCount ? `${file.pageCount} Hal` : 'Lengkap'} & Terverifikasi)`
           }. Klik untuk detail.`}
           onClick={() => onOpenFileDetail(tps)}
         >
-          {hasFileAnomaly ? (
+          {isPageIncomplete ? (
+            <span className="text-[10px] font-black leading-none">!</span>
+          ) : hasFileAnomaly ? (
             <AlertTriangle className="h-3 w-3 stroke-[2.5]" />
           ) : (
             <Check className="h-3.5 w-3.5 stroke-[2.5]" />
@@ -402,6 +411,21 @@ export function TrackerMatrix({
                           ⚠️ Kosong (Anomali)
                         </span>
                       )}
+
+                      {/* Sub-info Jumlah Halaman Fisik & Warning Halaman Kurang */}
+                      <div className="mt-1 flex flex-col items-center gap-0.5">
+                        <span className="text-[9.5px] font-bold text-slate-500">
+                          {tps.scannedPages !== undefined ? `${tps.scannedPages}/67 Hal` : ''}
+                        </span>
+                        {tps.files.some((f) => f.isPageIncomplete) && (
+                          <span
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs"
+                            title="Ada berkas dengan jumlah halaman yang terdeteksi kurang dari standar"
+                          >
+                            ⚠️ Hal Kurang
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Aksi 3D */}

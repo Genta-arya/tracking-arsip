@@ -438,6 +438,8 @@ export function App() {
       }
       // Filter Status
       if (filter.status === 'COMPLETE' && !r.isComplete) return false;
+      if (filter.status === 'INCOMPLETE' && r.isComplete) return false;
+      if (filter.status === 'INCOMPLETE_PAGES' && !r.hasIncompletePages) return false;
       if (
         filter.status === 'PARTIAL' &&
         (r.completedCount === 0 || r.completedCount === 5)

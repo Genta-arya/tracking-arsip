@@ -284,7 +284,7 @@ export function generateMockSekadauData(): RawTpsData[] {
           // Kasus 4: Ada anomali (Misal: salah nomor TPS, berkas ganda, typo)
           files.push({
             id: `${tpsFolderId}_f1`,
-            name: `${desa} TPS ${t} Presiden.pdf`,
+            name: `${desa} TPS ${t} Presiden hal 1-2.pdf`,
             url: '',
           });
           files.push({

@@ -5,6 +5,7 @@ import type {
   RawTpsData,
   TPSRecord,
 } from '../types/index.ts';
+import { ELECTION_PAGE_COUNTS, TOTAL_TPS_PAGES } from '../types/index.ts';
 import { MOCK_DESA_MAP } from '../data/mockSekadauData.ts';
 
 /**
@@ -53,6 +54,33 @@ export function extractFileTpsNumber(cleanName: string): number {
   }
 
   return 0;
+}
+
+/**
+ * Ekstrak jumlah lembar/halaman fisik yang tertera pada nama berkas.
+ * Contoh: "Presiden hal 1-2.pdf" -> 2 halaman, "DPR RI 15 hal.pdf" -> 15 halaman
+ */
+export function extractFilePageCount(fileName: string): number | null {
+  // 1. Pola Range: "hal 1-2", "hal 1 sd 2", "hal 1 s/d 3", "halaman 1 - 2", "lbr 1-10"
+  const rangeMatch = fileName.match(/\b(?:hal(?:aman)?|hlm|lbr|lembar|p(?:age)?s?)[\s.:_-]*0*(\d{1,2})\s*(?:-|sd|s\/d|sampai|to)\s*0*(\d{1,2})\b/i);
+  if (rangeMatch && rangeMatch[1] && rangeMatch[2]) {
+    const start = parseInt(rangeMatch[1], 10);
+    const end = parseInt(rangeMatch[2], 10);
+    if (end >= start && end - start + 1 <= 50) {
+      return end - start + 1;
+    }
+  }
+
+  // 2. Pola Jumlah Lembar: "2 hal", "2 halaman", "2 hlm", "2 lembar", "2 lbr"
+  const countMatch = fileName.match(/\b0*(\d{1,2})\s*(?:hal(?:aman)?|hlm|lbr|lembar|pages?)\b/i);
+  if (countMatch && countMatch[1]) {
+    const count = parseInt(countMatch[1], 10);
+    if (count > 0 && count <= 50) {
+      return count;
+    }
+  }
+
+  return null;
 }
 
 /** Variasi singkatan dan typo yang tetap menunjuk jenis pemilihan tertentu. */
@@ -355,6 +383,21 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       finalAnomalies = [];
     }
 
+    const detectedPageCount = file.pageCount ?? extractFilePageCount(file.name);
+    const expectedPages = finalElection !== 'UNKNOWN' ? ELECTION_PAGE_COUNTS[finalElection] : undefined;
+    const isPageIncomplete = Boolean(
+      expectedPages !== undefined && detectedPageCount !== null && detectedPageCount < expectedPages
+    );
+
+    if (isPageIncomplete && !isFileResolved && expectedPages !== undefined && detectedPageCount !== null) {
+      const pageAnomaly: AnomalyItem = {
+        type: 'INCOMPLETE_PAGES',
+        message: `Halaman berkas tidak lengkap: terdeteksi ${detectedPageCount} halaman dari standar ${expectedPages} halaman (${expectedPages - detectedPageCount} halaman kurang)`,
+        fileName: file.name,
+      };
+      finalAnomalies.push(pageAnomaly);
+    }
+
     const scannedFile: ScannedFile = {
       id: file.id,
       name: file.name,
@@ -365,6 +408,9 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       uploader: file.uploader,
       detectedElection: finalElection,
       anomalies: finalAnomalies,
+      pageCount: detectedPageCount ?? expectedPages,
+      expectedPages,
+      isPageIncomplete,
       overrideElection: file.overrideElection,
       isResolved: isFileResolved,
       resolutionNote: file.resolutionNote,
@@ -473,13 +519,40 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     }
   });
 
-  // Hitung jumlah slot terisi
+  // Hitung jumlah slot terisi dan kalkulasi fisik halaman
   let completedCount = 0;
   if (slotPPWP) completedCount++;
   if (slotDPR_RI) completedCount++;
   if (slotDPD) completedCount++;
   if (slotDPRD_PROV) completedCount++;
   if (slotDPRD_KAB) completedCount++;
+
+  let scannedPages = 0;
+  let hasIncompletePages = false;
+
+  const slots: Array<{ slot: ScannedFile | null; expected: number }> = [
+    { slot: slotPPWP, expected: ELECTION_PAGE_COUNTS.PPWP },
+    { slot: slotDPR_RI, expected: ELECTION_PAGE_COUNTS.DPR_RI },
+    { slot: slotDPD, expected: ELECTION_PAGE_COUNTS.DPD },
+    { slot: slotDPRD_PROV, expected: ELECTION_PAGE_COUNTS.DPRD_PROV },
+    { slot: slotDPRD_KAB, expected: ELECTION_PAGE_COUNTS.DPRD_KAB },
+  ];
+
+  slots.forEach(({ slot, expected }) => {
+    if (slot) {
+      const p = slot.pageCount ?? expected;
+      scannedPages += p;
+      if (slot.isPageIncomplete || p < expected) {
+        hasIncompletePages = true;
+      }
+    } else {
+      hasIncompletePages = true;
+    }
+  });
+
+  if (completedCount < 5 || scannedPages < TOTAL_TPS_PAGES) {
+    hasIncompletePages = true;
+  }
 
   return {
     id: `${raw.kecamatan}-${raw.desa}-${raw.tpsFolderName}`,
@@ -496,9 +569,11 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     slotDPRD_PROV,
     slotDPRD_KAB,
     completedCount,
-    isComplete: completedCount === 5,
+    isComplete: completedCount === 5 && !hasIncompletePages,
     hasAnomaly: tpsAnomalies.length > 0,
     anomalies: tpsAnomalies,
+    scannedPages,
+    hasIncompletePages,
   };
 }
 

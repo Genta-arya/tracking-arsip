@@ -99,6 +99,13 @@ const ANOMALY_BADGE_CONFIG: Record<
       'bg-red-50 text-red-800 border-red-300/80 shadow-[0_1px_3px_rgba(220,38,38,0.15)]',
     description: 'Nama desa pada berkas tidak sesuai dengan lokasi TPS',
   },
+  INCOMPLETE_PAGES: {
+    label: 'Halaman Tidak Lengkap',
+    icon: '📑',
+    badgeClass:
+      'bg-rose-50 text-rose-800 border-rose-300/80 shadow-[0_1px_3px_rgba(225,29,72,0.15)]',
+    description: 'Jumlah lembar/halaman pada berkas kurang dari standar resmi',
+  },
 };
 
 /**

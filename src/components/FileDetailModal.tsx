@@ -14,11 +14,12 @@ import {
   Clock,
   Trash2,
   RotateCcw,
+  Layers,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType } from '@/types';
-import { getElectionFile } from '@/utils/electionChecklist';
+import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType, TOTAL_TPS_PAGES } from '@/types';
+import { getElectionFile, getFilePageCount } from '@/utils/electionChecklist';
 import { updateFileAnomalyStatus } from '@/services/firebase';
 
 interface FileDetailModalProps {
@@ -93,6 +94,14 @@ export function FileDetailModal({
     lastRecordRef.current = propRecord;
   }
   const record = propRecord || lastRecordRef.current;
+
+  // Kalkulasi total lembar/halaman fisik yang sudah discan di TPS ini
+  const scannedPages = record
+    ? ELECTION_LIST.reduce((sum, elec) => {
+        const file = getElectionFile(record, elec.key);
+        return sum + (file ? elec.pages : 0);
+      }, 0)
+    : 0;
 
   const isAdminTeknis = currentUserEmail?.toLowerCase() === 'teknis.kpusekadau@gmail.com';
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
@@ -310,8 +319,8 @@ export function FileDetailModal({
               </div>
             </div>
 
-            {/* Kelengkapan 3D Badge */}
-            <div className="self-start sm:self-auto sm:text-right shrink-0">
+            {/* Kelengkapan 3D Badge & Total Halaman Discan */}
+            <div className="self-start sm:self-auto sm:text-right shrink-0 flex flex-col items-start sm:items-end gap-1.5">
               {record.isComplete && !record.hasAnomaly ? (
                 <span className="inline-block px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-[0_3px_8px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] border border-emerald-300">
                   ✓ Lengkap 5/5
@@ -329,12 +338,51 @@ export function FileDetailModal({
                   Kurang {5 - record.completedCount} Berkas
                 </span>
               )}
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-black/30 backdrop-blur-xs border border-white/20 text-white text-[11px] font-black shadow-inner"
+                title="Total akumulasi halaman fisik C-Hasil yang sudah diunggah untuk TPS ini (Target lengkap: 67 halaman)"
+              >
+                <Layers className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                <span>Discan:</span>
+                <span className="text-amber-300 font-black">{scannedPages}</span>
+                <span className="text-rose-200/80 font-normal">/ {TOTAL_TPS_PAGES} Hal</span>
+              </span>
             </div>
           </div>
         </div>
 
         {/* Isi Modal 3D: Daftar 5 Pemilihan */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+          {/* Card Kalkulasi Halaman Fisik Berkas TPS */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700/80 shadow-[0_4px_14px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-inner">
+                <Layers className="h-4.5 w-4.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-slate-100 tracking-tight">Kalkulasi Fisik Lembaran C-Hasil TPS</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                    Standar 1 TPS = 67 Halaman
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 font-medium mt-0.5">
+                  Presiden (3 hal) • DPD (4 hal) • DPR RI (20 hal) • DPRD Prov (20 hal) • DPRD Kab (20 hal)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 self-end sm:self-center shrink-0 bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-700/60">
+              <div className="text-right">
+                <div className="text-sm font-black text-amber-300 leading-tight">
+                  {scannedPages} <span className="text-xs font-semibold text-slate-400">/ {TOTAL_TPS_PAGES} Halaman</span>
+                </div>
+                <div className="text-[10px] font-bold text-emerald-400">
+                  {Math.round((scannedPages / TOTAL_TPS_PAGES) * 100)}% Fisik Terarsip
+                </div>
+              </div>
+            </div>
+          </div>
           {/* Anomali Global TPS jika ada */}
           {record.hasAnomaly && (
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 border border-amber-300 text-amber-950 text-xs space-y-1.5 shadow-[0_4px_12px_rgba(245,158,11,0.1),inset_0_1px_0_rgba(255,255,255,0.9)]">
@@ -400,7 +448,7 @@ export function FileDetailModal({
                     </div>
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-extrabold text-xs sm:text-sm text-slate-900 tracking-tight">
                           {elec.label}
                         </span>
@@ -409,18 +457,43 @@ export function FileDetailModal({
                         >
                           {elec.code}
                         </span>
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                          title={`Standar fisik 1 berkas ${elec.label} adalah ${elec.pages} halaman`}
+                        >
+                          <Layers className="h-3 w-3 text-slate-500" />
+                          <span>{elec.pages} Halaman</span>
+                        </span>
                       </div>
 
                       {isFound ? (
-                        <div className="mt-1 space-y-0.5">
+                        <div className="mt-1 space-y-1">
                           <p className="text-xs font-semibold text-slate-700 truncate max-w-sm sm:max-w-md">
                             📄 {file?.name}
                           </p>
-                          {file?.isResolved && (
-                            <p className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                              <Check className="h-3 w-3" aria-hidden="true" /> Sudah dikoreksi &amp; diverifikasi
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {file?.isPageIncomplete ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-black bg-rose-50 text-rose-800 border border-rose-300 shadow-2xs">
+                                <Layers className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                                <span>
+                                  1 Berkas Discan:{' '}
+                                  <strong className="text-rose-950 font-black">
+                                    {file.pageCount} dari {elec.pages} Halaman (Kurang {elec.pages - (file.pageCount ?? 0)} Hal)
+                                  </strong>
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10.5px] font-black bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                                <Layers className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span>1 Berkas Discan: <strong className="text-emerald-950 font-black">{elec.pages} Halaman Total</strong></span>
+                              </span>
+                            )}
+                            {file?.isResolved && (
+                              <p className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                                <Check className="h-3 w-3" aria-hidden="true" /> Sudah dikoreksi &amp; diverifikasi
+                              </p>
+                            )}
+                          </div>
                           {hasAnomaly && (
                             <p className="text-[11px] text-amber-900 font-bold">
                               ⚠️ {file?.anomalies[0].message}
@@ -428,9 +501,15 @@ export function FileDetailModal({
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-rose-600 font-semibold mt-0.5">
-                          Berkas scan belum ditemukan di folder Google Drive.
-                        </p>
+                        <div className="mt-1 space-y-1">
+                          <p className="text-xs text-rose-600 font-semibold">
+                            Berkas scan belum ditemukan di folder Google Drive.
+                          </p>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <Layers className="h-3 w-3 text-rose-500 shrink-0" />
+                            <span>Kebutuhan Berkas: <strong>{elec.pages} Halaman Total</strong> (Belum ada scan)</span>
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -548,6 +627,39 @@ export function FileDetailModal({
                                     : file.detectedElection}
                                 </strong>
                               </span>
+
+                              {/* Info Total Halaman Berkas */}
+                              {(() => {
+                                const fileCat =
+                                  file.overrideElection &&
+                                  file.overrideElection !== 'SUDAH_DIBENARKAN' &&
+                                  file.overrideElection !== 'HAPUS' &&
+                                  file.overrideElection !== 'IGNORE'
+                                    ? file.overrideElection
+                                    : file.detectedElection;
+                                const filePages = getFilePageCount(fileCat);
+
+                                return (
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                                      filePages
+                                        ? 'bg-indigo-50 text-indigo-900 border-indigo-200 shadow-2xs'
+                                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                                    }`}
+                                    title="Total lembar/halaman fisik yang discan untuk 1 berkas C-Hasil ini"
+                                  >
+                                    <Layers className="h-3 w-3 text-indigo-600" />
+                                    <span>
+                                      Total:{' '}
+                                      {filePages ? (
+                                        <strong className="text-indigo-950 font-black">{filePages} Halaman</strong>
+                                      ) : (
+                                        <span className="text-slate-500 font-normal">Belum Ditentukan</span>
+                                      )}
+                                    </span>
+                                  </span>
+                                );
+                              })()}
 
                               {/* Info Pengunggah di Google Drive */}
                               <span
