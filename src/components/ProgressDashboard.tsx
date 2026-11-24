@@ -337,7 +337,7 @@ export function ProgressDashboard({
                       className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1 shadow-2xs"
                     >
                       <AlertTriangle className="h-3 w-3" />
-                      {stats.anomalyTPS} Anomali
+                      {stats.anomalyTPS} TPS Anomali
                     </motion.span>
                   )}
                 </div>

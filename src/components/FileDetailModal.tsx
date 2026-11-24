@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType } from '@/types';
 import { getElectionFile, getFilePageCount } from '@/utils/electionChecklist';
 import { updateFileAnomalyStatus } from '@/services/firebase';
+import { buildKpuHitungSuaraUrl } from '@/data/kpuSekadauMapping';
 
 interface FileDetailModalProps {
   record: TPSRecord | null;
@@ -76,19 +77,16 @@ const BALLOT_THEMES: Record<
 };
 
 /**
- * Generate URL pemilu2024.kpu.go.id berdasarkan kategori pemilihan
- * Kode: 61 = Prov. Kalimantan Barat, 6109 = Kab. Sekadau
+ * Generate URL pemilu2024.kpu.go.id berdasarkan kategori pemilihan dan hierarki wilayah
+ * Kode: 61 = Prov. Kalimantan Barat, 6109 = Kab. Sekadau -> Kecamatan -> Desa -> TPS
  */
-function getKpuInfoUrl(electionKey: ElectionType): string {
-  const KPU_ELECTION_SLUGS: Record<ElectionType, string> = {
-    PPWP: 'pilpres',
-    DPR_RI: 'pilegdpr',
-    DPD: 'pemilu_dpd',
-    DPRD_PROV: 'pilegdprd_prov',
-    DPRD_KAB: 'pilegdprd_kab',
-  };
-  const slug = KPU_ELECTION_SLUGS[electionKey] || 'pilpres';
-  return `https://pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109/`;
+function getKpuInfoUrl(electionKey: ElectionType, record?: TPSRecord | null): string {
+  return buildKpuHitungSuaraUrl(
+    electionKey,
+    record?.kecamatan,
+    record?.desa,
+    record?.tpsNumber
+  );
 }
 
 /**
@@ -526,15 +524,15 @@ export function FileDetailModal({
 
                   {/* Tombol Aksi Kanan: Cek Info Pemilu KPU & Preview Berkas 3D */}
                   <div className="shrink-0 flex items-center gap-1.5 self-end sm:self-center flex-wrap justify-end">
-                    {/* Tombol Langsung ke Portal uji-pemilu2024.kpu.go.id */}
+                    {/* Tombol Langsung ke Portal pemilu2024.kpu.go.id */}
                     <motion.a
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96, y: 1 }}
-                      href={getKpuInfoUrl(elec.key)}
+                      href={getKpuInfoUrl(elec.key, record)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-b from-slate-50 to-slate-100 text-slate-700 hover:text-indigo-700 hover:border-indigo-300 border border-slate-300 shadow-2xs active:translate-y-[1px] transition-all cursor-pointer"
-                      title={`Buka Info Pemilu KPU untuk ${elec.label} (Hitung Suara Sekadau)`}
+                      title={`Buka Info Pemilu KPU untuk ${elec.label} (${record.kecamatan} - ${record.desa} - TPS ${record.tpsNumber})`}
                     >
                       <Globe className="h-3.5 w-3.5 text-indigo-500" />
                       <span>Info Pemilu</span>
