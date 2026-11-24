@@ -15,6 +15,7 @@ import {
   Trash2,
   RotateCcw,
   Layers,
+  Globe,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,22 @@ const BALLOT_THEMES: Record<
     spineColor: 'border-l-emerald-500',
   },
 };
+
+/**
+ * Generate URL uji-pemilu2024.kpu.go.id / pemilu2024.kpu.go.id berdasarkan kategori pemilihan
+ * Kode: 61 = Prov. Kalimantan Barat, 6109 = Kab. Sekadau
+ */
+function getKpuInfoUrl(electionKey: ElectionType): string {
+  const KPU_ELECTION_SLUGS: Record<ElectionType, string> = {
+    PPWP: 'pilpres',
+    DPR_RI: 'pilegdpr',
+    DPD: 'pemilu_dpd',
+    DPRD_PROV: 'pilegdprd_prov',
+    DPRD_KAB: 'pilegdprd_kab',
+  };
+  const slug = KPU_ELECTION_SLUGS[electionKey] || 'pilpres';
+  return `https://uji-pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109/`;
+}
 
 /**
  * FileDetailModal 3D Tactical Dossier
@@ -507,9 +524,25 @@ export function FileDetailModal({
                     </div>
                   </div>
 
-                  {/* Tombol Aksi Preview Berkas 3D */}
-                  {isFound && file?.url && !isDemoMode && (
-                    <div className="shrink-0 flex items-center gap-1.5 self-end sm:self-center">
+                  {/* Tombol Aksi Kanan: Cek Info Pemilu KPU & Preview Berkas 3D */}
+                  <div className="shrink-0 flex items-center gap-1.5 self-end sm:self-center flex-wrap justify-end">
+                    {/* Tombol Langsung ke Portal uji-pemilu2024.kpu.go.id */}
+                    <motion.a
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96, y: 1 }}
+                      href={getKpuInfoUrl(elec.key)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-b from-slate-50 to-slate-100 text-slate-700 hover:text-indigo-700 hover:border-indigo-300 border border-slate-300 shadow-2xs active:translate-y-[1px] transition-all cursor-pointer"
+                      title={`Buka Info Pemilu KPU untuk ${elec.label} (Hitung Suara Sekadau)`}
+                    >
+                      <Globe className="h-3.5 w-3.5 text-indigo-500" />
+                      <span>Info Pemilu</span>
+                      <ExternalLink className="h-3 w-3 text-slate-400" />
+                    </motion.a>
+
+                    {/* Tombol Preview Berkas di Google Drive */}
+                    {isFound && file?.url && !isDemoMode && (
                       <motion.a
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.96, y: 1 }}
@@ -523,8 +556,8 @@ export function FileDetailModal({
                         <span>Preview Berkas</span>
                         <ExternalLink className="h-3 w-3 text-slate-400" />
                       </motion.a>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
