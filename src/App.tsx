@@ -23,7 +23,8 @@ import {
   processRawTps,
   naturalSortTpsComparator,
 } from '@/utils/parser';
-import { exportToExcel } from '@/utils/excelExport';
+import { exportToExcel, exportToProvinsiSpreadsheet } from '@/utils/excelExport';
+import { ExportModal } from '@/components/ExportModal';
 import {
   loadStoredRawData,
   saveStoredRawData,
@@ -75,6 +76,7 @@ export function App() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [syncMeta, setSyncMeta] = useState<SyncMetadata | null>(null);
 
   // Tab Utama: 'progress' (Progres & Tren Harian) atau 'rekapitulasi' (Matriks Tabel TPS)
@@ -497,9 +499,17 @@ export function App() {
     });
   };
 
-  // Handler Export Excel
+  // Handler Export Excel (Buka modal 2 pilihan: Lengkap KPU vs Laporan Provinsi)
   const handleExportExcel = () => {
+    setIsExportModalOpen(true);
+  };
+
+  const handleExportFull = () => {
     exportToExcel(processedRecords, kecamatanSummaries);
+  };
+
+  const handleExportProvinsi = () => {
+    exportToProvinsiSpreadsheet(processedRecords);
   };
 
   // Handler Logout / Kunci Akses
@@ -851,6 +861,15 @@ export function App() {
         config={config}
         onSyncComplete={handleSyncComplete}
         currentRawData={rawData}
+      />
+
+      {/* Modal Pemilihan Format Unduh Excel (Lengkap vs Provinsi) */}
+      <ExportModal
+        open={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExportFull={handleExportFull}
+        onExportProvinsi={handleExportProvinsi}
+        totalTPS={processedRecords.length}
       />
 
       {/* 5. Floating Widget Status Waktu Terakhir Sinkronisasi Drive (Bisa dibuka/dikecilkan) */}

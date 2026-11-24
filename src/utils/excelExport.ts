@@ -654,3 +654,94 @@ export function exportToExcel(
   const today = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `REKAP_C_HASIL_KPU_SEKADAU_${today}.xlsx`);
 }
+
+/**
+ * Format 2: Laporan ke Provinsi Kalimantan Barat
+ * Format ringkas dan rapi untuk memudahkan copas & insert ke Google Spreadsheet Provinsi.
+ * Kolom: NO, KECAMATAN, DESA/KELURAHAN, TPS, LINK FOLDER DRIVE TPS
+ */
+export function exportToProvinsiSpreadsheet(tpsRecords: TPSRecord[]) {
+  const wb = XLSX.utils.book_new();
+
+  // Urutkan data berdasarkan Kecamatan, Desa, lalu Nomor TPS
+  const sorted = [...tpsRecords].sort((a, b) => {
+    const kecCmp = a.kecamatan.localeCompare(b.kecamatan);
+    if (kecCmp !== 0) return kecCmp;
+    const desaCmp = a.desa.localeCompare(b.desa);
+    if (desaCmp !== 0) return desaCmp;
+    return a.tpsNumber - b.tpsNumber;
+  });
+
+  const header = [
+    'NO',
+    'KECAMATAN',
+    'DESA',
+    'TPS',
+    'LINK FOLDER DRIVE TPS',
+  ];
+
+  const rows = sorted.map((r, idx) => [
+    idx + 1,
+    r.kecamatan,
+    r.desa,
+    `TPS ${String(r.tpsNumber).padStart(2, '0')}`,
+    r.tpsFolderUrl || '',
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+
+  // Styling Header
+  const headerStyle = {
+    font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: 'B91C1C' } }, // KPU Maroon
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+
+  const colLetters = ['A', 'B', 'C', 'D', 'E'];
+  colLetters.forEach((col) => {
+    if (ws[`${col}1`]) {
+      ws[`${col}1`].s = headerStyle;
+    }
+  });
+
+  // Hyperlink untuk Link Folder Drive TPS
+  sorted.forEach((r, idx) => {
+    const rowNum = idx + 2;
+    if (r.tpsFolderUrl) {
+      ws[`E${rowNum}`] = {
+        t: 's',
+        v: r.tpsFolderUrl,
+        f: `HYPERLINK("${r.tpsFolderUrl}", "${r.tpsFolderUrl}")`,
+        l: { Target: r.tpsFolderUrl, Tooltip: `Buka Folder ${r.tpsFolderName}` },
+        s: {
+          font: { name: 'Calibri', sz: 10, color: { rgb: '0000EE' }, underline: true },
+          alignment: { vertical: 'center' },
+        },
+      };
+    }
+  });
+
+  // Lebar Kolom
+  ws['!cols'] = [
+    { wch: 6 },  // NO
+    { wch: 20 }, // KECAMATAN
+    { wch: 24 }, // DESA
+    { wch: 12 }, // TPS
+    { wch: 65 }, // LINK FOLDER DRIVE TPS
+  ];
+
+  // AutoFilter
+  ws['!autofilter'] = { ref: `A1:E${sorted.length + 1}` };
+
+  XLSX.utils.book_append_sheet(wb, ws, 'LAPORAN PROVINSI');
+
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `LAPORAN_PROVINSI_C_HASIL_SEKADAU_${today}.xlsx`);
+}
+
