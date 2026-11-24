@@ -129,9 +129,17 @@ export function TrackerMatrix({
                 ? 'text-amber-800'
                 : 'text-emerald-700'
             }`}
-            title={`${actualPages} Halaman (Standar: ${expectedPages} Hlm)`}
+            title={
+              file.pageCount !== undefined
+                ? `Terdeteksi ${file.pageCount} Hal (Standar: ${expectedPages} Hal)`
+                : `Standar: ${expectedPages} Halaman`
+            }
           >
-            {isPageIncomplete ? `${actualPages}/${expectedPages}` : `${actualPages} hal`}
+            {isPageIncomplete
+              ? `${file.pageCount ?? '?'}/${expectedPages} Hal`
+              : file.pageCount !== undefined
+              ? `${file.pageCount} hal`
+              : `${expectedPages} hal`}
           </span>
         </div>
       </td>
@@ -437,20 +445,17 @@ export function TrackerMatrix({
                         </span>
                       )}
 
-                      {/* Sub-info Jumlah Halaman Fisik & Warning Halaman Kurang */}
-                      <div className="mt-1 flex flex-col items-center gap-0.5">
-                        <span className="text-[9.5px] font-bold text-slate-500">
-                          {tps.scannedPages !== undefined ? `${tps.scannedPages}/67 Hal` : ''}
-                        </span>
-                        {tps.files.some((f) => f.isPageIncomplete) && (
+                      {/* Warning jika ada lembar halaman fisik yang terdeteksi kurang */}
+                      {tps.files.some((f) => f.isPageIncomplete && !f.isResolved) && (
+                        <div className="mt-1 flex flex-col items-center gap-0.5">
                           <span
                             className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs"
-                            title="Ada berkas dengan jumlah halaman yang terdeteksi kurang dari standar"
+                            title="Ada berkas dengan jumlah lembar terdeteksi kurang dari standar pemilihan"
                           >
                             ⚠️ Hal Kurang
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </td>
 
                     {/* Aksi 3D */}

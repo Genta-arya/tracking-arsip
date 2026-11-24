@@ -5,7 +5,7 @@ import type {
   RawTpsData,
   TPSRecord,
 } from '../types/index.ts';
-import { ELECTION_PAGE_COUNTS, TOTAL_TPS_PAGES } from '../types/index.ts';
+import { ELECTION_PAGE_COUNTS } from '../types/index.ts';
 import { MOCK_DESA_MAP } from '../data/mockSekadauData.ts';
 
 /**
@@ -519,7 +519,7 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     }
   });
 
-  // Hitung jumlah slot terisi dan kalkulasi fisik halaman
+  // Hitung jumlah slot terisi (Data Real: berapa berkas sah yang mengisi 5 kategori)
   let completedCount = 0;
   if (slotPPWP) completedCount++;
   if (slotDPR_RI) completedCount++;
@@ -527,9 +527,11 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
   if (slotDPRD_PROV) completedCount++;
   if (slotDPRD_KAB) completedCount++;
 
-  let scannedPages = 0;
-  let hasIncompletePages = false;
+  // hasIncompletePages HANYA true jika ada berkas terunggah yang nyata-nyata terdeteksi kurang halaman
+  const hasIncompletePages = scannedFiles.some((f) => Boolean(f.isPageIncomplete && !f.isResolved));
 
+  // Hitung total halaman terarsip jika berkas terdata
+  let scannedPages = 0;
   const slots: Array<{ slot: ScannedFile | null; expected: number }> = [
     { slot: slotPPWP, expected: ELECTION_PAGE_COUNTS.PPWP },
     { slot: slotDPR_RI, expected: ELECTION_PAGE_COUNTS.DPR_RI },
@@ -537,22 +539,11 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     { slot: slotDPRD_PROV, expected: ELECTION_PAGE_COUNTS.DPRD_PROV },
     { slot: slotDPRD_KAB, expected: ELECTION_PAGE_COUNTS.DPRD_KAB },
   ];
-
   slots.forEach(({ slot, expected }) => {
     if (slot) {
-      const p = slot.pageCount ?? expected;
-      scannedPages += p;
-      if (slot.isPageIncomplete || p < expected) {
-        hasIncompletePages = true;
-      }
-    } else {
-      hasIncompletePages = true;
+      scannedPages += slot.pageCount ?? expected;
     }
   });
-
-  if (completedCount < 5 || scannedPages < TOTAL_TPS_PAGES) {
-    hasIncompletePages = true;
-  }
 
   return {
     id: `${raw.kecamatan}-${raw.desa}-${raw.tpsFolderName}`,
@@ -569,7 +560,7 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     slotDPRD_PROV,
     slotDPRD_KAB,
     completedCount,
-    isComplete: completedCount === 5 && !hasIncompletePages,
+    isComplete: completedCount === 5,
     hasAnomaly: tpsAnomalies.length > 0,
     anomalies: tpsAnomalies,
     scannedPages,

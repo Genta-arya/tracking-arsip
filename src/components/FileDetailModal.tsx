@@ -17,8 +17,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType, TOTAL_TPS_PAGES } from '@/types';
+import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType } from '@/types';
 import { getElectionFile, getFilePageCount } from '@/utils/electionChecklist';
 import { updateFileAnomalyStatus } from '@/services/firebase';
 
@@ -95,13 +94,6 @@ export function FileDetailModal({
   }
   const record = propRecord || lastRecordRef.current;
 
-  // Kalkulasi total lembar/halaman fisik yang sudah discan di TPS ini
-  const scannedPages = record
-    ? ELECTION_LIST.reduce((sum, elec) => {
-        const file = getElectionFile(record, elec.key);
-        return sum + (file ? elec.pages : 0);
-      }, 0)
-    : 0;
 
   const isAdminTeknis = currentUserEmail?.toLowerCase() === 'teknis.kpusekadau@gmail.com';
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
@@ -340,12 +332,12 @@ export function FileDetailModal({
               )}
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-black/30 backdrop-blur-xs border border-white/20 text-white text-[11px] font-black shadow-inner"
-                title="Total akumulasi halaman fisik C-Hasil yang sudah diunggah untuk TPS ini (Target lengkap: 67 halaman)"
+                title="Jumlah berkas sah yang sudah terverifikasi di TPS ini"
               >
                 <Layers className="h-3.5 w-3.5 text-amber-300 shrink-0" />
-                <span>Discan:</span>
-                <span className="text-amber-300 font-black">{scannedPages}</span>
-                <span className="text-rose-200/80 font-normal">/ {TOTAL_TPS_PAGES} Hal</span>
+                <span>Berkas Sah:</span>
+                <span className="text-amber-300 font-black">{record.completedCount}</span>
+                <span className="text-white/80 font-normal">/ 5 Jenis Pemilihan</span>
               </span>
             </div>
           </div>
@@ -353,7 +345,7 @@ export function FileDetailModal({
 
         {/* Isi Modal 3D: Daftar 5 Pemilihan */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
-          {/* Card Kalkulasi Halaman Fisik Berkas TPS */}
+          {/* Card Ringkasan Berkas Fisik Real TPS */}
           <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700/80 shadow-[0_4px_14px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-inner">
@@ -361,13 +353,13 @@ export function FileDetailModal({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black text-slate-100 tracking-tight">Kalkulasi Fisik Lembaran C-Hasil TPS</span>
+                  <span className="text-xs font-black text-slate-100 tracking-tight">Status Dokumen Fisik C-Hasil TPS</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                    Standar 1 TPS = 67 Halaman
+                    Standar: 5 Berkas C-Hasil (PPWP, DPR RI, DPD, DPRD Prov, DPRD Kab)
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-300 font-medium mt-0.5">
-                  Presiden (3 hal) • DPD (4 hal) • DPR RI (20 hal) • DPRD Prov (20 hal) • DPRD Kab (20 hal)
+                  Total File di Folder Drive: <strong className="text-white font-bold">{record.files.length} File</strong> • Berkas Sah Terpetakan: <strong className="text-amber-300 font-bold">{record.completedCount} / 5</strong>
                 </p>
               </div>
             </div>
@@ -375,10 +367,10 @@ export function FileDetailModal({
             <div className="flex items-center gap-3 self-end sm:self-center shrink-0 bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-700/60">
               <div className="text-right">
                 <div className="text-sm font-black text-amber-300 leading-tight">
-                  {scannedPages} <span className="text-xs font-semibold text-slate-400">/ {TOTAL_TPS_PAGES} Halaman</span>
+                  {record.completedCount} <span className="text-xs font-semibold text-slate-400">/ 5 Berkas Sah</span>
                 </div>
                 <div className="text-[10px] font-bold text-emerald-400">
-                  {Math.round((scannedPages / TOTAL_TPS_PAGES) * 100)}% Fisik Terarsip
+                  {Math.round((record.completedCount / 5) * 100)}% Kelengkapan Berkas
                 </div>
               </div>
             </div>
@@ -628,7 +620,7 @@ export function FileDetailModal({
                                 </strong>
                               </span>
 
-                              {/* Info Total Halaman Berkas */}
+                               {/* Info Total Halaman Berkas (Real vs Standar) */}
                               {(() => {
                                 const fileCat =
                                   file.overrideElection &&
@@ -637,22 +629,41 @@ export function FileDetailModal({
                                   file.overrideElection !== 'IGNORE'
                                     ? file.overrideElection
                                     : file.detectedElection;
-                                const filePages = getFilePageCount(fileCat);
+                                const stdPages = getFilePageCount(fileCat);
+                                const hasRealPages = file.pageCount !== undefined;
 
                                 return (
                                   <span
                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                                      filePages
+                                      file.isPageIncomplete
+                                        ? 'bg-rose-50 text-rose-900 border-rose-200 shadow-2xs'
+                                        : hasRealPages
+                                        ? 'bg-emerald-50 text-emerald-900 border-emerald-200 shadow-2xs'
+                                        : stdPages
                                         ? 'bg-indigo-50 text-indigo-900 border-indigo-200 shadow-2xs'
                                         : 'bg-slate-100 text-slate-500 border-slate-200'
                                     }`}
-                                    title="Total lembar/halaman fisik yang discan untuk 1 berkas C-Hasil ini"
+                                    title={
+                                      hasRealPages
+                                        ? `Halaman real terdeteksi: ${file.pageCount} Hal (Standar: ${stdPages ?? '?'} Hal)`
+                                        : `Standar C-Hasil: ${stdPages ?? '?'} Halaman`
+                                    }
                                   >
                                     <Layers className="h-3 w-3 text-indigo-600" />
                                     <span>
-                                      Total:{' '}
-                                      {filePages ? (
-                                        <strong className="text-indigo-950 font-black">{filePages} Halaman</strong>
+                                      {hasRealPages ? (
+                                        <>
+                                          Real:{' '}
+                                          <strong className={file.isPageIncomplete ? 'text-rose-950 font-black' : 'text-emerald-950 font-black'}>
+                                            {file.pageCount} Hal
+                                          </strong>
+                                          {stdPages ? <span className="text-slate-500 font-normal"> (Std: {stdPages})</span> : null}
+                                        </>
+                                      ) : stdPages ? (
+                                        <>
+                                          Standar:{' '}
+                                          <strong className="text-indigo-950 font-black">{stdPages} Halaman</strong>
+                                        </>
                                       ) : (
                                         <span className="text-slate-500 font-normal">Belum Ditentukan</span>
                                       )}
