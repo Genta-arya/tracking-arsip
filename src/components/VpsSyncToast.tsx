@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Minimize2, Maximize2, Server, FileText, CheckCircle2 } from 'lucide-react';
 import { subscribeVpsSyncProgress } from '@/services/firebase';
