@@ -14,6 +14,7 @@ import { DailyAnomalyTable3D } from '@/components/DailyAnomalyTable3D';
 import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
 import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
+import { VpsSyncToast } from '@/components/VpsSyncToast';
 import { AuthGate } from '@/components/AuthGate';
 import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
@@ -859,6 +860,9 @@ export function App() {
         lastSyncedBy={syncMeta?.lastSyncedBy}
         onOpenSyncModal={() => setIsSyncModalOpen(true)}
       />
+
+      {/* 6. Toast Progress Real-time Sinkronisasi Halaman Berkas dari VPS (Bisa di-minimize) */}
+      <VpsSyncToast />
     </div>
   );
 }
