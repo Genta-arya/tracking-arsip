@@ -258,6 +258,7 @@ export function DailyAnomalyTable3D({
     let mismatchCount = 0;
     let duplicateCount = 0;
     let mismatchDesaCount = 0;
+    let incompletePagesCount = 0;
     let sudahDibenarkanCount = 0;
 
     allAnomalies.forEach((a) => {
@@ -270,6 +271,7 @@ export function DailyAnomalyTable3D({
         else if (anom.type === 'MISMATCH_TPS') mismatchCount++;
         else if (anom.type === 'DUPLICATE') duplicateCount++;
         else if (anom.type === 'MISMATCH_DESA') mismatchDesaCount++;
+        else if (anom.type === 'INCOMPLETE_PAGES') incompletePagesCount++;
       });
     });
 
@@ -280,6 +282,7 @@ export function DailyAnomalyTable3D({
       mismatchCount,
       duplicateCount,
       mismatchDesaCount,
+      incompletePagesCount,
       sudahDibenarkanCount,
     };
   }, [allAnomalies]);
@@ -399,7 +402,7 @@ export function DailyAnomalyTable3D({
             {/* Summary Metric Strip & Filter Bar */}
             <div className="p-4 sm:p-5 bg-gradient-to-b from-amber-50/30 to-white border-b border-slate-200/80 space-y-4">
               {/* Metric Breakdown Capsules */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSelectedType('UNKNOWN_FORMAT')}
@@ -451,13 +454,13 @@ export function DailyAnomalyTable3D({
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-purple-800 flex items-center gap-1">
-                      <span>🔀</span> Salah Kamar TPS
+                      <span>🔀</span> Salah TPS
                     </span>
                     <span className="font-black text-purple-900 px-1.5 py-0.2 rounded bg-purple-100 text-[11px]">
                       {stats.mismatchCount}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Angka file beda dengan folder</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Angka file beda folder</p>
                 </button>
 
                 <button
@@ -471,13 +474,13 @@ export function DailyAnomalyTable3D({
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-red-800 flex items-center gap-1">
-                      <span>📍</span> Salah Folder Desa
+                      <span>📍</span> Salah Desa
                     </span>
                     <span className="font-black text-red-950 px-1.5 py-0.2 rounded bg-red-100 text-[11px]">
                       {stats.mismatchDesaCount}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Nama desa beda dengan folder</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Nama desa beda folder</p>
                 </button>
 
                 <button
@@ -497,7 +500,27 @@ export function DailyAnomalyTable3D({
                       {stats.duplicateCount}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Duplikat pada slot pemilihan</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Duplikat pada slot</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedType('INCOMPLETE_PAGES')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedType === 'INCOMPLETE_PAGES'
+                      ? 'bg-pink-50 border-pink-400 ring-2 ring-pink-400/40 shadow-xs'
+                      : 'bg-white hover:bg-pink-50/50 border-slate-200/90 shadow-2xs'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-pink-800 flex items-center gap-1">
+                      <span>📑</span> Hal. Kurang
+                    </span>
+                    <span className="font-black text-pink-950 px-1.5 py-0.2 rounded bg-pink-100 text-[11px]">
+                      {stats.incompletePagesCount}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Halaman tidak lengkap</p>
                 </button>
               </div>
 
