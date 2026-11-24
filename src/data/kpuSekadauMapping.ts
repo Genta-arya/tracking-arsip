@@ -178,7 +178,7 @@ export function buildKpuHitungSuaraUrl(
     DPRD_KAB: 'pilegdprd_kab',
   };
   const slug = KPU_ELECTION_SLUGS[electionKey] || 'pilpres';
-  const baseUrl = `https://pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109`;
+  const baseUrl = `https://uji-pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109`;
 
   if (!kecamatan) {
     return `${baseUrl}/`;

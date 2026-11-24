@@ -77,7 +77,7 @@ const BALLOT_THEMES: Record<
 };
 
 /**
- * Generate URL pemilu2024.kpu.go.id berdasarkan kategori pemilihan dan hierarki wilayah
+ * Generate URL uji-pemilu2024.kpu.go.id berdasarkan kategori pemilihan dan hierarki wilayah
  * Kode: 61 = Prov. Kalimantan Barat, 6109 = Kab. Sekadau -> Kecamatan -> Desa -> TPS
  */
 function getKpuInfoUrl(electionKey: ElectionType, record?: TPSRecord | null): string {
