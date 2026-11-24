@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Minimize2, Maximize2, Server, FileText, CheckCircle2 } from 'lucide-react';
+import { subscribeVpsSyncProgress } from '@/services/firebase';
 
 interface VpsSyncProgress {
   isScanning: boolean;
@@ -10,9 +11,8 @@ interface VpsSyncProgress {
   processedFiles: number;
   detectedPages: number;
   updatedAt: string;
+  lastScanResult?: any;
 }
-
-const VPS_STATUS_URL = 'http://51.79.152.173:3088/status';
 
 export function VpsSyncToast() {
   const [isScanning, setIsScanning] = useState(false);
@@ -22,38 +22,28 @@ export function VpsSyncToast() {
   const [lastFinishedPages, setLastFinishedPages] = useState(0);
 
   useEffect(() => {
-    let intervalId: any;
+    // Dengarkan progress VPS secara REAL-TIME dari Firestore
+    // Tidak akan pernah diblokir oleh browser (bebas dari error Private IP / Mixed-Content HTTP)
+    const unsubscribe = subscribeVpsSyncProgress((data) => {
+      if (!data) return;
 
-    const checkVpsStatus = async () => {
-      try {
-        const res = await fetch(VPS_STATUS_URL, { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-
-        if (data.isScanning) {
-          setIsScanning(true);
-          setProgress(data.currentProgress);
-          setShowFinishedToast(false);
-        } else {
-          if (isScanning && data.lastScanResult?.status === 'success') {
-            setLastFinishedPages(data.lastScanResult.totalPagesDetected || 0);
-            setShowFinishedToast(true);
-            setTimeout(() => setShowFinishedToast(false), 8000);
-          }
-          setIsScanning(false);
-          setProgress(null);
+      if (data.isScanning) {
+        setIsScanning(true);
+        setProgress(data);
+        setShowFinishedToast(false);
+      } else {
+        if (data.lastScanResult?.status === 'success') {
+          setLastFinishedPages(data.lastScanResult.totalPagesDetected || 0);
+          setShowFinishedToast(true);
+          setTimeout(() => setShowFinishedToast(false), 8000);
         }
-      } catch (err) {
-        // Abaikan jika VPS sedang offline/unreachable
+        setIsScanning(false);
+        setProgress(null);
       }
-    };
+    });
 
-    // Polling setiap 3 detik saat scanning atau 10 detik saat idle
-    intervalId = setInterval(checkVpsStatus, isScanning ? 2500 : 8000);
-    checkVpsStatus();
-
-    return () => clearInterval(intervalId);
-  }, [isScanning]);
+    return () => unsubscribe();
+  }, []);
 
   if (!isScanning && !showFinishedToast) return null;
 

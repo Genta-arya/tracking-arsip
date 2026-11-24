@@ -217,6 +217,23 @@ export function subscribeSyncMetadata(
 }
 
 /**
+ * Mendengarkan progress pemindaian halaman berkas oleh VPS secara REAL-TIME murni Firestore.
+ * Bebas dari masalah Mixed-Content (HTTPS/HTTP) dan Private IP.
+ */
+export function subscribeVpsSyncProgress(
+  callback: (progress: any) => void
+) {
+  const docRef = doc(db, 'app_config', 'vps_sync_progress');
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      callback(snap.data());
+    } else {
+      callback(null);
+    }
+  });
+}
+
+/**
  * Memperbarui status / penetapan anomali berkas oleh Admin Teknis.
  * Data disimpan ke Firestore doc kecamatan dan koleksi permanen file_overrides.
  */
