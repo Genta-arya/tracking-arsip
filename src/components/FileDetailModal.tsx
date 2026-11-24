@@ -76,7 +76,7 @@ const BALLOT_THEMES: Record<
 };
 
 /**
- * Generate URL uji-pemilu2024.kpu.go.id / pemilu2024.kpu.go.id berdasarkan kategori pemilihan
+ * Generate URL pemilu2024.kpu.go.id berdasarkan kategori pemilihan
  * Kode: 61 = Prov. Kalimantan Barat, 6109 = Kab. Sekadau
  */
 function getKpuInfoUrl(electionKey: ElectionType): string {
@@ -88,7 +88,7 @@ function getKpuInfoUrl(electionKey: ElectionType): string {
     DPRD_KAB: 'pilegdprd_kab',
   };
   const slug = KPU_ELECTION_SLUGS[electionKey] || 'pilpres';
-  return `https://uji-pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109/`;
+  return `https://pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109/`;
 }
 
 /**
