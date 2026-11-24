@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { getElectionFile } from '@/utils/electionChecklist';
-import { TPSRecord, ScannedFile } from '@/types';
+import { TPSRecord, ScannedFile, ELECTION_PAGE_COUNTS } from '@/types';
 
 interface TrackerMatrixProps {
   records: TPSRecord[];
@@ -52,6 +52,7 @@ export function TrackerMatrix({
     file: ScannedFile | null,
     label: string,
     tps: TPSRecord,
+    expectedPages: number,
     borderSide?: 'left' | 'right'
   ) => {
     const borderClass =
@@ -63,52 +64,76 @@ export function TrackerMatrix({
 
     if (!file) {
       return (
-        <td className={`px-0.5 py-2 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
-          <motion.div
-            whileHover={{ scale: 1.15, y: -1 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-gradient-to-b from-rose-50 to-rose-100 text-rose-500 border border-rose-200/90 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.9)] cursor-pointer transition-all mx-auto"
-            title={`${label}: BELUM ADA. Klik untuk lihat detail folder.`}
-            onClick={() => onOpenFileDetail(tps)}
-          >
-            <X className="h-3.5 w-3.5 stroke-[2.5]" />
-          </motion.div>
+        <td className={`px-0.5 py-1.5 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
+          <div className="flex flex-col items-center justify-center">
+            <motion.div
+              whileHover={{ scale: 1.15, y: -1 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-gradient-to-b from-rose-50 to-rose-100 text-rose-500 border border-rose-200/90 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.9)] cursor-pointer transition-all mx-auto"
+              title={`${label}: BELUM ADA. Standar: ${expectedPages} halaman. Klik untuk lihat detail folder.`}
+              onClick={() => onOpenFileDetail(tps)}
+            >
+              <X className="h-3.5 w-3.5 stroke-[2.5]" />
+            </motion.div>
+            <span
+              className="block text-[8.5px] font-semibold text-slate-400 mt-0.5 leading-none"
+              title={`Belum ada berkas (Standar: ${expectedPages} halaman)`}
+            >
+              0/{expectedPages}
+            </span>
+          </div>
         </td>
       );
     }
 
     const hasFileAnomaly = (file.anomalies?.length ?? 0) > 0 && !file.isResolved;
     const isPageIncomplete = Boolean(file.isPageIncomplete && !file.isResolved);
+    const actualPages = file.pageCount ?? expectedPages;
 
     return (
-      <td className={`px-0.5 py-2 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
-        <motion.div
-          whileHover={{ scale: 1.15, y: -1 }}
-          whileTap={{ scale: 0.95 }}
-          className={`relative inline-flex items-center justify-center h-6 w-6 rounded-lg cursor-pointer transition-all mx-auto ${
-            isPageIncomplete
-              ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-red-700 text-white border border-rose-400 shadow-[0_2px_6px_rgba(225,29,72,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-rose-400/50'
-              : hasFileAnomaly
-              ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-500 text-amber-950 border border-amber-300 shadow-[0_2px_6px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-amber-400/40'
-              : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-600 text-white border border-emerald-300/90 shadow-[0_2px_6px_rgba(16,185,129,0.3),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.15)]'
-          }`}
-          title={`${label}: ${file.name} ${
-            isPageIncomplete
-              ? `(⚠️ Halaman Tidak Lengkap: ${file.pageCount}/${file.expectedPages} hal)`
-              : hasFileAnomaly
-              ? `(⚠️ ${file.anomalies[0].message})`
-              : `(${file.pageCount ? `${file.pageCount} Hal` : 'Lengkap'} & Terverifikasi)`
-          }. Klik untuk detail.`}
-          onClick={() => onOpenFileDetail(tps)}
-        >
-          {isPageIncomplete ? (
-            <span className="text-[10px] font-black leading-none">!</span>
-          ) : hasFileAnomaly ? (
-            <AlertTriangle className="h-3 w-3 stroke-[2.5]" />
-          ) : (
-            <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-          )}
-        </motion.div>
+      <td className={`px-0.5 py-1.5 text-center w-10 max-w-[44px] bg-slate-50/30 ${borderClass}`}>
+        <div className="flex flex-col items-center justify-center">
+          <motion.div
+            whileHover={{ scale: 1.15, y: -1 }}
+            whileTap={{ scale: 0.95 }}
+            className={`relative inline-flex items-center justify-center h-6 w-6 rounded-lg cursor-pointer transition-all mx-auto ${
+              isPageIncomplete
+                ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-red-700 text-white border border-rose-400 shadow-[0_2px_6px_rgba(225,29,72,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-rose-400/50'
+                : hasFileAnomaly
+                ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-yellow-500 text-amber-950 border border-amber-300 shadow-[0_2px_6px_rgba(245,158,11,0.4),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1.5 ring-amber-400/40'
+                : 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-teal-600 text-white border border-emerald-300/90 shadow-[0_2px_6px_rgba(16,185,129,0.3),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.15)]'
+            }`}
+            title={`${label}: ${file.name} ${
+              isPageIncomplete
+                ? `(⚠️ Halaman Tidak Lengkap: ${actualPages}/${expectedPages} hal)`
+                : hasFileAnomaly
+                ? `(⚠️ ${file.anomalies[0].message} • ${actualPages} hal)`
+                : `(${actualPages} Halaman Lengkap & Terverifikasi)`
+            }. Klik untuk detail.`}
+            onClick={() => onOpenFileDetail(tps)}
+          >
+            {isPageIncomplete ? (
+              <span className="text-[10px] font-black leading-none">!</span>
+            ) : hasFileAnomaly ? (
+              <AlertTriangle className="h-3 w-3 stroke-[2.5]" />
+            ) : (
+              <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+            )}
+          </motion.div>
+          {/* Angka Halaman Kecil di Bawah Kotak Centang */}
+          <span
+            className={`block text-[8.5px] mt-0.5 leading-none font-bold ${
+              isPageIncomplete
+                ? 'text-rose-600 font-black'
+                : hasFileAnomaly
+                ? 'text-amber-800'
+                : 'text-emerald-700'
+            }`}
+            title={`${actualPages} Halaman (Standar: ${expectedPages} Hlm)`}
+          >
+            {isPageIncomplete ? `${actualPages}/${expectedPages}` : `${actualPages} hal`}
+          </span>
+        </div>
       </td>
     );
   };
@@ -318,11 +343,11 @@ export function TrackerMatrix({
                     </td>
 
                     {/* 5 Kolom Pemilihan 3D Dipepetkan */}
-                    {renderElectionCell(getElectionFile(tps, 'PPWP'), 'Presiden (PPWP)', tps, 'left')}
-                    {renderElectionCell(getElectionFile(tps, 'DPR_RI'), 'DPR RI', tps)}
-                    {renderElectionCell(getElectionFile(tps, 'DPD'), 'DPD RI', tps)}
-                    {renderElectionCell(getElectionFile(tps, 'DPRD_PROV'), 'DPRD Provinsi', tps)}
-                    {renderElectionCell(getElectionFile(tps, 'DPRD_KAB'), 'DPRD Kab/Ko', tps, 'right')}
+                    {renderElectionCell(getElectionFile(tps, 'PPWP'), 'Presiden (PPWP)', tps, ELECTION_PAGE_COUNTS.PPWP, 'left')}
+                    {renderElectionCell(getElectionFile(tps, 'DPR_RI'), 'DPR RI', tps, ELECTION_PAGE_COUNTS.DPR_RI)}
+                    {renderElectionCell(getElectionFile(tps, 'DPD'), 'DPD RI', tps, ELECTION_PAGE_COUNTS.DPD)}
+                    {renderElectionCell(getElectionFile(tps, 'DPRD_PROV'), 'DPRD Provinsi', tps, ELECTION_PAGE_COUNTS.DPRD_PROV)}
+                    {renderElectionCell(getElectionFile(tps, 'DPRD_KAB'), 'DPRD Kab/Ko', tps, ELECTION_PAGE_COUNTS.DPRD_KAB, 'right')}
 
                     {/* Total File di Folder Drive */}
                     <td className="px-2 py-2 text-center">
