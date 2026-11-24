@@ -329,17 +329,6 @@ export function ProgressDashboard({
                     suffix="%"
                     className="text-2xl sm:text-3xl font-black text-kpu-orange tracking-tight"
                   />
-                  {stats.anomalyTPS > 0 && (
-                    <motion.span
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: [1, 1.08, 1] }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                      className="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1 shadow-2xs"
-                    >
-                      <AlertTriangle className="h-3 w-3" />
-                      {stats.anomalyTPS} TPS Anomali
-                    </motion.span>
-                  )}
                 </div>
 
                 {/* Progress Bar dengan Efek Laser Shimmer Berkelanjutan */}

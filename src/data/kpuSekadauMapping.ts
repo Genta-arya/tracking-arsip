@@ -178,7 +178,10 @@ export function buildKpuHitungSuaraUrl(
     DPRD_KAB: 'pilegdprd_kab',
   };
   const slug = KPU_ELECTION_SLUGS[electionKey] || 'pilpres';
-  const baseUrl = `https://uji-pemilu2024.kpu.go.id/${slug}/hitung-suara/61/6109`;
+  // Khusus seluruh kategori DPR (DPR RI, DPRD Prov, DPRD Kab), setelah /hitung-suara/ ditambahkan /wilayah
+  const isDpr = electionKey === 'DPR_RI' || electionKey === 'DPRD_PROV' || electionKey === 'DPRD_KAB';
+  const midPath = isDpr ? 'hitung-suara/wilayah' : 'hitung-suara';
+  const baseUrl = `https://uji-pemilu2024.kpu.go.id/${slug}/${midPath}/61/6109`;
 
   if (!kecamatan) {
     return `${baseUrl}/`;
