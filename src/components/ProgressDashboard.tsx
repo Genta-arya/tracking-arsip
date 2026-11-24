@@ -2,7 +2,6 @@ import { useState, useMemo, useId, useEffect } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   TrendingUp,
-  AlertTriangle,
   CheckCircle2,
   FileCheck,
   FolderOpen,
