@@ -110,9 +110,9 @@ export function VpsSyncToast() {
                       {progress?.currentTps || '-'}
                     </strong>
                   </div>
-                  <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-slate-300 font-mono truncate">
-                    <FileText className="h-3 w-3 text-indigo-400 shrink-0" />
-                    <span className="truncate" title={progress?.currentFile}>
+                  <div className="flex items-start gap-1.5 pt-0.5 text-[10px] text-slate-300 font-mono">
+                    <FileText className="h-3 w-3 text-indigo-400 shrink-0 mt-0.5" />
+                    <span className="break-all leading-tight">
                       {progress?.currentFile || 'Memindai berkas...'}
                     </span>
                   </div>

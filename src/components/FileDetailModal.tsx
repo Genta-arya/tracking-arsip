@@ -478,7 +478,7 @@ export function FileDetailModal({
 
                       {isFound ? (
                         <div className="mt-1 space-y-1">
-                          <p className="text-xs font-semibold text-slate-700 truncate max-w-sm sm:max-w-md">
+                          <p className="text-xs font-semibold text-slate-700 break-words whitespace-normal">
                             📄 {file?.name}
                           </p>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -983,7 +983,7 @@ export function FileDetailModal({
                       key={delFile.id}
                       className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600"
                     >
-                      <div className="truncate pr-2">
+                      <div className="min-w-0 pr-2 break-all">
                         <span className="line-through font-semibold text-slate-500">
                           {delFile.name}
                         </span>
