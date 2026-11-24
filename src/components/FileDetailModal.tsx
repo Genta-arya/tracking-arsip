@@ -17,6 +17,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { TPSRecord, ELECTION_LIST, ElectionType, ScannedFile, OverrideElectionType } from '@/types';
 import { getElectionFile, getFilePageCount } from '@/utils/electionChecklist';
 import { updateFileAnomalyStatus } from '@/services/firebase';

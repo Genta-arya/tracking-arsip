@@ -54,3 +54,4 @@ Thumbs.db
 
 # Local Apps Script backup containing credentials
 /backup.gs
+apps-script/
