@@ -296,7 +296,7 @@ export function ProgressDashboard({
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium">
-                  {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali Nama
+                  {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali
                 </p>
               </div>
               <motion.div
