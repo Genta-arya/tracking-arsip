@@ -745,3 +745,298 @@ export function exportToProvinsiSpreadsheet(tpsRecords: TPSRecord[]) {
   XLSX.writeFile(wb, `LAPORAN_PROVINSI_C_HASIL_SEKADAU_${today}.xlsx`);
 }
 
+const ELECTION_LABELS: Record<string, string> = {
+  PPWP: 'PPWP (Presiden)',
+  DPR_RI: 'DPR RI',
+  DPD: 'DPD',
+  DPRD_PROV: 'DPRD Provinsi',
+  DPRD_KAB: 'DPRD Kab/Kota',
+  UNKNOWN: 'Belum Diketahui',
+};
+
+/**
+ * Format 3: Rekapitulasi Berkas Kurang Lembar (Halaman Tidak Lengkap)
+ * Menampilkan rincian berkas yang jumlah halamannya kurang dari standar KPU beserta total kekurangan lembar.
+ */
+export function exportIncompletePagesToExcel(tpsRecords: TPSRecord[]) {
+  const wb = XLSX.utils.book_new();
+
+  interface IncompletePageRow {
+    kecamatan: string;
+    desa: string;
+    tpsNumber: number;
+    tpsLabel: string;
+    electionLabel: string;
+    fileName: string;
+    pageCount: number;
+    expectedPages: number;
+    missingPages: number;
+    fileUrl: string;
+  }
+
+  const items: IncompletePageRow[] = [];
+
+  tpsRecords.forEach((rec) => {
+    rec.files.forEach((f) => {
+      if (f.overrideElection === 'HAPUS' || f.overrideElection === 'IGNORE' || f.isResolved) {
+        return;
+      }
+      const hasIncomplete = f.anomalies?.some((a) => a.type === 'INCOMPLETE_PAGES');
+      if (!hasIncomplete || f.pageCount === undefined || f.expectedPages === undefined) {
+        return;
+      }
+      const missing = Math.max(0, f.expectedPages - f.pageCount);
+      if (missing <= 0) return;
+
+      const elecKey =
+        f.overrideElection &&
+        f.overrideElection !== 'SUDAH_DIBENARKAN'
+          ? f.overrideElection
+          : f.detectedElection;
+
+      items.push({
+        kecamatan: rec.kecamatan,
+        desa: rec.desa,
+        tpsNumber: rec.tpsNumber,
+        tpsLabel: `TPS ${String(rec.tpsNumber).padStart(2, '0')}`,
+        electionLabel: ELECTION_LABELS[elecKey] || elecKey,
+        fileName: f.name,
+        pageCount: f.pageCount,
+        expectedPages: f.expectedPages,
+        missingPages: missing,
+        fileUrl: f.url || rec.tpsFolderUrl || '',
+      });
+    });
+  });
+
+  items.sort((a, b) => {
+    const kecCmp = a.kecamatan.localeCompare(b.kecamatan);
+    if (kecCmp !== 0) return kecCmp;
+    const desaCmp = a.desa.localeCompare(b.desa);
+    if (desaCmp !== 0) return desaCmp;
+    if (a.tpsNumber !== b.tpsNumber) return a.tpsNumber - b.tpsNumber;
+    return a.electionLabel.localeCompare(b.electionLabel);
+  });
+
+  // ==========================================
+  // SHEET 1: REKAP KURANG LEMBAR (DETAIL)
+  // ==========================================
+  const detailRows: any[][] = [
+    [
+      'NO',
+      'KECAMATAN',
+      'DESA',
+      'TPS',
+      'JENIS PEMILIHAN',
+      'NAMA FILE',
+      'HALAMAN TERDETEKSI',
+      'STANDAR HALAMAN',
+      'KEKURANGAN (LEMBAR)',
+      'LINK FILE GOOGLE DRIVE',
+    ],
+  ];
+
+  let sumActual = 0;
+  let sumExpected = 0;
+  let sumMissing = 0;
+
+  items.forEach((item, idx) => {
+    sumActual += item.pageCount;
+    sumExpected += item.expectedPages;
+    sumMissing += item.missingPages;
+
+    detailRows.push([
+      idx + 1,
+      item.kecamatan,
+      item.desa,
+      item.tpsLabel,
+      item.electionLabel,
+      item.fileName,
+      item.pageCount,
+      item.expectedPages,
+      item.missingPages,
+      item.fileUrl || '-',
+    ]);
+  });
+
+  detailRows.push([
+    '',
+    'TOTAL KESELURUHAN',
+    `${items.length} Berkas Kurang Lembar`,
+    '',
+    '',
+    '',
+    sumActual,
+    sumExpected,
+    sumMissing,
+    '',
+  ]);
+
+  const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
+
+  const detailCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  detailCols.forEach((col) => {
+    if (wsDetail[`${col}1`]) wsDetail[`${col}1`].s = STYLE_HEADER_MAROON;
+  });
+
+  items.forEach((item, idx) => {
+    const rowNum = idx + 2;
+    if (wsDetail[`A${rowNum}`]) wsDetail[`A${rowNum}`].s = STYLE_NO_DESA;
+    if (wsDetail[`B${rowNum}`]) wsDetail[`B${rowNum}`].s = STYLE_DESA_NAME;
+    if (wsDetail[`C${rowNum}`]) wsDetail[`C${rowNum}`].s = STYLE_DESA_NAME;
+    if (wsDetail[`D${rowNum}`]) wsDetail[`D${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsDetail[`E${rowNum}`]) wsDetail[`E${rowNum}`].s = STYLE_NORMAL;
+    if (wsDetail[`F${rowNum}`]) wsDetail[`F${rowNum}`].s = STYLE_DESA_NAME;
+    if (wsDetail[`G${rowNum}`]) wsDetail[`G${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsDetail[`H${rowNum}`]) wsDetail[`H${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsDetail[`I${rowNum}`]) wsDetail[`I${rowNum}`].s = STYLE_ANOMALY;
+
+    if (item.fileUrl) {
+      const safeLabel = item.fileName.replace(/"/g, "'");
+      wsDetail[`J${rowNum}`] = {
+        t: 's',
+        v: item.fileName,
+        f: `HYPERLINK("${item.fileUrl}", "${safeLabel}")`,
+        l: { Target: item.fileUrl, Tooltip: `Buka ${item.fileName}` },
+        s: STYLE_DRIVE_LINK,
+      };
+    } else if (wsDetail[`J${rowNum}`]) {
+      wsDetail[`J${rowNum}`].s = STYLE_NORMAL;
+    }
+  });
+
+  const totalRowNum = items.length + 2;
+  detailCols.forEach((col) => {
+    if (wsDetail[`${col}${totalRowNum}`]) {
+      wsDetail[`${col}${totalRowNum}`].s = STYLE_TOTAL_ROW;
+    }
+  });
+
+  wsDetail['!cols'] = [
+    { wch: 6 },  // A: NO
+    { wch: 18 }, // B: KECAMATAN
+    { wch: 22 }, // C: DESA
+    { wch: 10 }, // D: TPS
+    { wch: 18 }, // E: JENIS PEMILIHAN
+    { wch: 38 }, // F: NAMA FILE
+    { wch: 20 }, // G: HALAMAN TERDETEKSI
+    { wch: 18 }, // H: STANDAR HALAMAN
+    { wch: 22 }, // I: KEKURANGAN (LEMBAR)
+    { wch: 36 }, // J: LINK FILE GOOGLE DRIVE
+  ];
+  wsDetail['!autofilter'] = { ref: `A1:J${items.length + 1}` };
+  XLSX.utils.book_append_sheet(wb, wsDetail, 'REKAP KURANG LEMBAR');
+
+  // ==========================================
+  // SHEET 2: RINGKASAN PER KECAMATAN
+  // ==========================================
+  const kecMap = new Map<
+    string,
+    {
+      tpsSet: Set<string>;
+      fileCount: number;
+      actualPages: number;
+      expectedPages: number;
+      missingPages: number;
+    }
+  >();
+
+  items.forEach((item) => {
+    let entry = kecMap.get(item.kecamatan);
+    if (!entry) {
+      entry = {
+        tpsSet: new Set(),
+        fileCount: 0,
+        actualPages: 0,
+        expectedPages: 0,
+        missingPages: 0,
+      };
+      kecMap.set(item.kecamatan, entry);
+    }
+    entry.tpsSet.add(`${item.desa}|${item.tpsNumber}`);
+    entry.fileCount++;
+    entry.actualPages += item.pageCount;
+    entry.expectedPages += item.expectedPages;
+    entry.missingPages += item.missingPages;
+  });
+
+  const kecRows: any[][] = [
+    [
+      'NO',
+      'KECAMATAN',
+      'JUMLAH TPS TERDAMPAK',
+      'BERKAS KURANG LEMBAR',
+      'TOTAL HALAMAN TERDETEKSI',
+      'TOTAL STANDAR HALAMAN',
+      'TOTAL KEKURANGAN (LEMBAR)',
+    ],
+  ];
+
+  const sortedKecs = Array.from(kecMap.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0])
+  );
+
+  let totalTpsTerdampak = 0;
+  sortedKecs.forEach(([kecName, data], idx) => {
+    totalTpsTerdampak += data.tpsSet.size;
+    kecRows.push([
+      idx + 1,
+      kecName,
+      data.tpsSet.size,
+      data.fileCount,
+      data.actualPages,
+      data.expectedPages,
+      data.missingPages,
+    ]);
+  });
+
+  kecRows.push([
+    '',
+    'TOTAL KABUPATEN SEKADAU',
+    totalTpsTerdampak,
+    items.length,
+    sumActual,
+    sumExpected,
+    sumMissing,
+  ]);
+
+  const wsKec = XLSX.utils.aoa_to_sheet(kecRows);
+  const kecCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+  kecCols.forEach((col) => {
+    if (wsKec[`${col}1`]) wsKec[`${col}1`].s = STYLE_HEADER_MAROON;
+  });
+
+  sortedKecs.forEach((_, idx) => {
+    const rowNum = idx + 2;
+    if (wsKec[`A${rowNum}`]) wsKec[`A${rowNum}`].s = STYLE_NO_DESA;
+    if (wsKec[`B${rowNum}`]) wsKec[`B${rowNum}`].s = STYLE_DESA_NAME;
+    if (wsKec[`C${rowNum}`]) wsKec[`C${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsKec[`D${rowNum}`]) wsKec[`D${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsKec[`E${rowNum}`]) wsKec[`E${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsKec[`F${rowNum}`]) wsKec[`F${rowNum}`].s = STYLE_TPS_NUM;
+    if (wsKec[`G${rowNum}`]) wsKec[`G${rowNum}`].s = STYLE_ANOMALY;
+  });
+
+  const kecTotalRow = sortedKecs.length + 2;
+  kecCols.forEach((col) => {
+    if (wsKec[`${col}${kecTotalRow}`]) {
+      wsKec[`${col}${kecTotalRow}`].s = STYLE_TOTAL_ROW;
+    }
+  });
+
+  wsKec['!cols'] = [
+    { wch: 6 },
+    { wch: 24 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 24 },
+    { wch: 22 },
+    { wch: 26 },
+  ];
+  XLSX.utils.book_append_sheet(wb, wsKec, 'RINGKASAN KECAMATAN');
+
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `REKAP_BERKAS_KURANG_LEMBAR_SEKADAU_${today}.xlsx`);
+}
+
+

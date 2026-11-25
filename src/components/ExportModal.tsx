@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FileSpreadsheet, Send, X, ExternalLink, Table } from 'lucide-react';
+import { FileSpreadsheet, Send, X, ExternalLink, Table, FileWarning } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 interface ExportModalProps {
@@ -7,7 +7,10 @@ interface ExportModalProps {
   onClose: () => void;
   onExportFull: () => void;
   onExportProvinsi: () => void;
+  onExportIncompletePages: () => void;
   totalTPS: number;
+  incompletePagesFileCount?: number;
+  incompletePagesTotalMissing?: number;
 }
 
 export function ExportModal({
@@ -15,7 +18,10 @@ export function ExportModal({
   onClose,
   onExportFull,
   onExportProvinsi,
+  onExportIncompletePages,
   totalTPS,
+  incompletePagesFileCount = 0,
+  incompletePagesTotalMissing = 0,
 }: ExportModalProps) {
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
@@ -112,6 +118,36 @@ export function ExportModal({
                 </div>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                   Kolom ringkas: <span className="font-semibold text-slate-700">Kecamatan, Desa, TPS, dan Link Folder Drive</span>. Siap langsung dicopy dan di-insert ke Google Spreadsheet Provinsi.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Opsi 3: Rekap Berkas Kurang Lembar */}
+          <motion.div
+            whileHover={{ scale: 1.01, y: -2 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => {
+              onExportIncompletePages();
+              onClose();
+            }}
+            className="p-4 rounded-2xl bg-white border border-rose-200/90 hover:border-rose-400 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-200/60 group-hover:bg-rose-600 group-hover:text-white transition-colors shrink-0">
+                <FileWarning className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <h4 className="text-sm font-black text-slate-900 group-hover:text-rose-700 transition-colors">
+                    3. Rekap Berkas Kurang Lembar
+                  </h4>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                    {incompletePagesFileCount.toLocaleString('id-ID')} Berkas • -{incompletePagesTotalMissing.toLocaleString('id-ID')} Hal
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Rincian berkas yang jumlah halamannya kurang dari standar (3/4/20 hal), lengkap dengan <span className="font-semibold text-slate-700">jumlah kekurangan lembar</span>, ringkasan per kecamatan, dan link file Drive.
                 </p>
               </div>
             </div>

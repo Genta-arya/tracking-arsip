@@ -13,10 +13,12 @@ import {
   Clock,
   RotateCcw,
   Trash2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TPSRecord, ScannedFile, AnomalyItem, AnomalyType, OverrideElectionType } from '@/types';
+import { exportIncompletePagesToExcel } from '@/utils/excelExport';
 
 interface DailyAnomalyTable3DProps {
   records: TPSRecord[];
@@ -368,8 +370,19 @@ export function DailyAnomalyTable3D({
           </div>
         </div>
 
-        {/* Action Toggle Collapse / Expand */}
-        <div className="flex items-center gap-2 ml-auto">
+        {/* Action Export Kurang Lembar & Toggle Collapse / Expand */}
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {stats.incompletePagesCount > 0 && (
+            <button
+              type="button"
+              onClick={() => exportIncompletePagesToExcel(records)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-rose-900 bg-gradient-to-b from-rose-100 to-rose-200/90 hover:from-rose-200 hover:to-rose-300/90 border border-rose-300/80 rounded-xl shadow-[0_2px_5px_rgba(225,29,72,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] active:translate-y-0.5 transition-all cursor-pointer"
+              title="Download Rekap Excel Berkas Kurang Lembar & Jumlah Kekurangan"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-rose-700" />
+              <span>Export Kurang Lembar ({stats.incompletePagesCount})</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsCollapsed((prev) => !prev)}

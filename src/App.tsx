@@ -23,7 +23,7 @@ import {
   processRawTps,
   naturalSortTpsComparator,
 } from '@/utils/parser';
-import { exportToExcel, exportToProvinsiSpreadsheet } from '@/utils/excelExport';
+import { exportToExcel, exportToProvinsiSpreadsheet, exportIncompletePagesToExcel } from '@/utils/excelExport';
 import { ExportModal } from '@/components/ExportModal';
 import {
   loadStoredRawData,
@@ -512,6 +512,31 @@ export function App() {
     exportToProvinsiSpreadsheet(processedRecords);
   };
 
+  const handleExportIncompletePages = () => {
+    exportIncompletePagesToExcel(processedRecords);
+  };
+
+  const incompletePagesStats = useMemo(() => {
+    let fileCount = 0;
+    let totalMissing = 0;
+    processedRecords.forEach((rec) => {
+      rec.files.forEach((f) => {
+        if (f.overrideElection === 'HAPUS' || f.overrideElection === 'IGNORE' || f.isResolved) {
+          return;
+        }
+        const hasIncomplete = f.anomalies?.some((a) => a.type === 'INCOMPLETE_PAGES');
+        if (hasIncomplete && f.pageCount !== undefined && f.expectedPages !== undefined) {
+          const missing = Math.max(0, f.expectedPages - f.pageCount);
+          if (missing > 0) {
+            fileCount++;
+            totalMissing += missing;
+          }
+        }
+      });
+    });
+    return { fileCount, totalMissing };
+  }, [processedRecords]);
+
   // Handler Logout / Kunci Akses
   const handleLogout = async () => {
     await logoutUser();
@@ -863,13 +888,16 @@ export function App() {
         currentRawData={rawData}
       />
 
-      {/* Modal Pemilihan Format Unduh Excel (Lengkap vs Provinsi) */}
+      {/* Modal Pemilihan Format Unduh Excel (Lengkap vs Provinsi vs Kurang Lembar) */}
       <ExportModal
         open={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         onExportFull={handleExportFull}
         onExportProvinsi={handleExportProvinsi}
+        onExportIncompletePages={handleExportIncompletePages}
         totalTPS={processedRecords.length}
+        incompletePagesFileCount={incompletePagesStats.fileCount}
+        incompletePagesTotalMissing={incompletePagesStats.totalMissing}
       />
 
       {/* 5. Floating Widget Status Waktu Terakhir Sinkronisasi Drive (Bisa dibuka/dikecilkan) */}
