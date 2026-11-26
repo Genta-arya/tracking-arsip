@@ -159,8 +159,38 @@ export async function saveKecamatanScanToFirestore(
   const cleanTpsList = JSON.parse(JSON.stringify(tpsList));
   const user=auth.currentUser;
   await runTransaction(db,async tx=>{
-    const lease=await tx.get(doc(db,'app_config','drive_scan_lock'));
+    const [lease, existingSnap] = await Promise.all([
+      tx.get(doc(db,'app_config','drive_scan_lock')),
+      tx.get(docRef),
+    ]);
     if(!lease.data()?.active || lease.data()?.token!==scanToken)throw new Error('Scan telah beralih ke perangkat lain. Data sesi lama tidak disimpan.');
+
+    // Pertahankan pageCount hasil scan VPS agar tidak terhapus oleh sinkronisasi metadata Drive dari browser
+    const existingPageCounts = new Map<string, { pageCount: number; size?: number; updatedAt?: string }>();
+    const existingTpsList = existingSnap.data()?.tpsList;
+    if (Array.isArray(existingTpsList)) {
+      for (const tps of existingTpsList) {
+        if (!Array.isArray(tps?.files)) continue;
+        for (const f of tps.files) {
+          if (f?.id && typeof f.pageCount === 'number') {
+            existingPageCounts.set(f.id, { pageCount: f.pageCount, size: f.size, updatedAt: f.updatedAt });
+          }
+        }
+      }
+    }
+
+    for (const tps of cleanTpsList as RawTpsData[]) {
+      if (!Array.isArray(tps?.files)) continue;
+      for (const f of tps.files) {
+        if (f.pageCount === undefined && existingPageCounts.has(f.id)) {
+          const prev = existingPageCounts.get(f.id)!;
+          if (!prev.size || !f.size || prev.size === f.size) {
+            f.pageCount = prev.pageCount;
+          }
+        }
+      }
+    }
+
     const now=new Date().toISOString();
     tx.set(docRef,{kecamatan:cleanKecName,tpsList:cleanTpsList,tpsCount:cleanTpsList.length,updatedAt:now,updatedBy:user.email || DEFAULT_AUTH_EMAIL});
     tx.set(doc(db,'app_config','sync_metadata'),{lastSyncedAt:now,lastSyncedKecamatan:cleanKecName,lastSyncedBy:user.email || DEFAULT_AUTH_EMAIL},{merge:true});
