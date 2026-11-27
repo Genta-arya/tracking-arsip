@@ -3,6 +3,7 @@ import {
   ELECTION_PAGE_COUNTS,
   type ContentIssueSubCategory,
   type ElectionType,
+  type GlobalStats,
   type ScannedFile,
   type TPSRecord,
 } from '../types/index.ts';
@@ -208,6 +209,86 @@ export function computeScreeningAuditSummary(records: readonly TPSRecord[]): Scr
       items: incompleteItems,
     },
   };
+}
+
+export interface FileBreakdownSegment {
+  key: 'CONTENT_ISSUE' | 'INCOMPLETE_PAGES' | 'OTHER_ANOMALY' | 'MISSING_SLOTS';
+  label: string;
+  count: number;
+  textClass: string;
+}
+
+/**
+ * Mengembalikan rincian kategori bermasalah (Isi, Kurang Halaman, Lainnya, Belum Ada)
+ * agar kartu KPI langsung memperjelas asal total anomali dan selisih slot.
+ */
+export function getFileStatusBreakdownSegments(
+  stats: Pick<
+    GlobalStats,
+    | 'contentIssueFilesCount'
+    | 'incompletePageFilesCount'
+    | 'otherAnomalyFilesCount'
+    | 'missingSlotsCount'
+  >
+): FileBreakdownSegment[] {
+  const segments: FileBreakdownSegment[] = [];
+  if ((stats.contentIssueFilesCount ?? 0) > 0) {
+    segments.push({
+      key: 'CONTENT_ISSUE',
+      label: `${stats.contentIssueFilesCount} Bermasalah Isi`,
+      count: stats.contentIssueFilesCount!,
+      textClass: 'text-indigo-700',
+    });
+  }
+  if ((stats.incompletePageFilesCount ?? 0) > 0) {
+    segments.push({
+      key: 'INCOMPLETE_PAGES',
+      label: `${stats.incompletePageFilesCount} Kurang Hal.`,
+      count: stats.incompletePageFilesCount!,
+      textClass: 'text-rose-700',
+    });
+  }
+  if ((stats.otherAnomalyFilesCount ?? 0) > 0) {
+    segments.push({
+      key: 'OTHER_ANOMALY',
+      label: `${stats.otherAnomalyFilesCount} Nama/Lainnya`,
+      count: stats.otherAnomalyFilesCount!,
+      textClass: 'text-amber-700',
+    });
+  }
+  if ((stats.missingSlotsCount ?? 0) > 0) {
+    segments.push({
+      key: 'MISSING_SLOTS',
+      label: `${stats.missingSlotsCount} Belum Ada`,
+      count: stats.missingSlotsCount!,
+      textClass: 'text-orange-700',
+    });
+  }
+  return segments;
+}
+
+export function formatFileCardSubtitle(
+  stats: Pick<
+    GlobalStats,
+    | 'validFilesCount'
+    | 'totalFilesCollected'
+    | 'anomalyFilesCount'
+    | 'contentIssueFilesCount'
+    | 'incompletePageFilesCount'
+    | 'otherAnomalyFilesCount'
+    | 'missingSlotsCount'
+  >
+): string {
+  const valid = (stats.validFilesCount ?? stats.totalFilesCollected).toLocaleString('id-ID');
+  const anomaly = (stats.anomalyFilesCount ?? 0).toLocaleString('id-ID');
+  const segs = getFileStatusBreakdownSegments(stats);
+  if (segs.length === 0) {
+    return `${valid} Berkas Sah • ${anomaly} Anomali`;
+  }
+  const anomParts = segs.filter((s) => s.key !== 'MISSING_SLOTS').map((s) => s.label);
+  const missingPart = segs.find((s) => s.key === 'MISSING_SLOTS')?.label;
+  const anomDetail = anomParts.length > 0 ? ` (${anomParts.join(' + ')})` : '';
+  return `${valid} Sah • ${anomaly} Anomali${anomDetail}${missingPart ? ` • ${missingPart}` : ''}`;
 }
 
 export { ELECTION_PAGE_COUNTS };

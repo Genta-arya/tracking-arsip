@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { GlobalStats } from '@/types';
+import { formatFileCardSubtitle } from '@/utils/screeningSummary';
 
 interface MobileStackCards3DProps {
   stats: GlobalStats;
@@ -74,7 +75,7 @@ export function MobileStackCards3D({ stats }: MobileStackCards3DProps) {
       title: 'TOTAL BERKAS C-HASIL',
       value: stats.totalFilesCollected,
       unit: `/ ${stats.expectedFilesTotal.toLocaleString('id-ID')}`,
-      subtitle: `${stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • ${stats.anomalyFilesCount ?? 0} Anomali`,
+      subtitle: formatFileCardSubtitle(stats),
       icon: FileCheck,
       borderColor: 'border-l-kpu-gold',
       glowColor: 'rgba(255, 191, 0, 0.28)',

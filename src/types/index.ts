@@ -141,6 +141,10 @@ export interface GlobalStats {
   completionPercentage: number;
   validFilesCount: number;     // Jumlah berkas fisik yang sah (totalPhysicalFiles - anomalyFilesCount)
   anomalyFilesCount: number;   // Jumlah berkas anomali / belum dikenali
+  contentIssueFilesCount?: number;    // Sub-bagian anomali: berkas bermasalah isi
+  incompletePageFilesCount?: number;  // Sub-bagian anomali: berkas kurang halaman
+  otherAnomalyFilesCount?: number;    // Sub-bagian anomali: format/TPS/desa/duplikat
+  missingSlotsCount?: number;         // Total slot pemilihan yang belum ada berkas
   resolvedFilesCount?: number; // Jumlah berkas yang telah dikoreksi/di-resolve oleh admin
 }
 

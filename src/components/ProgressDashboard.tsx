@@ -33,7 +33,10 @@ import { KecamatanRanking3D } from '@/components/KecamatanRanking3D';
 import { ElectionBreakdown3D } from '@/components/ElectionBreakdown3D';
 import { UploaderLeaderboard3D } from '@/components/UploaderLeaderboard3D';
 import { ScreeningAuditDeck3D } from '@/components/ScreeningAuditDeck3D';
-import { ScreeningAuditSummary } from '@/utils/screeningSummary';
+import {
+  ScreeningAuditSummary,
+  getFileStatusBreakdownSegments,
+} from '@/utils/screeningSummary';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
@@ -301,8 +304,23 @@ export function ProgressDashboard({
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium">
-                  {stats.validFilesCount ?? stats.totalFilesCollected} Berkas Sah • {stats.anomalyFilesCount ?? 0} Anomali
+                  {(stats.validFilesCount ?? stats.totalFilesCollected).toLocaleString('id-ID')} Berkas Sah •{' '}
+                  {(stats.anomalyFilesCount ?? 0).toLocaleString('id-ID')} Anomali
                 </p>
+                {(() => {
+                  const breakdown = getFileStatusBreakdownSegments(stats);
+                  if (breakdown.length === 0) return null;
+                  return (
+                    <p className="text-[10.5px] font-bold text-slate-500 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-tight pt-0.5">
+                      {breakdown.map((seg, i) => (
+                        <span key={seg.key} className="inline-flex items-center gap-1">
+                          {i > 0 && <span className="text-slate-300">•</span>}
+                          <span className={seg.textClass}>{seg.label}</span>
+                        </span>
+                      ))}
+                    </p>
+                  );
+                })()}
               </div>
               <motion.div
                 style={{ transform: 'translateZ(35px)' }}

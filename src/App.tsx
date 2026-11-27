@@ -376,19 +376,30 @@ export function App() {
     let validSlotFiles = 0;
     let totalPhysicalFiles = 0;
     let anomalyFilesCount = 0;
+    let contentIssueFilesCount = 0;
+    let incompletePageFilesCount = 0;
+    let otherAnomalyFilesCount = 0;
+    let missingSlotsCount = 0;
     let resolvedFilesCount = 0;
 
     processedRecords.forEach((r) => {
       validSlotFiles += r.completedCount;
+      missingSlotsCount += Math.max(0, 5 - r.completedCount);
       // Hanya hitung file yang aktif (bukan HAPUS/IGNORE) agar tidak memicu anomali palsu di card progress
       const activeFiles = r.files.filter(
         (f) => f.overrideElection !== 'HAPUS' && f.overrideElection !== 'IGNORE'
       );
       totalPhysicalFiles += activeFiles.length;
-      // Hitung berkas anomali aktif dan berkas yang sudah di-resolve
+      // Hitung berkas anomali aktif (serta breakdown jenisnya) dan berkas yang sudah di-resolve
       activeFiles.forEach((f) => {
-        if (f.anomalies && f.anomalies.length > 0 && !f.isResolved) {
+        const activeAnoms = f.anomalies && !f.isResolved ? f.anomalies : [];
+        if (activeAnoms.length > 0) {
           anomalyFilesCount++;
+          const hasContentIssue = activeAnoms.some((a) => a.type === 'CONTENT_ISSUE');
+          const hasIncompletePages = activeAnoms.some((a) => a.type === 'INCOMPLETE_PAGES');
+          if (hasContentIssue) contentIssueFilesCount++;
+          if (hasIncompletePages) incompletePageFilesCount++;
+          if (!hasContentIssue && !hasIncompletePages) otherAnomalyFilesCount++;
         }
         if (f.isResolved || (f.overrideElection && f.overrideElection !== 'IGNORE')) {
           resolvedFilesCount++;
@@ -420,6 +431,10 @@ export function App() {
       completionPercentage,
       validFilesCount: validPhysicalFiles,     // Berkas fisik sah (totalPhysicalFiles - anomalyFilesCount) sehingga pas dengan total berkas
       anomalyFilesCount,                       // Berkas dengan anomali aktif (belum di-resolve), konsisten dengan tabel rekapitulasi
+      contentIssueFilesCount,
+      incompletePageFilesCount,
+      otherAnomalyFilesCount,
+      missingSlotsCount,
       resolvedFilesCount,                      // Berkas yang sudah dikoreksi/di-resolve oleh admin
     };
   }, [processedRecords, kecamatanList]);

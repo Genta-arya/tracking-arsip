@@ -59,7 +59,11 @@ function loadTs(relOrAbsPath, mocks = {}) {
 
 const { SCREENING_CONTENT_ISSUES } = loadTs('src/data/screeningContentIssues.ts');
 const { processRawTps } = loadTs('src/utils/parser.ts');
-const { computeScreeningAuditSummary } = loadTs('src/utils/screeningSummary.ts');
+const {
+  computeScreeningAuditSummary,
+  getFileStatusBreakdownSegments,
+  formatFileCardSubtitle,
+} = loadTs('src/utils/screeningSummary.ts');
 
 test('screening content issue catalog defines exact 17 unique items (9+3+2+3)', () => {
   assert.equal(SCREENING_CONTENT_ISSUES.length, 17);
@@ -290,4 +294,24 @@ test('computeScreeningAuditSummary accurately totals 17 Bermasalah Isi, 41 Belum
   );
   assert.match(anomalyMarkup, /106(?:<!-- -->)?\s+Berkas Perlu Peninjauan/);
   assert.match(anomalyMarkup, /Export Kurang Lembar \(89\)/);
+
+  const sampleStats = {
+    totalFilesCollected: 3449,
+    validFilesCount: 3343,
+    anomalyFilesCount: 106,
+    contentIssueFilesCount: 17,
+    incompletePageFilesCount: 89,
+    otherAnomalyFilesCount: 0,
+    missingSlotsCount: 41,
+  };
+  assert.equal(
+    getFileStatusBreakdownSegments(sampleStats)
+      .map((s) => s.label)
+      .join(' | '),
+    '17 Bermasalah Isi | 89 Kurang Hal. | 41 Belum Ada'
+  );
+  assert.equal(
+    formatFileCardSubtitle(sampleStats),
+    '3.343 Sah • 106 Anomali (17 Bermasalah Isi + 89 Kurang Hal.) • 41 Belum Ada'
+  );
 });
