@@ -7,6 +7,7 @@ import type {
 } from '../types/index.ts';
 import { ELECTION_PAGE_COUNTS } from '../types/index.ts';
 import { MOCK_DESA_MAP } from '../data/mockSekadauData.ts';
+import { getActiveContentIssue, formatContentIssueMessage } from '../data/screeningContentIssues.ts';
 
 /**
  * Membersihkan ekstensi file dan karakter non-esensial untuk parsing
@@ -372,13 +373,17 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       return;
     }
 
-    // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (termasuk SUDAH_DIBENARKAN):
-    const isFileResolved = Boolean(file.isResolved || (file.overrideElection && file.overrideElection !== 'IGNORE'));
+    // Jika file sudah diperbaiki / ditetapkan oleh admin teknis (termasuk SUDAH_DIBENARKAN),
+    // hormati status eksplisit isResolved=false agar reset anomali tetap memunculkan masalah halaman/isi.
+    const isFileResolved =
+      typeof file.isResolved === 'boolean'
+        ? file.isResolved
+        : Boolean(file.overrideElection && file.overrideElection !== 'IGNORE');
 
+    if (file.overrideElection && file.overrideElection !== 'IGNORE' && file.overrideElection !== 'SUDAH_DIBENARKAN') {
+      finalElection = file.overrideElection as ElectionType;
+    }
     if (isFileResolved) {
-      if (file.overrideElection && file.overrideElection !== 'IGNORE' && file.overrideElection !== 'SUDAH_DIBENARKAN') {
-        finalElection = file.overrideElection as ElectionType;
-      }
       // Hapus seluruh anomali format/penamaan/duplikat karena sudah divalidasi dan diperbaiki oleh admin
       finalAnomalies = [];
     }
@@ -398,6 +403,21 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       finalAnomalies.push(pageAnomaly);
     }
 
+    const activeContentIssue = getActiveContentIssue({
+      id: file.id,
+      size: file.size,
+      pageCount: detectedPageCount ?? file.pageCount,
+      overrideElection: file.overrideElection,
+      isResolved: isFileResolved,
+    });
+    if (activeContentIssue) {
+      finalAnomalies.push({
+        type: 'CONTENT_ISSUE',
+        message: formatContentIssueMessage(activeContentIssue),
+        fileName: file.name,
+      });
+    }
+
     const scannedFile: ScannedFile = {
       id: file.id,
       name: file.name,
@@ -411,6 +431,8 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
       pageCount: detectedPageCount ?? expectedPages,
       expectedPages,
       isPageIncomplete,
+      isContentIssue: Boolean(activeContentIssue),
+      contentIssueSubCategory: activeContentIssue?.subCategory,
       overrideElection: file.overrideElection,
       isResolved: isFileResolved,
       resolutionNote: file.resolutionNote,
@@ -529,6 +551,7 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
 
   // hasIncompletePages HANYA true jika ada berkas terunggah yang nyata-nyata terdeteksi kurang halaman
   const hasIncompletePages = scannedFiles.some((f) => Boolean(f.isPageIncomplete && !f.isResolved));
+  const hasContentIssue = scannedFiles.some((f) => Boolean(f.isContentIssue && !f.isResolved));
 
   // Hitung total halaman terarsip jika berkas terdata
   let scannedPages = 0;
@@ -565,6 +588,7 @@ export function processRawTps(raw: RawTpsData): TPSRecord {
     anomalies: tpsAnomalies,
     scannedPages,
     hasIncompletePages,
+    hasContentIssue,
   };
 }
 

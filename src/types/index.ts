@@ -32,13 +32,20 @@ export const ELECTION_PAGE_COUNTS: Record<ElectionType, number> = {
 
 export const TOTAL_TPS_PAGES = 67; // 3 + 4 + 20 + 20 + 20
 
+export type ContentIssueSubCategory =
+  | 'HALAMAN_DOUBLE_PAS'
+  | 'GABUNG_2_TPS'
+  | 'EXTRA_SCAN_RUSAK'
+  | 'HALAMAN_GELAP_KOSONG';
+
 export type AnomalyType = 
   | 'MISMATCH_TPS' 
   | 'MISMATCH_DESA' 
   | 'DUPLICATE' 
   | 'UNKNOWN_FORMAT' 
   | 'DPRD_AMBIGUOUS'
-  | 'INCOMPLETE_PAGES';
+  | 'INCOMPLETE_PAGES'
+  | 'CONTENT_ISSUE';
 
 export interface AnomalyItem {
   type: AnomalyType;
@@ -70,6 +77,8 @@ export interface ScannedFile extends RawFileItem {
   pageCount?: number;
   expectedPages?: number;
   isPageIncomplete?: boolean;
+  isContentIssue?: boolean;
+  contentIssueSubCategory?: ContentIssueSubCategory;
 }
 
 export interface RawTpsData {
@@ -101,6 +110,7 @@ export interface TPSRecord {
   anomalies: AnomalyItem[];
   scannedPages?: number; // Total lembar/halaman fisik yang sudah terkumpul
   hasIncompletePages?: boolean; // True jika ada berkas yang kurang halaman atau berkas belum lengkap
+  hasContentIssue?: boolean; // True jika ada berkas bermasalah isi (double pas, gabung 2 TPS, scan gagal, gelap/kosong)
 }
 
 export interface KecamatanSummary {
@@ -139,6 +149,7 @@ export type StatusFilterOption =
   | 'COMPLETE' 
   | 'INCOMPLETE' 
   | 'INCOMPLETE_PAGES' 
+  | 'CONTENT_ISSUE'
   | 'PARTIAL' 
   | 'EMPTY' 
   | 'ANOMALY' 

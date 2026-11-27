@@ -1,5 +1,5 @@
 import { withDriveScan, driveScanToken, ensureDriveScanOwned } from './driveScanLock';
-import { RawTpsData } from '@/types';
+import { RawFileItem, RawTpsData } from '@/types';
 import { fetchKecamatanList, scanKecamatanFolder, quickScanRecentFiles } from './driveService';
 import {
   fetchAllFileOverrides,
@@ -14,6 +14,72 @@ export interface SyncProgressCallback {
 export interface SyncResult {
   updatedRawData: RawTpsData[];
   errors: string[];
+}
+
+export interface StoredPageCountEntry {
+  pageCount: number;
+  size?: number;
+}
+
+/**
+ * Indeks jumlah halaman hasil scan agar sinkronisasi metadata Drive tidak menghapus pageCount
+ * selama ukuran berkas di Drive belum berubah.
+ */
+export function buildPageCountLookup(rawData: RawTpsData[]): Map<string, StoredPageCountEntry> {
+  const lookup = new Map<string, StoredPageCountEntry>();
+  for (const tps of rawData) {
+    for (const f of tps.files) {
+      if (f?.id && typeof f.pageCount === 'number') {
+        lookup.set(f.id, { pageCount: f.pageCount, size: f.size });
+      }
+    }
+  }
+  return lookup;
+}
+
+/**
+ * Menggabungkan override anomali dan pageCount sebelumnya ke hasil scan kecamatan terbaru.
+ */
+export function mergeScannedKecamatanState(
+  kecamatanName: string,
+  scannedKecData: RawTpsData[],
+  overrides: Map<string, RawFileItem & { kecamatan?: string }>,
+  pageCountLookup: Map<string, StoredPageCountEntry>
+): RawTpsData[] {
+  scannedKecData.forEach((tps) => {
+    tps.files.forEach((f) => {
+      if (f.pageCount === undefined && pageCountLookup.has(f.id)) {
+        const prev = pageCountLookup.get(f.id)!;
+        if (!prev.size || !f.size || prev.size === f.size) {
+          f.pageCount = prev.pageCount;
+        }
+      }
+
+      const savedOverride = overrides.get(f.id);
+      if (savedOverride) {
+        if (savedOverride.overrideElection === 'SUDAH_DIBENARKAN') {
+          deleteFileOverride(f.id).catch(() => {});
+          return;
+        }
+        f.overrideElection = savedOverride.overrideElection;
+        f.isResolved = savedOverride.isResolved;
+        f.resolutionNote = savedOverride.resolutionNote;
+        f.resolvedAt = savedOverride.resolvedAt;
+        f.resolvedBy = savedOverride.resolvedBy;
+      }
+    });
+  });
+
+  for (const [fId, ov] of overrides.entries()) {
+    if (
+      ov.overrideElection === 'SUDAH_DIBENARKAN' &&
+      ov.kecamatan?.toLowerCase() === kecamatanName.toLowerCase()
+    ) {
+      deleteFileOverride(fId).catch(() => {});
+    }
+  }
+
+  return scannedKecData;
 }
 
 /**
@@ -38,7 +104,8 @@ async function fullDriveSync(
     throw new Error('Tidak ditemukan folder kecamatan di dalam root folder Google Drive.');
   }
 
-  // 2. Ambil seluruh riwayat override anomali (termasuk status Hapus & Verifikasi) dari Firestore
+  // 2. Ambil seluruh riwayat override anomali & indeks pageCount sebelumnya agar tidak hilang
+  const pageCountLookup = buildPageCountLookup(currentRawData);
   const overrides = await fetchAllFileOverrides();
   currentRawData.forEach((tps) => {
     tps.files.forEach((f) => {
@@ -65,34 +132,8 @@ async function fullDriveSync(
     try {
       const scannedKecData = await scanKecamatanFolder(gasWebAppUrl, kec.id, undefined, ensureDriveScanOwned);
 
-      // Pertahankan status anomali berdasarkan compare file.id
-      scannedKecData.forEach((tps) => {
-        tps.files.forEach((f) => {
-          const savedOverride = overrides.get(f.id);
-          if (savedOverride) {
-            // Jika statusnya SUDAH_DIBENARKAN, lepas status sementara ini agar dievaluasi murni dari Drive terkini
-            if (savedOverride.overrideElection === 'SUDAH_DIBENARKAN') {
-              deleteFileOverride(f.id).catch(() => {});
-              return;
-            }
-            f.overrideElection = savedOverride.overrideElection;
-            f.isResolved = savedOverride.isResolved;
-            f.resolutionNote = savedOverride.resolutionNote;
-            f.resolvedAt = savedOverride.resolvedAt;
-            f.resolvedBy = savedOverride.resolvedBy;
-          }
-        });
-      });
-
-      // Bersihkan file_overrides berstatus SUDAH_DIBENARKAN di kecamatan ini
-      for (const [fId, ov] of overrides.entries()) {
-        if (
-          ov.overrideElection === 'SUDAH_DIBENARKAN' &&
-          ov.kecamatan?.toLowerCase() === kec.name.toLowerCase()
-        ) {
-          deleteFileOverride(fId).catch(() => {});
-        }
-      }
+      // Pertahankan status anomali & pageCount hasil scan sebelumnya
+      mergeScannedKecamatanState(kec.name, scannedKecData, overrides, pageCountLookup);
 
       // Simpan per kecamatan ke Cloud Firestore
       try {

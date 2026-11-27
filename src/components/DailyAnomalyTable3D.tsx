@@ -108,6 +108,13 @@ const ANOMALY_BADGE_CONFIG: Record<
       'bg-rose-50 text-rose-800 border-rose-300/80 shadow-[0_1px_3px_rgba(225,29,72,0.15)]',
     description: 'Jumlah lembar/halaman pada berkas kurang dari standar resmi',
   },
+  CONTENT_ISSUE: {
+    label: 'Bermasalah Isi',
+    icon: '🧩',
+    badgeClass:
+      'bg-indigo-50 text-indigo-800 border-indigo-300/80 shadow-[0_1px_3px_rgba(99,102,241,0.15)]',
+    description: 'Halaman double pas, gabungan 2 TPS, extra scan gagal/potongan, atau halaman gelap/kosong',
+  },
 };
 
 /**
@@ -261,6 +268,7 @@ export function DailyAnomalyTable3D({
     let duplicateCount = 0;
     let mismatchDesaCount = 0;
     let incompletePagesCount = 0;
+    let contentIssueCount = 0;
     let sudahDibenarkanCount = 0;
 
     allAnomalies.forEach((a) => {
@@ -274,6 +282,7 @@ export function DailyAnomalyTable3D({
         else if (anom.type === 'DUPLICATE') duplicateCount++;
         else if (anom.type === 'MISMATCH_DESA') mismatchDesaCount++;
         else if (anom.type === 'INCOMPLETE_PAGES') incompletePagesCount++;
+        else if (anom.type === 'CONTENT_ISSUE') contentIssueCount++;
       });
     });
 
@@ -285,6 +294,7 @@ export function DailyAnomalyTable3D({
       duplicateCount,
       mismatchDesaCount,
       incompletePagesCount,
+      contentIssueCount,
       sudahDibenarkanCount,
     };
   }, [allAnomalies]);
@@ -415,7 +425,7 @@ export function DailyAnomalyTable3D({
             {/* Summary Metric Strip & Filter Bar */}
             <div className="p-4 sm:p-5 bg-gradient-to-b from-amber-50/30 to-white border-b border-slate-200/80 space-y-4">
               {/* Metric Breakdown Capsules */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSelectedType('UNKNOWN_FORMAT')}
@@ -534,6 +544,26 @@ export function DailyAnomalyTable3D({
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-0.5">Halaman tidak lengkap</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedType('CONTENT_ISSUE')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedType === 'CONTENT_ISSUE'
+                      ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-400/40 shadow-xs'
+                      : 'bg-white hover:bg-indigo-50/50 border-slate-200/90 shadow-2xs'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-indigo-800 flex items-center gap-1">
+                      <span>🧩</span> Bermasalah Isi
+                    </span>
+                    <span className="font-black text-indigo-950 px-1.5 py-0.2 rounded bg-indigo-100 text-[11px]">
+                      {stats.contentIssueCount}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Double / Gabung / Rusak</p>
                 </button>
               </div>
 

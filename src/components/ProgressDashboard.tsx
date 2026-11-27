@@ -32,12 +32,16 @@ import { MobileStackCards3D } from '@/components/MobileStackCards3D';
 import { KecamatanRanking3D } from '@/components/KecamatanRanking3D';
 import { ElectionBreakdown3D } from '@/components/ElectionBreakdown3D';
 import { UploaderLeaderboard3D } from '@/components/UploaderLeaderboard3D';
+import { ScreeningAuditDeck3D } from '@/components/ScreeningAuditDeck3D';
+import { ScreeningAuditSummary } from '@/utils/screeningSummary';
 import { TPSRecord, GlobalStats, KecamatanSummary, ELECTION_LIST, FilterState } from '@/types';
 
 interface ProgressDashboardProps {
   records: TPSRecord[];
   stats: GlobalStats;
   kecamatanSummaries: KecamatanSummary[];
+  screeningSummary: ScreeningAuditSummary;
+  onOpenFileDetail: (record: TPSRecord, initialFileId?: string) => void;
   onNavigateToRekap: (filterUpdate?: Partial<FilterState>) => void;
   isDemoMode?: boolean;
 }
@@ -46,6 +50,8 @@ export function ProgressDashboard({
   records,
   stats,
   kecamatanSummaries,
+  screeningSummary,
+  onOpenFileDetail,
   onNavigateToRekap,
   isDemoMode = false,
 }: ProgressDashboardProps) {
@@ -377,6 +383,12 @@ export function ProgressDashboard({
 
       <div role="tabpanel" id={`${tabsId}-summary-panel`} aria-labelledby={`${tabsId}-summary-tab`} hidden={dashboardTab !== 'summary'} className="space-y-6">
       {visitedTabs.has('summary') && <>
+      <ScreeningAuditDeck3D
+        summary={screeningSummary}
+        records={records}
+        onOpenFileDetail={onOpenFileDetail}
+        onNavigateToMatrix={onNavigateToRekap}
+      />
       <div className="grid gap-4 lg:grid-cols-2">
         <ArchiveComparisonCard title="Berkas masuk · dibandingkan hari aktif sebelumnya" current={countsByDate.get(todayKey) || 0} previous={comparisonDay?.count ?? null}
           currentLabel={`Hari ini · ${formatArchiveDay(todayKey)}`} previousLabel={comparisonDay ? `Hari aktif · ${formatArchiveDay(comparisonDay.date)}` : 'Belum ada hari aktif sebelumnya'}

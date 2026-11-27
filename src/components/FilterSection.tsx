@@ -157,8 +157,9 @@ export function FilterSection({
             >
               <option value="ALL">Semua Status</option>
               <option value="COMPLETE">✅ Lengkap (5/5 Berkas - 67 Hal)</option>
-              <option value="INCOMPLETE">❌ Berkas Belum Lengkap (&lt; 5 Berkas)</option>
-              <option value="INCOMPLETE_PAGES">📑 Halaman Tidak Lengkap (&lt; 67 Hal / Kurang Lembar)</option>
+              <option value="INCOMPLETE">📭 Belum Ada Berkas (&lt; 5 Berkas)</option>
+              <option value="INCOMPLETE_PAGES">📑 Kurang Halaman (&lt; Standar Lembar)</option>
+              <option value="CONTENT_ISSUE">🧩 Bermasalah Isi (Double / Gabung / Rusak)</option>
               <option value="PARTIAL">⏳ Sebagian Terkumpul (1-4 Berkas)</option>
               <option value="EMPTY">❌ Masih Kosong (0 Berkas)</option>
               <option value="ANOMALY">⚠️ Ada Anomali / Typo</option>

@@ -11,6 +11,7 @@ import { FilterSection } from '@/components/FilterSection';
 import { SekadauInteractiveMap } from '@/components/SekadauInteractiveMap';
 import { TrackerMatrix } from '@/components/TrackerMatrix';
 import { DailyAnomalyTable3D } from '@/components/DailyAnomalyTable3D';
+import { ScreeningAuditDeck3D } from '@/components/ScreeningAuditDeck3D';
 import { FileDetailModal } from '@/components/FileDetailModal';
 import { DriveSyncModal } from '@/components/DriveSyncModal';
 import { SyncStatusFloatingToast } from '@/components/SyncStatusFloatingToast';
@@ -23,6 +24,7 @@ import {
   processRawTps,
   naturalSortTpsComparator,
 } from '@/utils/parser';
+import { computeScreeningAuditSummary } from '@/utils/screeningSummary';
 import { exportToExcel, exportToProvinsiSpreadsheet, exportIncompletePagesToExcel } from '@/utils/excelExport';
 import { ExportModal } from '@/components/ExportModal';
 import {
@@ -443,6 +445,7 @@ export function App() {
       if (filter.status === 'COMPLETE' && !r.isComplete) return false;
       if (filter.status === 'INCOMPLETE' && r.isComplete) return false;
       if (filter.status === 'INCOMPLETE_PAGES' && !r.hasIncompletePages) return false;
+      if (filter.status === 'CONTENT_ISSUE' && !r.hasContentIssue) return false;
       if (
         filter.status === 'PARTIAL' &&
         (r.completedCount === 0 || r.completedCount === 5)
@@ -536,6 +539,30 @@ export function App() {
     });
     return { fileCount, totalMissing };
   }, [processedRecords]);
+
+  const screeningSummary = useMemo(
+    () => computeScreeningAuditSummary(processedRecords),
+    [processedRecords]
+  );
+
+  const handleOpenFileDetail = useCallback((rec: TPSRecord, fileId?: string) => {
+    setSelectedRecordId(rec.id);
+    setSelectedFileId(fileId || null);
+  }, []);
+
+  const handleNavigateToMatrix = useCallback((filterUpdate?: Partial<FilterState>) => {
+    if (filterUpdate) {
+      setFilter((prev) => ({ ...prev, ...filterUpdate }));
+    }
+    setActiveTab('rekapitulasi');
+    if (typeof window !== 'undefined' && filterUpdate) {
+      window.setTimeout(() => {
+        document
+          .getElementById('filter-dan-matriks-container')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+  }, []);
 
   // Handler Logout / Kunci Akses
   const handleLogout = async () => {
@@ -700,12 +727,9 @@ export function App() {
                 records={processedRecords}
                 stats={globalStats}
                 kecamatanSummaries={kecamatanSummaries}
-                onNavigateToRekap={(filterUpdate) => {
-                  if (filterUpdate) {
-                    setFilter((prev) => ({ ...prev, ...filterUpdate }));
-                  }
-                  setActiveTab('rekapitulasi');
-                }}
+                screeningSummary={screeningSummary}
+                onOpenFileDetail={handleOpenFileDetail}
+                onNavigateToRekap={handleNavigateToMatrix}
                 isDemoMode={config.isDemoMode}
               />
             </motion.div>
@@ -718,13 +742,18 @@ export function App() {
               transition={{ duration: 0.22, ease: 'easeOut' }}
               className="space-y-6"
             >
+              {/* 0. Kategori Hasil Screening PDF (Bermasalah Isi, Belum Ada Berkas, Kurang Halaman) */}
+              <ScreeningAuditDeck3D
+                summary={screeningSummary}
+                records={processedRecords}
+                onOpenFileDetail={handleOpenFileDetail}
+                onNavigateToMatrix={handleNavigateToMatrix}
+              />
+
               {/* 1. Header 1: Fitur Data Anomali Berkas Harian (Bypass Nama Berkas) */}
               <DailyAnomalyTable3D
                 records={processedRecords}
-                onOpenFileDetail={(rec, fileId) => {
-                  setSelectedRecordId(rec.id);
-                  setSelectedFileId(fileId || null);
-                }}
+                onOpenFileDetail={handleOpenFileDetail}
                 onUpdateFileStatus={handleUpdateFileStatus}
                 currentUserEmail={currentUserEmail}
               />
